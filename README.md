@@ -1,5 +1,10 @@
+## Welcome
+
+![graphible_v0_scaled_3](https://github.com/user-attachments/assets/6d9eacf7-680b-49d5-b763-a1f01d5d8ed2)
+This is a work-in-progress and welcoming to collaboration.
 
 ## Getting Started
+
 
 0. Installs.
 
@@ -9,6 +14,7 @@
 
 
 1. Start a local LLM server.
+
 
 Install ollama from https://ollama.com/download if you have not already.
 
