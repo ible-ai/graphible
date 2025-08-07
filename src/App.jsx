@@ -168,16 +168,11 @@ const Graphible = () => {
   });
 
   const worldToScreen = (worldX, worldY) => ({
-    x: (worldX + camera.x) * camera.zoom + VIEWPORT_CENTER.x,
-    y: (worldY + camera.y) * camera.zoom + VIEWPORT_CENTER.y
+    x: worldX + VIEWPORT_CENTER.x,
+    y: worldY + VIEWPORT_CENTER.y
   });
 
-  const screenToWorld = (screenX, screenY) => ({
-    x: (screenX - VIEWPORT_CENTER.x) / camera.zoom - camera.x,
-    y: (screenY - VIEWPORT_CENTER.y) / camera.zoom - camera.y
-  });
-
-  const calculateNodePosition = (nodeIndex, parentNodeId, numSiblings, depth) => {
+  const calculateNodePosition = (nodeIndex, parentNodeId, depth) => {
     const parentWorldX = WORLD_CENTER.x + depth * NODE_SPACING.x;
     const parentWorldY = WORLD_CENTER.y + depth * NODE_SPACING.y;
     const yOffset = -NODE_SPACING.y * nodeIndex;
@@ -190,8 +185,7 @@ const Graphible = () => {
     if (nodeId >= nodes.length) return;
     const node = nodes.at(nodeId);
     if (!node) return;
-
-    setCameraTarget(-node.worldX, -node.worldY);
+    setCameraTarget(node.worldX, node.worldY);
   };
 
   // Simplified generation status timer.
@@ -442,13 +436,12 @@ const Graphible = () => {
           console.log('Successfully parsed node data:', parsedData);
           rawResponseBuffer = '';
           setStreamingContent('');
-          newNodeCount++;
+          newNodeCount = newNodeCount + 1;
 
           const uniqueNodeId = nodes.length + newNodes.length;
           console.log(`Unique node id: ${uniqueNodeId}; Node offset: ${nodeIdOffset} newNodeCount ${newNodeCount}; nodes.length ${nodes.length}`);
           const nodeDepth = currNodeDepth;
-          const numSiblings = newNodes.length;
-          const position = calculateNodePosition(uniqueNodeId, parentNodeId, numSiblings, nodeDepth);
+          const position = calculateNodePosition(uniqueNodeId, parentNodeId, nodeDepth);
 
           const newNode = createNode(
             uniqueNodeId,
@@ -481,15 +474,15 @@ const Graphible = () => {
           if (parsedData.type === 'root') {
             setCurrentRootPromptNodeId(uniqueNodeId);
             parentNodeId = uniqueNodeId;
+          } else {
+            setConnections(prevConnections => [...prevConnections, {
+              from: uniqueNodeId - 1,
+              to: uniqueNodeId
+            }]);
           }
 
           console.log('Adding new node to state:', newNode);
           setNodes(prevNodes => [...prevNodes, newNode]);
-
-          if (newConnections.length > 0) {
-            setConnections(prevConnections => [...prevConnections, ...newConnections]);
-            newConnections = [];
-          }
 
           // Focus on the new node after a short delay
           setTimeout(() => {
@@ -881,27 +874,15 @@ const Graphible = () => {
   const getNodeStyle = (node, isCurrent) => {
     if (showPromptCenter) return { opacity: 0, pointerEvents: 'none' };
 
-    const screenPos = worldToScreen(node.worldX, node.worldY);
-
-    const distanceFromCenter = Math.sqrt(
-      Math.pow(screenPos.x - VIEWPORT_CENTER.x, 2) +
-      Math.pow(screenPos.y - VIEWPORT_CENTER.y, 2)
-    );
-
-    const maxDistance = 800 * camera.zoom;
-    const normalizedDistance = Math.min(distanceFromCenter / maxDistance, 1);
-
-    const baseScale = 0.7;
-    const maxScale = isCurrent ? 1.3 : 1.0;
-    const scale = baseScale + (maxScale - baseScale) * Math.pow(1 - normalizedDistance, 2);
-
-    const opacity = Math.max(0.5, 1 - normalizedDistance * 0.5);
+    const isCurrentScalar = isCurrent ? 1.3 : 1.0;
+    const distanceScalar = Math.sqrt(Math.pow(camera.x - node.worldX, 2) + Math.pow((camera.y - node.worldY), 2));
+    const opacity = Math.max(Math.min(distanceScalar * isCurrentScalar, 1.0), 0.0);
 
     return {
-      transform: `scale(${scale})`,
-      opacity: opacity,
+      transform: `scale(${isCurrentScalar})`,
+      opacity: { opacity },
       transition: 'all 0.3s ease-out',
-      zIndex: isCurrent ? 1000 : Math.floor(1000 - distanceFromCenter),
+      zIndex: isCurrent ? 1 : 2,
       pointerEvents: 'auto'
     };
   };
@@ -989,11 +970,11 @@ const Graphible = () => {
     const unitY = dy / distance;
 
     // Offset from node centers to edges
-    const nodeRadius = Math.min(NODE_SIZE.width, NODE_SIZE.height) / 2;
-    const fromX = fromScreen.x + unitX * nodeRadius * 0.8;
-    const fromY = fromScreen.y + unitY * nodeRadius * 0.8;
-    const toX = toScreen.x - unitX * nodeRadius * 0.8;
-    const toY = toScreen.y - unitY * nodeRadius * 0.8;
+    const fromX = fromScreen.x + NODE_SIZE.width * 3 / 4;
+    // const fromX = fromNode.worldX;
+    const fromY = fromScreen.y + NODE_SIZE.height * 1 / 4;
+    const toX = toScreen.x + NODE_SIZE.width * 3 / 4;
+    const toY = toScreen.y + NODE_SIZE.height * 1 / 4;
 
     // Create curved path for better visual appeal
     const midX = (fromX + toX) / 2;
@@ -1002,19 +983,27 @@ const Graphible = () => {
     const controlX = midX + (-unitY * controlOffset);
     const controlY = midY + (unitX * controlOffset);
 
+    const baseStrokeWidth = 2;
     const path = `M${fromX},${fromY} Q${controlX},${controlY} ${toX},${toY}`;
-
+    const distanceScalar = Math.sqrt(Math.pow(camera.x - midX, 2) + Math.pow((camera.y - midY), 2));
+    const opacity = Math.max(Math.min(distanceScalar * camera.zoom, 1.0), 0.0);
+    const strokeWidth = Math.max(opacity * baseStrokeWidth, 0.0);
     return (
       <g>
         {/* Connection line */}
         <path
           d={path}
           stroke={currentScheme.accent}
-          strokeWidth="2"
+          strokeWidth={strokeWidth}
           fill="none"
-          className="transition-all duration-300"
-          opacity={0.7}
+          opacity={opacity}
+          // className="transition-all duration-300"
+          strokeOpacity={opacity}
           markerEnd="url(#arrowhead)"
+          style={{
+            overflow: 'visible',
+            zIndex: 1,
+          }}
         />
 
         {/* Connection points */}
@@ -1024,17 +1013,25 @@ const Graphible = () => {
           r="3"
           fill={currentScheme.primary}
           stroke="white"
+          opacity={opacity}
           strokeWidth="1"
-          opacity={0.8}
+          style={{
+            zIndex: 1,
+            overflow: 'visible',
+          }}
         />
         <circle
           cx={toX}
           cy={toY}
           r="3"
           fill={currentScheme.secondary}
+          opacity={opacity}
           stroke="white"
           strokeWidth="1"
-          opacity={0.8}
+          style={{
+            zIndex: 1,
+            overflow: 'visible',
+          }}
         />
       </g>
     );
@@ -1433,7 +1430,8 @@ const Graphible = () => {
 
   return (
     <div
-      className="w-full h-screen relative overflow-hidden"
+      className="w-full h-screen relative"
+      // className="w-full h-screen relative overflow-hidden"
       style={{ backgroundColor: currentScheme.bg }}
     >
       <GenerationStatusBar />
@@ -1478,45 +1476,47 @@ const Graphible = () => {
 
           {/* Main Content */}
           <div className="pt-20 w-full h-full relative">
-            {/* SVG for connections with proper transform handling */}
-            <svg
-              className="absolute top-0 left-0 w-full h-full pointer-events-none"
-              style={{ zIndex: 1 }}
-            >
-              <defs>
-                <marker
-                  id="arrowhead"
-                  markerWidth="10"
-                  markerHeight="7"
-                  refX="9"
-                  refY="3.5"
-                  orient="auto"
-                >
-                  <polygon
-                    points="0 0, 10 3.5, 0 7"
-                    fill={currentScheme.accent}
-                  />
-                </marker>
-              </defs>
-
-              {connections.map((conn, index) => (
-                <ConnectionComponent
-                  key={index}
-                  fromNode={nodes.at(conn.from)}
-                  toNode={nodes.at(conn.to)}
-                />
-              ))}
-            </svg>
-
-            {/* Nodes container with proper transform */}
+            {/* Container with proper transform for nodes and connections */}
             <div
-              className="relative w-full h-full"
+              className="relative w-full h-full overflow-visible"
               style={{
-                zIndex: 2,
                 transform: `scale(${camera.zoom}) translate(${camera.x}px, ${camera.y}px)`,
                 transformOrigin: 'center center'
               }}
             >
+              {/* SVG for connections with proper transform handling */}
+              <svg
+                className="absolute top-0 left-0 w-full h-full pointer-events-none"
+                style={{
+                  overflow: 'visible'
+                }}
+              >
+                <defs>
+                  <marker
+                    id="arrowhead"
+                    markerWidth="10"
+                    markerHeight="7"
+                    refX="9"
+                    refY="3.5"
+                    orient="auto"
+                  >
+                    <polygon
+                      points="0 0, 10 3.5, 0 7"
+                      fill={currentScheme.accent}
+                    />
+                  </marker>
+                </defs>
+
+                {connections.map((conn, index) => (
+                  <ConnectionComponent
+                    key={index}
+                    fromNode={nodes.at(conn.from)}
+                    toNode={nodes.at(conn.to)}
+                  />
+                ))}
+              </svg>
+
+              {/* Nodes container with proper transform */}
               {nodes.map(node => (
                 <NodeComponent
                   key={node.id}
