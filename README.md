@@ -1,6 +1,6 @@
 ## Welcome
+![graphible_v0_1_trimmed_scaled](https://github.com/user-attachments/assets/86fce279-555e-43e0-a91a-5c8c3ffc594a)
 
-![graphible_v0_scaled_3](https://github.com/user-attachments/assets/6d9eacf7-680b-49d5-b763-a1f01d5d8ed2)
 This is a work-in-progress and welcoming to collaboration.
 
 ## Getting Started
