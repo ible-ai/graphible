@@ -1,30 +1,221 @@
-// User feedback collection interface
+// User feedback collection interface with UI adaptation
 
 import { useState, useCallback, useEffect } from 'react';
 import { X } from 'lucide-react';
+import { extractJsonFromLlmResponse } from '../utils/llmUtils';
 
-const FeedbackModal = ({ 
-  showFeedbackModal, 
-  onClose, 
-  onSubmit, 
-  getQuickFeedbackOptions 
+const FeedbackModal = ({
+  showFeedbackModal,
+  onClose,
+  onSubmit,
+  getQuickFeedbackOptions,
+  uiPersonality,
+  setUiPersonality,
+  adaptivePrompts,
+  setAdaptivePrompts
 }) => {
   const [feedbackText, setFeedbackText] = useState('');
+
+  // Function to analyze user input for UI adaptation cues
+  const analyzeForUIAdaptation = async (userInput) => {
+    try {
+      const existingOptions = JSON.stringify(uiPersonality);
+      console.log(`ExistingUiOptions: ${existingOptions}`)
+
+      const response = await fetch('http://localhost:11434/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'gemma3:4b',
+          prompt: `Analyze this user input for UI/visual style preferences: "${userInput}"
+
+          Look for mentions of:
+          - Colors (red, blue, dark, bright, neon, pastel, etc.)
+          - Styles (gothic, minimalist, retro, cyberpunk, elegant, playful, etc.)
+          - Fonts (serif, sans-serif, monospace, handwritten, bubble letters, etc.)
+          - Layout preferences (compact, spacious, grid, organic, etc.)
+          - Animation preferences (fast, slow, bouncy, smooth, static, etc.)
+          - Visual themes (corporate, creative, academic, gaming, etc.)
+
+          Current options are: "${JSON.stringify(existingOptions)}"
+
+          Respond with JSON ONLY:
+          {
+            "hasUIPreferences": true/false,
+            "changes": {
+              "theme": "overall_theme_name",
+              "colors": {
+                "backgroundColor": "hex_color_or_null",
+                "text": "hex_color_or_null",
+                "border": "hex_color_or_null",
+                "positive": "hex_color_or_null",
+                "negative": "hex_color_or_null"
+              },
+              "typography": {
+                "fontFamily": "font_family_or_null",
+                "fontSize": "size_or_null",
+                "fontWeight": "weight_or_null"
+              },
+              "layout": {
+                "padding": "padding_value_or_null",
+                "borderRadius": "radius_or_null",
+                "borderWidth": "width_or_null",
+                "scale": "scale_factor_or_null"
+              },
+              "effects": {
+                "shadow": "box_shadow_or_null",
+                "textShadow": "text_shadow_or_null",
+                "filter": "css_filter_or_null"
+              },
+              "animations": {
+                "transition": "transition_or_null",
+                "transform": "transform_or_null"
+              },
+              "customProperties": {},
+              "customCSS": "any_css_rules_or_null",
+              "decorativeElements": []
+            },
+            "reasoning": "brief explanation of detected preferences"
+          }`,
+          stream: false
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log(`FeedbackModal data.response: ${JSON.stringify(data.response)}`)
+        const [analysis] = extractJsonFromLlmResponse(data.response);
+        console.log(`FeedbackModal analysis: ${JSON.stringify(analysis)}`)
+
+        if (analysis && analysis.hasUIPreferences) {
+          return analysis;
+        }
+      }
+    } catch (error) {
+      console.log('UI adaptation analysis failed:', error);
+    }
+    return null;
+  };
+
+  // Function to apply UI adaptations
+  const applyUIAdaptations = async (adaptations) => {
+    if (!adaptations || !adaptations.changes) return;
+    console.log("Entered applyUIAdaptations successfully");
+    let newPersonality = JSON.parse(JSON.stringify(uiPersonality));
+    console.log(`Parsed newPersonality in applyUIAdaptations successfully: ${JSON.stringify(newPersonality)}`);
+
+    // Apply changes by merging deeply
+    // if (adaptations.changes.theme) {
+    //   newPersonality.theme = adaptations.changes.theme;
+    // }
+
+    // Deep merge color changes
+    if (adaptations.changes.colors) {
+      newPersonality.colors = {
+        ...newPersonality.colors,
+        ...adaptations.changes.colors
+      };
+    }
+
+    // Deep merge typography changes
+    if (adaptations.changes.typography) {
+      newPersonality.typography = {
+        ...newPersonality.typography,
+        ...adaptations.changes.typography
+      };
+    }
+
+    // Deep merge layout changes
+    if (adaptations.changes.layout) {
+      newPersonality.layout = {
+        ...newPersonality.layout,
+        ...adaptations.changes.layout
+      };
+    }
+
+    // Deep merge effects
+    if (adaptations.changes.effects) {
+      newPersonality.effects = {
+        ...newPersonality.effects,
+        ...adaptations.changes.effects
+      };
+    }
+
+    // Deep merge animations
+    if (adaptations.changes.animations) {
+      newPersonality.animations = {
+        ...newPersonality.animations,
+        ...adaptations.changes.animations
+      };
+    }
+
+    // Merge custom properties
+    if (adaptations.changes.customProperties) {
+      newPersonality.customProperties = {
+        ...newPersonality.customProperties,
+        ...adaptations.changes.customProperties
+      };
+    }
+
+    // Update other properties
+    if (adaptations.changes.customCSS) {
+      newPersonality.customCSS = adaptations.changes.customCSS;
+    }
+
+    if (adaptations.changes.decorativeElements) {
+      newPersonality.decorativeElements = adaptations.changes.decorativeElements;
+    }
+
+    // Store the reasoning for this adaptation
+    if (adaptations) {
+      setAdaptivePrompts(prev => [...prev, {
+        userInput: adaptations.reasoning,
+        adaptations: adaptations.changes,
+        timestamp: Date.now()
+      }]);
+    }
+    console.log('newPersonality:', JSON.stringify(newPersonality))
+    setUiPersonality(JSON.parse(JSON.stringify(newPersonality)));
+
+    console.log('Applied UI adaptations:', adaptations);
+  };
 
   const handleClose = useCallback(() => {
     onClose();
     setFeedbackText('');
   }, [onClose]);
 
-  const handleSubmit = useCallback(() => {
+  const handleSubmit = useCallback(async () => {
+    // Enhanced feedback submission with UI learning
+    const inputText = feedbackText;
+
+    // Check if feedback contains UI preferences
+    if (inputText && setUiPersonality) {
+      setFeedbackText('');
+      handleClose();
+      const uiAnalysis = await analyzeForUIAdaptation(inputText);
+      if (uiAnalysis) {
+        await applyUIAdaptations(uiAnalysis);
+      }
+    }
+
+    // Continue with normal feedback processing
     onSubmit(feedbackText);
     setFeedbackText('');
-  }, [feedbackText, onSubmit]);
+  }, [feedbackText, onSubmit, uiPersonality, setUiPersonality, setAdaptivePrompts]);
 
-  const handleQuickSubmit = useCallback((option) => {
+  const handleQuickSubmit = useCallback(async (option) => {
+    // Enhanced quick feedback with UI learning
+    if (option && setUiPersonality) {
+      const uiAnalysis = await analyzeForUIAdaptation(option);
+      if (uiAnalysis) {
+        await applyUIAdaptations(uiAnalysis);
+      }
+    }
+
     onSubmit('', option);
     setFeedbackText('');
-  }, [onSubmit]);
+  }, [onSubmit, uiPersonality, setUiPersonality, setAdaptivePrompts]);
 
   // Handle escape key - always register the effect, but only act when modal is shown
   useEffect(() => {
@@ -50,9 +241,45 @@ const FeedbackModal = ({
   const { isPositive } = showFeedbackModal;
   const quickOptions = getQuickFeedbackOptions(isPositive);
 
+  // Apply adaptive styling based on UI personality
+  const getAdaptiveModalStyles = () => {
+    let styles = {};
+
+    if (uiPersonality?.theme?.includes('goth')) {
+      styles.backgroundColor = '#0a0a0a';
+      styles.borderColor = '#333';
+      styles.boxShadow = '0 0 30px rgba(255, 0, 0, 0.3)';
+    }
+
+    return styles;
+  };
+
+  const getAdaptiveFontStyles = () => {
+    let styles = {};
+
+    if (uiPersonality?.fontFamily?.includes('bubble')) {
+      styles.fontFamily = '"Comic Sans MS", cursive, sans-serif';
+      styles.fontWeight = 'bold';
+    } else if (uiPersonality?.fontFamily?.includes('mono')) {
+      styles.fontFamily = '"Courier New", monospace';
+    } else if (uiPersonality?.fontFamily?.includes('serif')) {
+      styles.fontFamily = 'Georgia, serif';
+    }
+
+    return styles;
+  };
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-gray-900 rounded-lg p-6 max-w-md w-full mx-4 border border-gray-600">
+      <div
+        className="bg-gray-900 rounded-lg p-6 max-w-md w-full mx-4 border border-gray-600"
+        style={{ ...getAdaptiveModalStyles(), ...getAdaptiveFontStyles() }}
+      >
+        {/* Inject custom CSS if needed */}
+        {uiPersonality?.customCSS && (
+          <style jsx>{uiPersonality.customCSS}</style>
+        )}
+
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-white font-bold text-lg">
             {isPositive ? 'What worked well?' : 'What needs improvement?'}
@@ -84,15 +311,16 @@ const FeedbackModal = ({
 
         <div className="mb-4">
           <label className="block text-gray-300 text-sm mb-2">
-            Or describe specifically:
+            Or describe specifically (try mentioning visual preferences like "make it more gothic" or "use red colors"):
           </label>
           <input
             type="text"
             id="feedback-text"
             value={feedbackText}
             onChange={(e) => setFeedbackText(e.target.value)}
-            placeholder={isPositive ? "What did you like?" : "What should be improved?"}
+            placeholder={isPositive ? "What did you like? Any style preferences?" : "What should be improved? Any visual changes?"}
             className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none"
+            style={getAdaptiveFontStyles()}
             autoFocus
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
@@ -119,6 +347,16 @@ const FeedbackModal = ({
             Cancel
           </button>
         </div>
+
+        {/* Show current UI personality if available */}
+        {uiPersonality && (
+          <div className="mt-4 pt-3 border-t border-gray-700">
+            <div className="text-xs text-gray-400">
+              Current Style: {uiPersonality.theme || 'default'} • {uiPersonality.colorScheme || 'blue'}
+              {adaptivePrompts?.length > 0 && ` • ${adaptivePrompts.length} adaptations`}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

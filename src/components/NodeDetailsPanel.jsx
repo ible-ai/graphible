@@ -21,7 +21,6 @@ const NodeDetailsPanel = ({ nodeDetails, onClose, feedbackHistory }) => {
       </div>
 
       <div className="bg-gray-800 p-4 rounded-lg">
-        <p className="text-white font-semibold mb-2">Content:</p>
         <div className="text-gray-200 text-sm overflow-y-auto max-h-64">
           <ReactMarkdown>{nodeDetails.content}</ReactMarkdown>
         </div>

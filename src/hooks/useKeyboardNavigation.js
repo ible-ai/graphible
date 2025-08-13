@@ -57,7 +57,7 @@ export const useKeyboardNavigation = ({
   };
 
   useEffect(() => {
-    if (showPromptCenter || generationStatus.isGenerating || isTypingPrompt) return;
+    if (showPromptCenter || isTypingPrompt) return;
 
     const handleKeyDown = (e) => {
       keysPressed.current.add(e.key.toLowerCase());

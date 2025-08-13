@@ -10,7 +10,11 @@ const NewPromptBox = ({
   generationStatus,
   onGenerate,
   isTypingPrompt,
-  setIsTypingPrompt
+  setIsTypingPrompt,
+  uiPersonality,
+  setUiPersonality,
+  adaptivePrompts,
+  setAdaptivePrompts
 }) => {
   const [newPromptInput, setNewPromptInput] = useState('');
   const [includeContext, setIncludeContext] = useState(true);

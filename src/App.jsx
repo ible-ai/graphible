@@ -22,8 +22,7 @@ import NewPromptBox from './components/NewPromptBox';
 import SaveLoadModal from './components/SaveLoadModal';
 
 // Import constants and utilities
-import { colorSchemes, NODE_SIZE, NODE_SPACING, VIEWPORT_CENTER, WORLD_CENTER } from './constants/graphConstants';
-import { worldToScreen, calculateNodePosition } from './utils/coordinateUtils';
+import { colorSchemes } from './constants/graphConstants';
 
 const Graphible = () => {
   // Core state
@@ -33,6 +32,27 @@ const Graphible = () => {
     animationSpeed: 1.0,
     nodeSize: 'medium'
   });
+
+  // UI Personality state for adaptive UI
+  const [uiPersonality, setUiPersonality] = useState({
+    colorScheme: 'blue',
+    fontFamily: 'system',
+    nodeStyle: 'rounded',
+    animationStyle: 'smooth',
+    layoutPattern: 'hierarchical',
+    customCSS: '',
+    theme: 'tech',
+    colors: {
+      // TODO: make these settings node.type operable.
+      backgroundColor: '#3B82F6',
+      borderColor: '#1E40AF',
+      color: 'white',
+      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)'
+    }
+  });
+
+  const [adaptivePrompts, setAdaptivePrompts] = useState([]);
+
   const [isDragging, setIsDragging] = useState(false);
   const [currentNodeId, setCurrentNodeId] = useState(null);
   const [nodeDetails, setNodeDetails] = useState(null);
@@ -84,7 +104,8 @@ const Graphible = () => {
     isTypingPrompt
   });
 
-  const currentScheme = colorSchemes[preferences.colorScheme];
+  // Use UI personality color scheme, fall back to preferences
+  const currentScheme = colorSchemes[uiPersonality.colorScheme || preferences.colorScheme];
 
   // Initialize LLM connection
   useEffect(() => {
@@ -122,16 +143,30 @@ const Graphible = () => {
   const loadGraph = (graphData) => {
     // Reset state and load graph data
     setNodes(graphData.nodes);
-    setConnections(graphData.connections);
     setCurrentNodeId(graphData.currentNodeId);
     setInitialPromptText(graphData.name);
     setShowPromptCenter(false);
     setShowSaveLoad(false);
     setNodeDetails(null);
 
+    // Reset UI personality to default when loading a graph
+    setUiPersonality(prevUiPersonality => (
+      {
+        ...prevUiPersonality,
+        colorScheme: 'blue',
+        fontFamily: 'system',
+        nodeStyle: 'rounded',
+        animationStyle: 'smooth',
+        layoutPattern: 'hierarchical',
+        customCSS: '',
+        theme: 'tech'
+      }));
+    setAdaptivePrompts([]);
+
     // Reset camera
     setCameraImmediate(0, 0, 1.0);
   };
+
   const handleInitialPromptSubmit = async (prompt) => {
     if (!prompt.trim()) return;
 
@@ -208,6 +243,46 @@ const Graphible = () => {
     return () => window.removeEventListener('wheel', handleWheel);
   }, [handleWheel, showPromptCenter]);
 
+  // Apply adaptive body styles based on UI personality
+  useEffect(() => {
+    const applyGlobalStyles = () => {
+      if (uiPersonality.customCSS) {
+        // Create or update a style element for custom CSS
+        let styleElement = document.getElementById('adaptive-styles');
+        if (!styleElement) {
+          styleElement = document.createElement('style');
+          styleElement.id = 'adaptive-styles';
+          document.head.appendChild(styleElement);
+        }
+        styleElement.textContent = uiPersonality.customCSS;
+      }
+
+      // Apply font family to body if needed
+      if (uiPersonality.fontFamily && uiPersonality.fontFamily !== 'system') {
+        if (uiPersonality.fontFamily.includes('bubble')) {
+          document.body.style.fontFamily = '"Comic Sans MS", cursive, sans-serif';
+        } else if (uiPersonality.fontFamily.includes('mono')) {
+          document.body.style.fontFamily = '"Courier New", monospace';
+        } else if (uiPersonality.fontFamily.includes('serif')) {
+          document.body.style.fontFamily = 'Georgia, serif';
+        }
+      } else {
+        document.body.style.fontFamily = '';
+      }
+    };
+
+    applyGlobalStyles();
+
+    return () => {
+      // Cleanup on unmount
+      const styleElement = document.getElementById('adaptive-styles');
+      if (styleElement) {
+        styleElement.remove();
+      }
+      document.body.style.fontFamily = '';
+    };
+  }, [uiPersonality]);
+
   return (
     <div
       className="w-screen h-screen relative"
@@ -227,6 +302,22 @@ const Graphible = () => {
 
       {!showPromptCenter && (
         <>
+          {/* UI Personality Indicator */}
+          {(adaptivePrompts) && (
+            <div className="absolute bottom-4 left-4 bg-black/80 backdrop-blur rounded-lg p-3 text-white text-xs max-w-xs z-40">
+              <div className="font-semibold mb-1">Current Style:</div>
+              <div>Theme: {uiPersonality.theme}</div>
+              <div>Colors: {uiPersonality.colorScheme}</div>
+              <div>Font: {uiPersonality.fontFamily}</div>
+              <div>Colors: {JSON.stringify(uiPersonality.colors)}</div>
+              {adaptivePrompts.length > 0 && (
+                <div className="mt-2 text-gray-300">
+                  Adaptations: {adaptivePrompts.length}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* LLM Status Indicator */}
           <div className="absolute top-4 right-4 flex items-center space-x-2 z-40">
             <span className="text-xs text-gray-400">LLM Status:</span>
@@ -316,6 +407,7 @@ const Graphible = () => {
                   camera={camera}
                   showPromptCenter={showPromptCenter}
                   generationStatus={generationStatus}
+                  uiPersonality={uiPersonality}
                 />
               ))}
             </div>
@@ -325,6 +417,7 @@ const Graphible = () => {
             nodeDetails={nodeDetails}
             onClose={() => setNodeDetails(null)}
             feedbackHistory={feedbackHistory}
+            uiPersonality={uiPersonality}
           />
 
           <Minimap
@@ -351,6 +444,10 @@ const Graphible = () => {
         onClose={() => setShowFeedbackModal(null)}
         onSubmit={submitFeedback}
         getQuickFeedbackOptions={getQuickFeedbackOptions}
+        uiPersonality={uiPersonality}
+        setUiPersonality={setUiPersonality}
+        adaptivePrompts={adaptivePrompts}
+        setAdaptivePrompts={setAdaptivePrompts}
       />
 
       <NewPromptBox
@@ -361,6 +458,10 @@ const Graphible = () => {
         onGenerate={generateWithLLM}
         isTypingPrompt={isTypingPrompt}
         setIsTypingPrompt={setIsTypingPrompt}
+        uiPersonality={uiPersonality}
+        setUiPersonality={setUiPersonality}
+        adaptivePrompts={adaptivePrompts}
+        setAdaptivePrompts={setAdaptivePrompts}
       />
 
       <SaveLoadModal
