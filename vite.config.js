@@ -8,15 +8,13 @@ export default defineConfig({
     tailwindcss(),
     react(),
     nodePolyfills({
-      // To make the polyfill work correctly, we need to include 'util'
-      include: ['util'],
-      // Optional: Other Node.js globals you might need, like 'process' or 'buffer'
+      // Minimal polyfills to avoid conflicts
+      include: ['util', 'buffer'],
       globals: {
         Buffer: true,
         global: true,
         process: true,
       },
-      // Optional: A shim for stream
       protocolImports: true,
     }),
   ],
@@ -28,6 +26,19 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
-    sourcemap: true
+    sourcemap: true,
+    // Fix crypto compatibility issues
+    rollupOptions: {
+      external: ['crypto']
+    }
+  },
+  define: {
+    global: 'globalThis',
+  },
+  resolve: {
+    alias: {
+      // Ensure crypto uses the Node.js version
+      crypto: 'crypto'
+    }
   }
 });

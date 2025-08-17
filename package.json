@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "description": "A graphical LLM interface.",
-  "homepage": "https://github.com/ible-ai/graphible#readme",
+  "homepage": "https://yourusername.github.io/graphible",
   "bugs": {
     "url": "https://github.com/ible-ai/graphible/issues"
   },
@@ -14,6 +14,9 @@
   "license": "MIT",
   "author": "echansen",
   "type": "module",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -22,6 +25,12 @@
     "deploy": "npm run build && gh-pages -d dist"
   },
   "dependencies": {
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "react-markdown": "^10.1.0",
+    "lucide-react": "^0.536.0"
+  },
+  "devDependencies": {
     "@eslint/js": "^9.32.0",
     "@tailwindcss/vite": "^4.1.11",
     "@types/react": "^18.2.15",
@@ -32,12 +41,8 @@
     "eslint-plugin-react-refresh": "^0.4.20",
     "gh-pages": "^6.0.0",
     "globals": "^16.3.0",
-    "lucide-react": "^0.536.0",
-    "react": "^19.1.1",
-    "react-dom": "^19.1.1",
-    "react-markdown": "^10.1.0",
     "tailwindcss": "^4.1.11",
-    "vite": "^7.0.6",
+    "vite": "^6.0.1",
     "vite-plugin-node-polyfills": "^0.24.0"
   }
 }
