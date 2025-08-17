@@ -42,6 +42,7 @@ npm run dev
 3. **Pull a model**:
    ```bash
    ollama pull gemma3:4b
+   ollama pull gemma3:270M
    ```
 4. **Launch Graphible** and start exploring!
 
