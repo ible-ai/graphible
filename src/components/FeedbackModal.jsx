@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { extractJsonFromLlmResponse } from '../utils/llmUtils';
+import { LLM_CONFIG } from '../constants/graphConstants';
 
 const FeedbackModal = ({
   showFeedbackModal,
@@ -26,8 +27,8 @@ const FeedbackModal = ({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'gemma3:4b',
-          prompt: `Analyze this user input for UI/visual style preferences: "${userInput}"
+          model: LLM_CONFIG.LW_MODEL,
+          prompt: `Analyze this user input for UI/visual style preferences.
 
           Look for mentions of:
           - Colors (red, blue, dark, bright, neon, pastel, etc.)
@@ -39,44 +40,41 @@ const FeedbackModal = ({
 
           Current options are: "${JSON.stringify(existingOptions)}"
 
-          Respond with JSON ONLY:
+          Respond with a modified version of the current options. Your response must be in JSON ONLY.
+
+          Here are a few examples of how you should operate:
+          
+          1.
+          USER: "I want a red background"
+          \`\`\`json
           {
-            "hasUIPreferences": true/false,
+            "hasUIPreferences": true,
             "changes": {
-              "theme": "overall_theme_name",
               "colors": {
-                "backgroundColor": "hex_color_or_null",
-                "text": "hex_color_or_null",
-                "border": "hex_color_or_null",
-                "positive": "hex_color_or_null",
-                "negative": "hex_color_or_null"
+                "backgroundColor": "red",
               },
-              "typography": {
-                "fontFamily": "font_family_or_null",
-                "fontSize": "size_or_null",
-                "fontWeight": "weight_or_null"
-              },
-              "layout": {
-                "padding": "padding_value_or_null",
-                "borderRadius": "radius_or_null",
-                "borderWidth": "width_or_null",
-                "scale": "scale_factor_or_null"
-              },
-              "effects": {
-                "shadow": "box_shadow_or_null",
-                "textShadow": "text_shadow_or_null",
-                "filter": "css_filter_or_null"
-              },
-              "animations": {
-                "transition": "transition_or_null",
-                "transform": "transform_or_null"
-              },
-              "customProperties": {},
-              "customCSS": "any_css_rules_or_null",
-              "decorativeElements": []
             },
-            "reasoning": "brief explanation of detected preferences"
-          }`,
+            "reasoning": "The user requested a red background so I requested a change to colors.backgroundColor."
+          }
+          \`\`\`
+
+          2.
+          USER: "I want the font to be grey and shadows to be red"
+          \`\`\`json
+          {
+            "hasUIPreferences": true,
+            "changes": {
+              "colors": {
+                "color": "grey",
+                "boxShadow":"0 4px 6px rgba(255, 0, 0, 0.3)"
+              },
+            },
+            "reasoning": "The user requested grey text with a red shadow so I requested changes to colors.color and colors.boxShadow."
+          }
+          \`\`\`
+
+          USER: "${userInput}"
+          `,
           stream: false
         })
       });

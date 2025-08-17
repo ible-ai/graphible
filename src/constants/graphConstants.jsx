@@ -2,7 +2,7 @@
 
 export const WORLD_CENTER = { x: 0, y: 0 };
 export const NODE_SIZE = { width: 280, height: 60 };
-export const NODE_SPACING = { x: NODE_SIZE.width * 1.8, y: NODE_SIZE.height * 1.5 };
+export const NODE_SPACING = { x: NODE_SIZE.width * 1.3, y: NODE_SIZE.height * 2.5 };
 export const VIEWPORT_CENTER = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
 
 export const colorSchemes = {
@@ -45,6 +45,7 @@ export const ANIMATION_SETTINGS = {
 export const LLM_CONFIG = {
   BASE_URL: 'http://localhost:11434',
   MODEL: 'gemma3:4b',
+  LW_MODEL: 'gemma3:270m',
   TAGS_ENDPOINT: '/api/tags',
   GENERATE_ENDPOINT: '/api/generate'
 };
