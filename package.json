@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "description": "A graphical LLM interface.",
-  "homepage": "https://ible-ai.github.io/graphible",
+  "homepage": "https://yourusername.github.io/graphible",
   "bugs": {
     "url": "https://github.com/ible-ai/graphible/issues"
   },
@@ -22,7 +22,8 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "deploy": "npm run build && gh-pages -d dist"
+    "deploy": "npm run build && gh-pages -d dist",
+    "test-build": "npm run build && npm run preview"
   },
   "dependencies": {
     "react": "^19.1.1",
