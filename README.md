@@ -16,13 +16,13 @@ Transform any topic into an interactive, AI-powered learning graph. Explore conc
 ## 🎯 Quick Start
 
 ### Option 1: Live Demo (GitHub Pages)
-Visit: **[https://yourusername.github.io/graphible](https://yourusername.github.io/graphible)**
+Visit: **[http://ible-ai.github.io/graphible](http://ible-ai.github.io/graphible)**
 
 ### Option 2: Local Development
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/graphible.git
+git clone https://github.com/ible-ai/graphible.git
 cd graphible
 
 # Install dependencies  
