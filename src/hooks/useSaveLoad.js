@@ -8,8 +8,13 @@ export const useSaveLoad = (nodes, connections, currentNodeId, initialPromptText
 
   // Load saved graphs on startup
   useEffect(() => {
-    const saved = JSON.parse(localStorage.getItem('graphible') || '[]');
-    setSavedGraphs(saved);
+    try {
+      const saved = JSON.parse(sessionStorage.getItem('graphible') || '[]');
+      setSavedGraphs(saved);
+    } catch (error) {
+      console.log('Could not load saved graphs:', error);
+      setSavedGraphs([]);
+    }
   }, []);
 
   const saveCurrentGraph = () => {
@@ -26,19 +31,27 @@ export const useSaveLoad = (nodes, connections, currentNodeId, initialPromptText
 
     const updated = [...savedGraphs, graphData];
     setSavedGraphs(updated);
-    localStorage.setItem('graphible', JSON.stringify(updated));
+    
+    try {
+      sessionStorage.setItem('graphible', JSON.stringify(updated));
+    } catch (error) {
+      console.log('Could not save graph:', error);
+    }
   };
 
   const loadGraph = (graphData) => {
-    // This function will be handled by the main component
-    // since it needs to update multiple state variables
     return graphData;
   };
 
   const deleteGraph = (id) => {
     const updated = savedGraphs.filter(g => g.id !== id);
     setSavedGraphs(updated);
-    localStorage.setItem('graphible', JSON.stringify(updated));
+    
+    try {
+      sessionStorage.setItem('graphible', JSON.stringify(updated));
+    } catch (error) {
+      console.log('Could not update saved graphs:', error);
+    }
   };
 
   return {
