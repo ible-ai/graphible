@@ -1,4 +1,5 @@
-// App.jsx - Main application component
+// Main application component
+
 import { useState, useEffect, useCallback } from 'react';
 import { Brain, RotateCcw, Save, Circle } from 'lucide-react';
 
@@ -33,27 +34,64 @@ const Graphible = () => {
     nodeSize: 'medium'
   });
 
-  // UI Personality state for adaptive UI
+  // Simplified UI Personality state - consistent structure
   const [uiPersonality, setUiPersonality] = useState({
+    theme: 'tech',
     colorScheme: 'blue',
     fontFamily: 'system',
     nodeStyle: 'rounded',
     animationStyle: 'smooth',
     layoutPattern: 'hierarchical',
     customCSS: '',
-    theme: 'tech',
     colors: {
-      // TODO: make these settings node.type operable.
-      backgroundColor: '#3B82F6',
-      borderColor: '#1E40AF',
-      color: 'white',
-      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)'
-    }
+      root: {
+        backgroundColor: '#FCD34D',
+        borderColor: '#1E40AF',
+        textColor: 'white',
+        accentColor: '#60A5FA',
+        positiveColor: '#10B981',
+        negativeColor: '#EF4444',
+        boxShadow: '0 4px 16px rgba(0, 0, 0, 0.05)',
+        isCurrent: {
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+        },
+      },
+      default: {
+        backgroundColor: '#3B82F6',
+        borderColor: '#1E40AF',
+        textColor: 'white',
+        accentColor: '#60A5FA',
+        positiveColor: '#10B981',
+        negativeColor: '#EF4444'
+      },
+    },
+    typography: {
+      fontFamily: '"Courier New", monospace',
+      fontSize: '14px',
+      fontWeight: 'normal'
+    },
+    layout: {
+      padding: '16px',
+      borderRadius: '12px',
+      borderWidth: '2px',
+      scale: '1.0'
+    },
+    effects: {
+      shadow: '0 4px 6px rgba(0, 0, 0, 0.3)',
+      textShadow: 'none',
+      filter: 'none'
+    },
+    animations: {
+      transition: 'all 0.3s ease-out',
+      transform: 'none'
+    },
+    customProperties: {},
+    decorativeElements: []
   });
 
   const [adaptivePrompts, setAdaptivePrompts] = useState([]);
-
   const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [currentNodeId, setCurrentNodeId] = useState(null);
   const [nodeDetails, setNodeDetails] = useState(null);
   const [showPromptCenter, setShowPromptCenter] = useState(true);
@@ -115,7 +153,7 @@ const Graphible = () => {
 
   // Node focusing
   useEffect(() => {
-    const currentNode = nodes.at(currentNodeId);
+    const currentNode = nodes[currentNodeId];
     if (currentNode && !showPromptCenter) {
       setNodeDetails(currentNode);
     }
@@ -143,7 +181,9 @@ const Graphible = () => {
 
   const loadGraph = (graphData) => {
     // Reset state and load graph data
-    setNodes(graphData.nodes);
+    resetGraph();
+    // Load nodes and connections
+    graphData.nodes.forEach(node => addNode(node));
     setCurrentNodeId(graphData.currentNodeId);
     setInitialPromptText(graphData.name);
     setShowPromptCenter(false);
@@ -151,17 +191,13 @@ const Graphible = () => {
     setNodeDetails(null);
 
     // Reset UI personality to default when loading a graph
-    setUiPersonality(prevUiPersonality => (
-      {
-        ...prevUiPersonality,
-        colorScheme: 'blue',
-        fontFamily: 'system',
-        nodeStyle: 'rounded',
-        animationStyle: 'smooth',
-        layoutPattern: 'hierarchical',
-        customCSS: '',
-        theme: 'tech'
-      }));
+    setUiPersonality(prevUiPersonality => ({
+      ...prevUiPersonality,
+      theme: 'tech',
+      colorScheme: 'blue',
+      fontFamily: 'system',
+      customCSS: ''
+    }));
     setAdaptivePrompts([]);
 
     // Reset camera
@@ -186,47 +222,71 @@ const Graphible = () => {
     await generateWithLLM(prompt);
   };
 
-  // Mouse drag handling
+  // Mouse drag handling with proper event detection
   useEffect(() => {
-    let dragLastPos = { x: 0, y: 0 };
-
     const handleMouseDown = (e) => {
-      if (e.target.closest('.node-component') ||
+      // Only start dragging if clicking on the background (not on interactive elements)
+      if (
+        e.target.closest('.node-component') ||
         e.target.closest('.minimap-container') ||
-        e.target.closest('.details-panel')) return;
+        e.target.closest('.details-panel') ||
+        e.target.closest('button') ||
+        e.target.closest('input') ||
+        e.target.closest('textarea')
+      ) {
+        return;
+      }
 
       setIsDragging(true);
-      dragLastPos = { x: e.clientX, y: e.clientY };
+      setDragStart({ x: e.clientX, y: e.clientY });
       document.body.style.cursor = 'grabbing';
+      document.body.style.userSelect = 'none';
+      e.preventDefault();
     };
 
     const handleMouseMove = (e) => {
       if (!isDragging) return;
-      const deltaX = e.clientX - dragLastPos.x;
-      const deltaY = e.clientY - dragLastPos.y;
 
-      setCameraImmediate(camera.x + deltaX / camera.zoom, camera.y + deltaY / camera.zoom);
-      dragLastPos = { x: e.clientX, y: e.clientY };
+      const deltaX = e.clientX - dragStart.x;
+      const deltaY = e.clientY - dragStart.y;
+
+      setCameraImmediate(
+        camera.x + deltaX / camera.zoom,
+        camera.y + deltaY / camera.zoom
+      );
+
+      setDragStart({ x: e.clientX, y: e.clientY });
+      e.preventDefault();
     };
 
-    const handleMouseUp = () => {
-      setIsDragging(false);
-      document.body.style.cursor = 'default';
+    const handleMouseUp = (e) => {
+      if (isDragging) {
+        setIsDragging(false);
+        document.body.style.cursor = 'default';
+        document.body.style.userSelect = '';
+        e.preventDefault();
+      }
     };
 
-    window.addEventListener('mousedown', handleMouseDown);
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
+    // Add listeners to document to catch all mouse events
+    document.addEventListener('mousedown', handleMouseDown);
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    // Handle mouse leave to stop dragging
+    document.addEventListener('mouseleave', handleMouseUp);
 
     return () => {
-      window.removeEventListener('mousedown', handleMouseDown);
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener('mousedown', handleMouseDown);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener('mouseleave', handleMouseUp);
       document.body.style.cursor = 'default';
+      document.body.style.userSelect = '';
     };
-  }, [isDragging, camera, setCameraImmediate]);
+  }, [isDragging, camera, setCameraImmediate, dragStart]);
 
-  // Zoom handling
+  // FIXED: Zoom handling
   const handleWheel = useCallback((e) => {
     if (showPromptCenter) return;
     e.preventDefault();
@@ -240,15 +300,19 @@ const Graphible = () => {
 
   useEffect(() => {
     if (showPromptCenter) return;
-    window.addEventListener('wheel', handleWheel, { passive: false });
-    return () => window.removeEventListener('wheel', handleWheel);
+
+    const handleWheelEvent = (e) => handleWheel(e);
+    document.addEventListener('wheel', handleWheelEvent, { passive: false });
+
+    return () => {
+      document.removeEventListener('wheel', handleWheelEvent);
+    };
   }, [handleWheel, showPromptCenter]);
 
   // Apply adaptive body styles based on UI personality
   useEffect(() => {
     const applyGlobalStyles = () => {
       if (uiPersonality.customCSS) {
-        // Create or update a style element for custom CSS
         let styleElement = document.getElementById('adaptive-styles');
         if (!styleElement) {
           styleElement = document.createElement('style');
@@ -258,13 +322,13 @@ const Graphible = () => {
         styleElement.textContent = uiPersonality.customCSS;
       }
 
-      // Apply font family to body if needed
-      if (uiPersonality.fontFamily && uiPersonality.fontFamily !== 'system') {
-        if (uiPersonality.fontFamily.includes('bubble')) {
+      // Apply font family to body
+      if (uiPersonality.typography?.fontFamily && uiPersonality.typography.fontFamily !== 'system') {
+        if (uiPersonality.typography.fontFamily.includes('bubble')) {
           document.body.style.fontFamily = '"Comic Sans MS", cursive, sans-serif';
-        } else if (uiPersonality.fontFamily.includes('mono')) {
+        } else if (uiPersonality.typography.fontFamily.includes('mono')) {
           document.body.style.fontFamily = '"Courier New", monospace';
-        } else if (uiPersonality.fontFamily.includes('serif')) {
+        } else if (uiPersonality.typography.fontFamily.includes('serif')) {
           document.body.style.fontFamily = 'Georgia, serif';
         }
       } else {
@@ -275,7 +339,6 @@ const Graphible = () => {
     applyGlobalStyles();
 
     return () => {
-      // Cleanup on unmount
       const styleElement = document.getElementById('adaptive-styles');
       if (styleElement) {
         styleElement.remove();
@@ -304,18 +367,15 @@ const Graphible = () => {
       {!showPromptCenter && (
         <>
           {/* UI Personality Indicator */}
-          {(adaptivePrompts) && (
+          {adaptivePrompts.length > 0 && (
             <div className="absolute bottom-4 left-4 bg-black/80 backdrop-blur rounded-lg p-3 text-white text-xs max-w-xs z-40">
               <div className="font-semibold mb-1">Current Style:</div>
               <div>Theme: {uiPersonality.theme}</div>
               <div>Colors: {uiPersonality.colorScheme}</div>
-              <div>Font: {uiPersonality.fontFamily}</div>
-              <div>Colors: {JSON.stringify(uiPersonality.colors)}</div>
-              {adaptivePrompts.length > 0 && (
-                <div className="mt-2 text-gray-300">
-                  Adaptations: {adaptivePrompts.length}
-                </div>
-              )}
+              <div>Font: {uiPersonality.typography?.fontFamily}</div>
+              <div className="mt-2 text-gray-300">
+                Adaptations: {adaptivePrompts.length}
+              </div>
             </div>
           )}
 
@@ -387,8 +447,8 @@ const Graphible = () => {
                 {connections.map((conn, index) => (
                   <ConnectionComponent
                     key={index}
-                    fromNode={nodes.at(conn.from)}
-                    toNode={nodes.at(conn.to)}
+                    fromNode={nodes[conn.from]}
+                    toNode={nodes[conn.to]}
                     colorScheme={currentScheme}
                     camera={camera}
                   />

@@ -20,18 +20,16 @@ const Minimap = ({
 
   const bounds = getMinimapBounds(nodes);
 
-  const handleMinimapClick = (e) => {
-    if (!minimapExpanded) return;
+const handleMinimapClick = (e) => {
+  const rect = e.currentTarget.getBoundingClientRect();
+  const x = (e.clientX - rect.left) / rect.width;
+  const y = (e.clientY - rect.top) / rect.height;
 
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / rect.width;
-    const y = (e.clientY - rect.top) / rect.height;
-
-    const worldX = bounds.minX + (bounds.maxX - bounds.minX) * x;
-    const worldY = bounds.minY + (bounds.maxY - bounds.minY) * y;
-
-    onCameraMove(-worldX, -worldY);
-  };
+  const worldX = bounds.minX + (bounds.maxX - bounds.minX) * x;
+  const worldY = bounds.minY + (bounds.maxY - bounds.minY) * y;
+  
+  onCameraMove(-worldX, -worldY)
+};
 
   return (
     <div
