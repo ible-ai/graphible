@@ -13,7 +13,8 @@ export const useKeyboardNavigation = ({
   setCameraImmediate,
   showPromptCenter,
   generationStatus,
-  isTypingPrompt
+  isTypingPrompt,
+  showFeedbackModal
 }) => {
   const keysPressed = useRef(new Set());
 
@@ -57,7 +58,7 @@ export const useKeyboardNavigation = ({
   };
 
   useEffect(() => {
-    if (showPromptCenter || isTypingPrompt) return;
+    if (showPromptCenter || isTypingPrompt || showFeedbackModal) return;
 
     const handleKeyDown = (e) => {
       keysPressed.current.add(e.key.toLowerCase());
@@ -111,5 +112,5 @@ export const useKeyboardNavigation = ({
       window.removeEventListener('keyup', handleKeyUp);
       clearInterval(interval);
     };
-  }, [nodes, showPromptCenter, generationStatus.isGenerating, camera, setCameraImmediate, isTypingPrompt]);
+  }, [nodes, showPromptCenter, generationStatus.isGenerating, camera, setCameraImmediate, isTypingPrompt, showFeedbackModal]);
 };

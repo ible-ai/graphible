@@ -1,5 +1,5 @@
 // App.jsx - Main application component
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Brain, RotateCcw, Save, Circle } from 'lucide-react';
 
 // Import custom hooks
@@ -101,7 +101,8 @@ const Graphible = () => {
     setCameraImmediate,
     showPromptCenter,
     generationStatus,
-    isTypingPrompt
+    isTypingPrompt,
+    showFeedbackModal
   });
 
   // Use UI personality color scheme, fall back to preferences
