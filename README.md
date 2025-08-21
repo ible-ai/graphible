@@ -1,6 +1,11 @@
 # Graphible - Interactive Learning Graphs
 
-![graphible_v0_1_trimmed_scaled](https://github.com/user-attachments/assets/86fce279-555e-43e0-a91a-5c8c3ffc594a)
+> [!IMPORTANT]
+> **[OUR *ONLINE* DEMO IS LIVE](http://ible-ai.github.io/graphible)**
+
+> [!IMPORTANT]
+> **Also accessible from any browser via [http://graph.ible.ai](http://graph.ible.ai)**
+
 Transform any topic into an interactive, AI-powered learning graph. Explore concepts through visual node-based interfaces with real-time LLM integration.
 
 ## 🚀 Features
@@ -16,7 +21,7 @@ Transform any topic into an interactive, AI-powered learning graph. Explore conc
 ## 🎯 Quick Start
 
 ### Option 1: Live Demo (GitHub Pages)
-Visit: **[http://ible-ai.github.io/graphible](http://ible-ai.github.io/graphible)**
+Visit **[our *ONLINE* demo](http://ible-ai.github.io/graphible)**
 
 ### Option 2: Local Development
 
