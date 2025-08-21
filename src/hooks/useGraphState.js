@@ -1,7 +1,8 @@
 // Graph nodes, connections, and LLM generation
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { LLM_CONFIG } from '../constants/graphConstants';
+import { applyForceDirectedLayout } from '../utils/coordinateUtils';
 import { calculateNodePosition } from '../utils/coordinateUtils';
 import { extractJsonFromLlmResponse, countCharacter } from '../utils/llmUtils';
 
@@ -243,6 +244,17 @@ export const useGraphState = () => {
     }
   };
 
+  const applyLayoutOptimization = useCallback(() => {
+    if (nodes.length > 1) {
+      const optimizedNodes = applyForceDirectedLayout(nodes, connections, {
+        linkDistance: 250,
+        nodeStrength: -600,
+        iterations: 200
+      });
+      setNodes(optimizedNodes);
+    }
+  }, [nodes, connections]);
+
   return {
     nodes,
     connections,
@@ -253,6 +265,7 @@ export const useGraphState = () => {
     updateGenerationStatus,
     resetGraph,
     generateWithLLM,
+    applyLayoutOptimization,
     setConnections
   };
 };

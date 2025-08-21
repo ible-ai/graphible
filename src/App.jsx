@@ -110,6 +110,7 @@ const Graphible = () => {
     updateGenerationStatus,
     resetGraph,
     generateWithLLM,
+    applyLayoutOptimization,
     setConnections
   } = useGraphState();
 
@@ -397,6 +398,14 @@ const Graphible = () => {
                 <div className={`px-2 py-1 rounded text-xs ${llmConnected === 'connected' ? 'bg-green-600' : 'bg-red-600'}`}>
                   {llmConnected === 'connected' ? 'LLM Connected' : 'LLM Offline'}
                 </div>
+                <button
+                  onClick={applyLayoutOptimization}
+                  disabled={nodes.length < 2}
+                  className="flex items-center gap-2 px-3 py-1 bg-gray-700 text-white rounded hover:bg-gray-600 transition-colors disabled:opacity-50"
+                >
+                  <Circle size={16} />
+                  Optimize Layout
+                </button>
               </div>
               <button
                 onClick={resetCamera}

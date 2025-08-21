@@ -1,5 +1,6 @@
 // Coordinate system utilities
 
+import * as d3 from 'd3';
 import { WORLD_CENTER, NODE_SIZE, NODE_SPACING, VIEWPORT_CENTER, RAD_PER_DEPTH } from '../constants/graphConstants';
 
 export const worldToScreen = (worldX, worldY) => ({
@@ -97,4 +98,68 @@ export const getMinimapBounds = (nodes) => {
   const maxY = Math.max(...nodes.map(n => n.worldY)) + padding;
 
   return { minX, maxX, minY, maxY };
+};
+
+// Add this new function to your existing coordinateUtils.js
+export const applyForceDirectedLayout = (nodes, connections, options = {}) => {
+  if (nodes.length === 0) return nodes;
+
+  const {
+    // width = 2000,
+    // height = 1500,
+    iterations = 300,
+    linkDistance = 200,
+    nodeStrength = -400,
+    centerStrength = 0.1
+  } = options;
+
+  // Convert your nodes to d3 format
+  const d3Nodes = nodes.map(node => ({
+    id: node.id,
+    x: node.worldX || 0,
+    y: node.worldY || 0,
+    // Add node dimensions for collision detection
+    radius: Math.max(node.dimensions?.width || NODE_SIZE.width, node.dimensions?.height || NODE_SIZE.height) / 4,
+    originalNode: node
+  }));
+
+  // Convert connections to d3 links
+  const d3Links = connections.map(conn => ({
+    source: conn.from,
+    target: conn.to
+  }));
+
+  // Create the force simulation
+  const simulation = d3.forceSimulation(d3Nodes)
+    .force('link', d3.forceLink(d3Links)
+      .id(d => d.id)
+      .distance(linkDistance)
+      .strength(0.1)
+    )
+    .force('charge', d3.forceManyBody()
+      .strength(nodeStrength)
+    )
+    .force('center', d3.forceCenter(0, 0)
+      .strength(centerStrength)
+    )
+    .force('collision', d3.forceCollide()
+      .radius(d => d.radius + 20) // Add padding
+      .strength(0.7)
+    )
+    .stop();
+
+  // Run the simulation synchronously
+  for (let i = 0; i < iterations; i++) {
+    simulation.tick();
+  }
+
+  // Apply the results back to your nodes
+  return nodes.map(node => {
+    const d3Node = d3Nodes.find(d => d.id === node.id);
+    return {
+      ...node,
+      worldX: d3Node.x,
+      worldY: d3Node.y
+    };
+  });
 };
