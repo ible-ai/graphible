@@ -48,6 +48,7 @@ const SaveLoadModal = ({
     }
   }, [showSaveLoad, handleClose]);
 
+  if (!showSaveLoad) return null;
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-gray-900 rounded-lg p-6 max-w-md w-full mx-4 border border-gray-600 max-h-[80vh] overflow-y-auto">
