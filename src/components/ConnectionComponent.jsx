@@ -1,7 +1,7 @@
 // Node connection visualization
 
-import { worldToScreen } from '../utils/coordinateUtils';
 import { NODE_SIZE } from '../constants/graphConstants';
+import { worldToScreen } from '../utils/coordinateUtils';
 
 const ConnectionComponent = ({ fromNode, toNode, colorScheme, camera }) => {
   if (!fromNode || !toNode) return null;
@@ -19,11 +19,10 @@ const ConnectionComponent = ({ fromNode, toNode, colorScheme, camera }) => {
   const unitX = dx / distance;
   const unitY = dy / distance;
 
-  // Offset from node centers to edges
   const fromX = fromScreen.x + NODE_SIZE.width * 3 / 4;
-  const fromY = fromScreen.y + NODE_SIZE.height * 1 / 4;
+  const fromY = fromScreen.y + NODE_SIZE.height * 3 / 4;
   const toX = toScreen.x + NODE_SIZE.width * 3 / 4;
-  const toY = toScreen.y + NODE_SIZE.height * 1 / 4;
+  const toY = toScreen.y + NODE_SIZE.height * 3 / 4;
 
   // Create curved path for better visual appeal
   const midX = (fromX + toX) / 2;

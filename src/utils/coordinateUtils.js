@@ -18,8 +18,8 @@ export const calculateFirstNodePosition = (depth) => {
   if (depth > 0) {
     const rotScalar = depthToScalar(depth);
     return {
-      worldX: NODE_SIZE.width * rotScalar.x * depth,
-      worldY: NODE_SIZE.height * rotScalar.y * depth
+      worldX: NODE_SIZE.width / 2 * rotScalar.x * depth,
+      worldY: NODE_SIZE.height / 2 * rotScalar.y * depth
     };
   }
   return { worldX: WORLD_CENTER.x, worldY: WORLD_CENTER.y };
@@ -35,7 +35,7 @@ export const calculateNodePosition = (newNodeContent, newNodeDescription, precee
   // Calculate actual dimensions for the parent.
   const parentNode = preceedingSiblingNodes[0];
   const parentDimensions = getCurrentElementDimensions(parentNode.id);
-  const estimatedNewDimensions = estimateNewNodeDimensions(newNodeContent);
+  const estimatedNewDimensions = estimateNewNodeDimensions(newNodeContent, newNodeDescription);
 
   const horizontalSpacing = (parentDimensions.width + estimatedNewDimensions.width) / 2 + NODE_SPACING.x;
   const verticalSpacing = (parentDimensions.height + estimatedNewDimensions.height) / 2 + NODE_SPACING.y;
@@ -46,13 +46,30 @@ export const calculateNodePosition = (newNodeContent, newNodeDescription, precee
   };
 };
 
-export const getCurrentElementDimensions = (id, prefix = 'node-') => {
+export const getCurrentElementDimensions = (id, prefix) => {
   const elementId = `${prefix}${id}`;
   const element = document.getElementById(elementId);
+  if (element == null) {
+    return { width: NODE_SIZE.width, height: NODE_SIZE.height };
+  }
   const rect = element.getBoundingClientRect();
   const width = rect.width;
   const height = rect.height;
   return { width: width, height: height };
+}
+
+// TODO cache the node size at rendering time and tie it to the node object.
+export const getCurrentNodeDimensions = (node) => {
+  if (node === null) {
+    return { width: NODE_SIZE.width, height: NODE_SIZE.height };
+  }
+  const elementId = `node-${node.id}`;
+  const element = document.getElementById(elementId);
+  if (element === null) {
+    return estimateNewNodeDimensions(node.content, node.description);
+  }
+  const rect = element.getBoundingClientRect();
+  return { width: rect.width, height: rect.height };
 }
 
 const estimatedRenderedLineLength = (text, fontSizePx, allocatedWidth) => {
@@ -78,6 +95,7 @@ export const estimateNewNodeDimensions = (content, description) => {
   const estimatedContentHeight = estimatedTextHeight(content);
   const estimatedDescriptionHeight = estimatedTextHeight(description, 30);
   const estimatedHeight = Math.max(NODE_SIZE.height, estimatedContentHeight + estimatedDescriptionHeight);
+  console.log("estimateNewNodeDimensions", estimatedContentHeight, estimatedDescriptionHeight, estimatedHeight);
 
   return { width: NODE_SIZE.width, height: estimatedHeight };
 };
@@ -88,6 +106,7 @@ export const calculateDistance = (point1, point2) => {
   return Math.sqrt(dx * dx + dy * dy);
 };
 
+// TODO: tie these to constants.
 export const getMinimapBounds = (nodes) => {
   if (nodes.length === 0) return { minX: -400, maxX: 400, minY: -300, maxY: 300 };
 
