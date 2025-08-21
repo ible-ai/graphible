@@ -1,4 +1,4 @@
-// components/ConnectionComponent.jsx - Node connection visualization
+// Node connection visualization
 
 import { worldToScreen } from '../utils/coordinateUtils';
 import { NODE_SIZE } from '../constants/graphConstants';

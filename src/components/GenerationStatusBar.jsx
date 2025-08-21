@@ -1,4 +1,4 @@
-// components/GenerationStatusBar.jsx - Shows LLM generation progress
+// Shows LLM generation progress
 
 import { Zap, Circle } from 'lucide-react';
 

@@ -1,35 +1,38 @@
-// components/SaveLoadModal.jsx - Graph save/load interface
+// Graph save/load interface
 
 import { useCallback, useEffect } from 'react';
 import { X, Save } from 'lucide-react';
 
-const SaveLoadModal = ({ 
-  showSaveLoad, 
-  savedGraphs, 
-  hasNodes, 
-  onClose, 
-  onSave, 
-  onLoad, 
-  onDelete 
+const SaveLoadModal = ({
+  showSaveLoad,
+  savedGraphs,
+  hasNodes,
+  onClose,
+  onSave,
+  onLoad,
+  onDelete
 }) => {
-  if (!showSaveLoad) return null;
 
   const handleClose = useCallback(() => {
+    if (!showSaveLoad) return null;
     onClose();
-  }, [onClose]);
+  }, [onClose, showSaveLoad]);
 
   const handleSave = useCallback(() => {
+    if (!showSaveLoad) return null;
     onSave();
     onClose();
-  }, [onSave, onClose]);
+  }, [onSave, onClose, showSaveLoad]);
 
   const handleLoad = useCallback((graph) => {
+    if (!showSaveLoad) return null;
     onLoad(graph);
-  }, [onLoad]);
+  }, [onLoad, showSaveLoad]);
 
   const handleDelete = useCallback((id) => {
+    if (!showSaveLoad) return null;
     onDelete(id);
-  }, [onDelete]);
+  }, [onDelete, showSaveLoad]);
 
   // Handle escape key
   useEffect(() => {

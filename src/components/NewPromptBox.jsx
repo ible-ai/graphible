@@ -1,4 +1,4 @@
-// components/NewPromptBox.jsx - New prompt input interface
+// Pop-up prompt input interface for new prompts (i.e. all prompts after the landing page prompt).
 
 import { useState, useCallback, useEffect } from 'react';
 import { X, Send } from 'lucide-react';
@@ -14,7 +14,9 @@ const NewPromptBox = ({
   uiPersonality,
   setUiPersonality,
   adaptivePrompts,
-  setAdaptivePrompts
+  setAdaptivePrompts,
+  nodes,
+  setConnections
 }) => {
   const [newPromptInput, setNewPromptInput] = useState('');
   const [includeContext, setIncludeContext] = useState(true);
@@ -52,7 +54,8 @@ const NewPromptBox = ({
     setIsTypingPrompt(false);
 
     let finalPromptToLLM = newPromptInput;
-
+    
+    // TODO: allow user to select nodes for inclusion.
     if (includeContext) {
       let contextString = `Building on our previous discussion about "${initialPromptText}".`;
       if (currentNodeId && nodeDetails) {
@@ -60,9 +63,15 @@ const NewPromptBox = ({
       }
       contextString += ` Now, based on this context, please generate a new graph for: "${finalPromptToLLM}"`;
       finalPromptToLLM = contextString;
-    }
 
-    await onGenerate(finalPromptToLLM);
+      // Only include a connection if the user specifies to carry the context forward.
+      setConnections(prevConnections => [...prevConnections, {
+        from: currentNodeId,
+        to: nodes.length
+      }]);
+    }
+    const curNode = nodes[currentNodeId];
+    await onGenerate(finalPromptToLLM, curNode.worldX, curNode.worldY);
     setNewPromptInput('');
   }, [newPromptInput, includeContext, initialPromptText, currentNodeId, nodeDetails, onGenerate]);
 

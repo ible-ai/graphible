@@ -1,4 +1,4 @@
-// Main application component
+// Main application
 
 import { useState, useEffect, useCallback } from 'react';
 import { Brain, RotateCcw, Save, Circle } from 'lucide-react';
@@ -109,7 +109,8 @@ const Graphible = () => {
     addNode,
     updateGenerationStatus,
     resetGraph,
-    generateWithLLM
+    generateWithLLM,
+    setConnections
   } = useGraphState();
 
   const { llmConnected, testLLMConnection } = useLLMConnection();
@@ -465,7 +466,6 @@ const Graphible = () => {
                   onClick={handleNodeClick}
                   onFeedback={handleFeedback}
                   colorScheme={currentScheme}
-                  camera={camera}
                   showPromptCenter={showPromptCenter}
                   generationStatus={generationStatus}
                   uiPersonality={uiPersonality}
@@ -523,6 +523,8 @@ const Graphible = () => {
         setUiPersonality={setUiPersonality}
         adaptivePrompts={adaptivePrompts}
         setAdaptivePrompts={setAdaptivePrompts}
+        nodes={nodes}
+        setConnections={setConnections}
       />
 
       <SaveLoadModal

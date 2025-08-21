@@ -1,4 +1,4 @@
-// components/NodeDetailsPanel.jsx - Detailed node information display
+// Detailed node information display
 
 import { X } from 'lucide-react';
 import ReactMarkdown from "react-markdown";

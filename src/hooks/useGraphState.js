@@ -14,7 +14,7 @@ export const useGraphState = () => {
   const [generationBatch, setGenerationBatch] = useState(0);
   const [streamingContent, setStreamingContent] = useState('');
   const [currentStreamingNodeId, setCurrentStreamingNodeId] = useState(null);
-  
+
   const [generationStatus, setGenerationStatus] = useState({
     isGenerating: false,
     currentNodeId: null,
@@ -39,19 +39,31 @@ export const useGraphState = () => {
     };
   }, [generationStatus.isGenerating, generationStatus.startTime]);
 
-  const createNode = (id, label, type, description, content, worldX, worldY, batchId, parentNodeId, nodeDepth, context = '') => ({
-    id: Number(id),
-    label: label || `Node ${id}`,
-    type: type || 'concept',
-    description: description || '',
-    content: content || '',
-    context: context,
-    worldX: worldX || 0,
-    worldY: worldY || 0,
-    batchId: batchId,
-    parentNodeId: parentNodeId,
-    depth: nodeDepth
-  });
+  const createNode = (id, label, type, description, content, prevWorldX, prevWorldY, batchId, parentNodeId, nodeDepth, context = '', preceedingSiblingNodes = []) => {
+    let position;
+    position = calculateNodePosition(content, description, preceedingSiblingNodes, nodeDepth);
+    
+    // Override with provided coordinates if explicitly set
+    if (prevWorldX !== undefined && prevWorldY !== undefined) {
+      position.worldX += prevWorldX;
+      position.worldY += prevWorldY;
+      console.log(position)
+    }
+
+    return {
+      id: Number(id),
+      label: label || `Node ${id}`,
+      type: type || 'concept',
+      description: description || '',
+      content: content || '',
+      context: context,
+      worldX: position.worldX,
+      worldY: position.worldY,
+      batchId: batchId,
+      parentNodeId: parentNodeId,
+      depth: nodeDepth
+    };
+  };
 
   const addNode = (nodeData) => {
     setNodes(prev => [...prev, nodeData]);
@@ -79,7 +91,7 @@ export const useGraphState = () => {
     });
   };
 
-  const generateWithLLM = async (prompt) => {
+  const generateWithLLM = async (prompt, prevWorldX = null, prevWorldY = null) => {
     console.log('Starting generation with prompt:', prompt);
 
     const currentBatch = generationBatch;
@@ -93,7 +105,7 @@ export const useGraphState = () => {
       elapsedTime: 0
     });
 
-    let parentNodeId = currentNodeId;
+    let preceedingSiblingNodes = [];
 
     try {
       const response = await fetch(`${LLM_CONFIG.BASE_URL}${LLM_CONFIG.GENERATE_ENDPOINT}`, {
@@ -153,7 +165,7 @@ export const useGraphState = () => {
 
         const chunkText = decoder.decode(value, { stream: true });
         let decoded_response;
-        
+
         try {
           decoded_response = JSON.parse(chunkText);
         } catch (e) {
@@ -189,34 +201,35 @@ export const useGraphState = () => {
         console.log('Successfully parsed node data:', parsedData);
         rawResponseBuffer = '';
         setStreamingContent('');
-        newNodeCount = newNodeCount + 1;
-
-        const uniqueNodeId = nodes.length + newNodeCount - 1;
+        
+        const uniqueNodeId = nodes.length + newNodeCount;
+        const previousNodeId = uniqueNodeId ? uniqueNodeId - 1 : null;
         const nodeDepth = currNodeDepth;
-        const position = calculateNodePosition(uniqueNodeId, parentNodeId, nodeDepth);
-
+        
         const newNode = createNode(
           uniqueNodeId,
           parsedData.label,
           parsedData.type,
           parsedData.description,
           parsedData.content,
-          position.worldX,
-          position.worldY,
+          prevWorldX,
+          prevWorldY,
           currentBatch,
-          parentNodeId,
-          nodeDepth
+          previousNodeId > 0 ? previousNodeId : null,
+          nodeDepth,
+          "",
+          preceedingSiblingNodes
         );
-
+        
+        newNodeCount = newNodeCount + 1;
+        preceedingSiblingNodes.push(newNode);
         setNodes(prevNodes => [...prevNodes, newNode]);
         setCurrentNodeId(uniqueNodeId);
         setCurrentStreamingNodeId(uniqueNodeId);
         setGenerationStatus(prev => ({ ...prev, currentNodeId: uniqueNodeId }));
 
-        if (parsedData.type === 'root') {
+        if (uniqueNodeId > 0) {
           setCurrentRootPromptNodeId(uniqueNodeId);
-          parentNodeId = uniqueNodeId;
-        } else {
           setConnections(prevConnections => [...prevConnections, {
             from: uniqueNodeId - 1,
             to: uniqueNodeId
@@ -239,6 +252,7 @@ export const useGraphState = () => {
     addNode,
     updateGenerationStatus,
     resetGraph,
-    generateWithLLM
+    generateWithLLM,
+    setConnections
   };
 };

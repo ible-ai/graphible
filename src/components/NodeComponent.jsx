@@ -11,7 +11,6 @@ const NodeComponent = ({
   onClick,
   onFeedback,
   colorScheme,
-  camera,
   showPromptCenter,
   generationStatus,
   uiPersonality
@@ -90,7 +89,6 @@ const NodeComponent = ({
     return baseStyles;
   };
 
-  // SIMPLIFIED: Get button styles consistently
   const getButtonStyles = () => {
     const positiveColor = uiPersonality.colors?.positiveColor || '#10B981';
     const negativeColor = uiPersonality.colors?.negativeColor || '#EF4444';
@@ -121,6 +119,7 @@ const NodeComponent = ({
 
   return (
     <div
+      id={`node-${node.id}`}
       className={`absolute shadow-lg border-2 node-component ${isClickable ? 'cursor-pointer' : 'cursor-wait'}`}
       style={{
         left: screenPos.x + dimensions.width / 4,

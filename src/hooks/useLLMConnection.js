@@ -1,4 +1,4 @@
-// hooks/useLLMConnection.js - LLM connection status management
+// LLM connection status management
 
 import { useState, useCallback } from 'react';
 import { LLM_CONFIG } from '../constants/graphConstants';

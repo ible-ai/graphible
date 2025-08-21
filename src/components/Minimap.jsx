@@ -1,4 +1,4 @@
-// components/Minimap.jsx - Graph overview and navigation
+// Graph overview and navigation
 
 import { useState } from 'react';
 import { Maximize2, Minimize2 } from 'lucide-react';
