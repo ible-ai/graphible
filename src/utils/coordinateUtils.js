@@ -10,39 +10,42 @@ export const worldToScreen = (worldX, worldY) => ({
 
 export const depthToScalar = (depth) => {
 
-  const rads = depth * RAD_PER_DEPTH;
+  const rads = depth * RAD_PER_DEPTH + Math.PI;
   return { y: Math.cos(rads), x: Math.sin(rads) };
-};
-
-export const calculateFirstNodePosition = (depth) => {
-  if (depth > 0) {
-    const rotScalar = depthToScalar(depth);
-    return {
-      worldX: NODE_SIZE.width / 2 * rotScalar.x * depth,
-      worldY: NODE_SIZE.height / 2 * rotScalar.y * depth
-    };
-  }
-  return { worldX: WORLD_CENTER.x, worldY: WORLD_CENTER.y };
 };
 
 export const calculateNodePosition = (newNodeContent, newNodeDescription, preceedingSiblingNodes, depth) => {
 
-  if (preceedingSiblingNodes.length === 0) {
-    return calculateFirstNodePosition(depth);
+  const estimatedNewDimensions = estimateNewNodeDimensions(newNodeContent, newNodeDescription);
+  let horizontalSpacing = NODE_SPACING.x;
+  let verticalSpacing = NODE_SPACING.x;
+  let worldX = WORLD_CENTER.x;
+  let worldY = WORLD_CENTER.y;
+  let siblingIndex = preceedingSiblingNodes.length;
+
+  if (siblingIndex === 0) {
+    // If new local root node, add space between previous local graph and this new node set.
+    if (depth > 0) {
+      siblingIndex = siblingIndex + 1;
+    }
+    // return calculateFirstNodePosition(depth);
+    horizontalSpacing += estimatedNewDimensions.width / 2;
+    verticalSpacing += estimatedNewDimensions.height / 2;
+  } else {
+    const closestSibling = preceedingSiblingNodes[preceedingSiblingNodes.length - 1];
+    const closestSiblingDimensions = getCurrentElementDimensions(closestSibling.id);
+    horizontalSpacing += (closestSiblingDimensions.width + estimatedNewDimensions.width) / 4;
+    verticalSpacing += (closestSiblingDimensions.height + estimatedNewDimensions.height) / 4;
+    const parentNode = preceedingSiblingNodes[0];
+    worldX = parentNode.worldX;
+    worldY = parentNode.worldY;
   }
   const rotScalars = depthToScalar(depth);
 
   // Calculate actual dimensions for the parent.
-  const parentNode = preceedingSiblingNodes[0];
-  const parentDimensions = getCurrentElementDimensions(parentNode.id);
-  const estimatedNewDimensions = estimateNewNodeDimensions(newNodeContent, newNodeDescription);
-
-  const horizontalSpacing = (parentDimensions.width + estimatedNewDimensions.width) / 2 + NODE_SPACING.x;
-  const verticalSpacing = (parentDimensions.height + estimatedNewDimensions.height) / 2 + NODE_SPACING.y;
-  const siblingIndex = preceedingSiblingNodes.length;
   return {
-    worldX: parentNode.worldX + siblingIndex * horizontalSpacing * rotScalars.x,
-    worldY: parentNode.worldY + siblingIndex * verticalSpacing * rotScalars.y,
+    worldX: worldX + siblingIndex * horizontalSpacing * rotScalars.x,
+    worldY: worldY + siblingIndex * verticalSpacing * rotScalars.y,
   };
 };
 
@@ -52,10 +55,9 @@ export const getCurrentElementDimensions = (id, prefix) => {
   if (element == null) {
     return { width: NODE_SIZE.width, height: NODE_SIZE.height };
   }
-  const rect = element.getBoundingClientRect();
-  const width = rect.width;
-  const height = rect.height;
-  return { width: width, height: height };
+  const to_return = { width: element.clientWidth, height: element.clientHeight };
+  console.log(to_return);
+  return to_return;
 }
 
 // TODO cache the node size at rendering time and tie it to the node object.

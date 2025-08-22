@@ -92,7 +92,6 @@ const Graphible = () => {
   const [adaptivePrompts, setAdaptivePrompts] = useState([]);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-  const [currentNodeId, setCurrentNodeId] = useState(null);
   const [nodeDetails, setNodeDetails] = useState(null);
   const [showPromptCenter, setShowPromptCenter] = useState(true);
   const [initialPromptText, setInitialPromptText] = useState('');
@@ -105,9 +104,10 @@ const Graphible = () => {
     connections,
     generationStatus,
     streamingContent,
+    currentNodeId,
     currentStreamingNodeId,
+    setCurrentNodeId,
     addNode,
-    updateGenerationStatus,
     resetGraph,
     generateWithLLM,
     applyLayoutOptimization,
@@ -218,7 +218,6 @@ const Graphible = () => {
     }
 
     resetGraph();
-    setInitialPromptText(prompt);
     setShowPromptCenter(false);
 
     await generateWithLLM(prompt);
@@ -288,7 +287,7 @@ const Graphible = () => {
     };
   }, [isDragging, camera, setCameraImmediate, dragStart]);
 
-  // FIXED: Zoom handling
+  // Zoom handling
   const handleWheel = useCallback((e) => {
     if (showPromptCenter) return;
     e.preventDefault();
@@ -361,6 +360,7 @@ const Graphible = () => {
 
       <CenteredPrompt
         showPromptCenter={showPromptCenter}
+        setShowPromptCenter={setShowPromptCenter}
         llmConnected={llmConnected}
         onSubmit={handleInitialPromptSubmit}
         onShowSaveLoad={() => setShowSaveLoad(true)}

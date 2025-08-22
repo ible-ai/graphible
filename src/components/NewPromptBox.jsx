@@ -3,10 +3,10 @@
 import { useState, useCallback, useEffect } from 'react';
 import { X, Send } from 'lucide-react';
 
-const NewPromptBox = ({ 
+const NewPromptBox = ({
   initialPromptText,
-  currentNodeId, 
-  nodeDetails, 
+  currentNodeId,
+  nodeDetails,
   generationStatus,
   onGenerate,
   isTypingPrompt,
@@ -41,7 +41,7 @@ const NewPromptBox = ({
     return () => {
       window.removeEventListener('keydown', handleGlobalKeyDown);
     };
-  }, [isTypingPrompt, generationStatus.isGenerating]);
+  }, [isTypingPrompt, generationStatus.isGenerating, setIsTypingPrompt]);
 
   const handleClose = useCallback(() => {
     setIsTypingPrompt(false);
@@ -54,7 +54,7 @@ const NewPromptBox = ({
     setIsTypingPrompt(false);
 
     let finalPromptToLLM = newPromptInput;
-    
+
     // TODO: allow user to select nodes for inclusion.
     if (includeContext) {
       let contextString = `Building on our previous discussion about "${initialPromptText}".`;
@@ -73,7 +73,7 @@ const NewPromptBox = ({
     const curNode = nodes[currentNodeId];
     await onGenerate(finalPromptToLLM, curNode.worldX, curNode.worldY);
     setNewPromptInput('');
-  }, [newPromptInput, includeContext, initialPromptText, currentNodeId, nodeDetails, onGenerate]);
+  }, [newPromptInput, includeContext, initialPromptText, currentNodeId, nodeDetails, onGenerate, nodes, setConnections, setIsTypingPrompt]);
 
   const handleKeyPress = useCallback((e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -100,7 +100,7 @@ const NewPromptBox = ({
             <X size={20} />
           </button>
         </div>
-        
+
         <input
           type="text"
           value={newPromptInput}
@@ -110,7 +110,7 @@ const NewPromptBox = ({
           autoFocus
           onKeyDown={handleKeyPress}
         />
-        
+
         <div className="flex items-center justify-between mt-3">
           <label className="flex items-center text-gray-300 text-sm cursor-pointer">
             <input
@@ -121,7 +121,7 @@ const NewPromptBox = ({
             />
             Include Previous Context
           </label>
-          
+
           <div className="flex gap-2">
             <button
               onClick={handleSubmit}

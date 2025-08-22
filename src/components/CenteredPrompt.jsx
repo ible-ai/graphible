@@ -1,22 +1,47 @@
 // Initial prompt interface
 
-import { useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Brain, FolderOpen, Globe, Zap } from 'lucide-react';
 
-const CenteredPrompt = ({ 
-  showPromptCenter, 
-  llmConnected, 
-  onSubmit, 
-  onShowSaveLoad 
+const CenteredPrompt = ({
+  showPromptCenter,
+  setShowPromptCenter,
+  llmConnected,
+  onSubmit,
+  onShowSaveLoad
 }) => {
-  const [currentMainPrompt, setCurrentMainPrompt] = useState(
-    'I want to understand and play with a transformer architecture in a visual capacity'
+  const [inputPrompt, setInputPrompt] = useState(
+    'I want to understand the transformer architecture.'
   );
 
-  const handleInputChange = (e) => {
-    if (e.key === 'Enter') return;
-    setCurrentMainPrompt(e.target.value);
-  };
+  // Global typing listener
+  useEffect(() => {
+    const handleGlobalKeyDown = (e) => {
+
+      // Handle single character input to start new prompt
+      if (e.key.length === 1 && e.key.match(/^[a-z0-9 ]$/i)) {
+        setInputPrompt(e.target.value);
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleGlobalKeyDown);
+    };
+  }, [setInputPrompt]);
+
+
+  const handleSubmit = useCallback(() => {
+    onSubmit(inputPrompt);
+    setShowPromptCenter(false);
+  }, [onSubmit, inputPrompt, setShowPromptCenter]);
+
+  const handleKeyPress = useCallback((e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit();
+    }
+  }, [handleSubmit]);
 
   if (!showPromptCenter) return null;
 
@@ -32,9 +57,9 @@ const CenteredPrompt = ({
             <span className="text-sm text-green-400">Web App Ready</span>
           </div>
         </div>
-        
-        <div 
-          className="w-full bg-black/80 backdrop-blur rounded-lg p-6 border border-gray-600" 
+
+        <div
+          className="w-full bg-black/80 backdrop-blur rounded-lg p-6 border border-gray-600"
           style={{
             width: '750px',
             overflowY: 'hidden',
@@ -44,25 +69,20 @@ const CenteredPrompt = ({
           }}
         >
           <div className="items-center gap-3 mb-4">
-            <textarea
+            <input
               id="main-prompt"
-              value={currentMainPrompt}
-              onChange={handleInputChange}
-              placeholder="What do you want to explore?"
+              onChange={(e) => setInputPrompt(e.target.value)}
+              value={inputPrompt}
+              placeholder="Enter your new prompt here..."
               className="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 text-lg focus:border-blue-500 focus:outline-none resize-none overflow-hidden"
-              onKeyUp={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  onSubmit(currentMainPrompt);
-                }
-              }}
               autoFocus
+              onKeyUp={handleKeyPress}
             />
           </div>
 
           <div className="flex gap-2 mb-4">
             <button
-              onClick={() => onSubmit(currentMainPrompt)}
+              onClick={() => onSubmit(inputPrompt)}
               className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold flex items-center justify-center gap-2"
             >
               <Zap size={20} />
@@ -102,7 +122,7 @@ const CenteredPrompt = ({
                 )}
               </div>
             </div>
-            
+
             {llmConnected !== 'connected' && (
               <div className="mt-2 text-xs text-orange-400 bg-orange-900/20 p-2 rounded">
                 <strong>To connect local LLM:</strong><br />

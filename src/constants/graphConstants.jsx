@@ -2,7 +2,7 @@
 
 export const WORLD_CENTER = { x: 0, y: 0 };
 export const NODE_SIZE = { width: 280, height: 60 };
-export const NODE_SPACING = { x: NODE_SIZE.width * 0.25, y: NODE_SIZE.height * 0.25 };
+export const NODE_SPACING = { x: NODE_SIZE.width * 0.5, y: NODE_SIZE.height * 0.5 };
 export const VIEWPORT_CENTER = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
 
 // Each successive group of nodes (i.e., depth => depth + 1) is projected in a different x and y

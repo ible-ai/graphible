@@ -10,7 +10,6 @@ export const useGraphState = () => {
   const [nodes, setNodes] = useState([]);
   const [connections, setConnections] = useState([]);
   const [currentNodeId, setCurrentNodeId] = useState(null);
-  const [currentRootPromptNodeId, setCurrentRootPromptNodeId] = useState(null);
   const [currNodeDepth, setCurrNodeDepth] = useState(0);
   const [generationBatch, setGenerationBatch] = useState(0);
   const [streamingContent, setStreamingContent] = useState('');
@@ -43,12 +42,11 @@ export const useGraphState = () => {
   const createNode = (id, label, type, description, content, prevWorldX, prevWorldY, batchId, parentNodeId, nodeDepth, context = '', preceedingSiblingNodes = []) => {
     let position;
     position = calculateNodePosition(content, description, preceedingSiblingNodes, nodeDepth);
-    
-    // Override with provided coordinates if explicitly set
-    if (prevWorldX !== undefined && prevWorldY !== undefined) {
+
+
+    if (preceedingSiblingNodes.length === 0 && prevWorldX !== undefined && prevWorldY !== undefined) {
       position.worldX += prevWorldX;
       position.worldY += prevWorldY;
-      console.log(position)
     }
 
     return {
@@ -70,15 +68,10 @@ export const useGraphState = () => {
     setNodes(prev => [...prev, nodeData]);
   };
 
-  const updateGenerationStatus = (updates) => {
-    setGenerationStatus(prev => ({ ...prev, ...updates }));
-  };
-
   const resetGraph = () => {
     setNodes([]);
     setConnections([]);
     setCurrentNodeId(null);
-    setCurrentRootPromptNodeId(null);
     setStreamingContent('');
     setCurrentStreamingNodeId(null);
     setGenerationBatch(0);
@@ -114,7 +107,7 @@ export const useGraphState = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: LLM_CONFIG.MODEL,
-          prompt: `Generate a structured learning graph that provides a step-by-step response to: ${prompt}. 
+          prompt: `Generate a structured learning graph that provides a step-by-step response to: ${prompt}.
           Format your response as a sequence of node definitions. Each node should be an individual, un-nested, json-parseable dictionary.
           Respond with repeated nodes, each formatted with JSON:
           '''json
@@ -126,7 +119,7 @@ export const useGraphState = () => {
           }
           '''
           Separate each node with four (4) new lines (\\n).
-          
+
           The first node should represent the user prompt like:
           '''json
           {
@@ -202,11 +195,11 @@ export const useGraphState = () => {
         console.log('Successfully parsed node data:', parsedData);
         rawResponseBuffer = '';
         setStreamingContent('');
-        
+
         const uniqueNodeId = nodes.length + newNodeCount;
-        const previousNodeId = uniqueNodeId ? uniqueNodeId - 1 : null;
+        const previousNodeId = uniqueNodeId > 0 ? uniqueNodeId - 1 : null;
         const nodeDepth = currNodeDepth;
-        
+
         const newNode = createNode(
           uniqueNodeId,
           parsedData.label,
@@ -221,21 +214,20 @@ export const useGraphState = () => {
           "",
           preceedingSiblingNodes
         );
-        
-        newNodeCount = newNodeCount + 1;
+
         preceedingSiblingNodes.push(newNode);
         setNodes(prevNodes => [...prevNodes, newNode]);
         setCurrentNodeId(uniqueNodeId);
         setCurrentStreamingNodeId(uniqueNodeId);
         setGenerationStatus(prev => ({ ...prev, currentNodeId: uniqueNodeId }));
 
-        if (uniqueNodeId > 0) {
-          setCurrentRootPromptNodeId(uniqueNodeId);
+        if (newNodeCount > 0) {
           setConnections(prevConnections => [...prevConnections, {
             from: uniqueNodeId - 1,
             to: uniqueNodeId
           }]);
         }
+        newNodeCount = newNodeCount + 1;
       }
     } catch (error) {
       console.error('LLM streaming fetch error:', error);
@@ -260,9 +252,11 @@ export const useGraphState = () => {
     connections,
     generationStatus,
     streamingContent,
+    currentNodeId,
     currentStreamingNodeId,
+    setCurrentNodeId,
     addNode,
-    updateGenerationStatus,
+    // updateGenerationStatus,
     resetGraph,
     generateWithLLM,
     applyLayoutOptimization,

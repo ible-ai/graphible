@@ -18,46 +18,46 @@ export const useKeyboardNavigation = ({
 }) => {
   const keysPressed = useRef(new Set());
 
-  const navigateToNextNode = () => {
-    const currentNode = nodes.at(currentNodeId);
-    if (!currentNode) return;
-
-    let targetNode = null;
-    let minDistance = Infinity;
-
-    nodes.forEach(node => {
-      if (node.id === currentNodeId) return;
-
-      const dx = node.worldX - currentNode.worldX;
-      const dy = node.worldY - currentNode.worldY;
-      const distance = Math.sqrt(dx * dx + dy * dy);
-
-      let isInDirection = false;
-      if (keysPressed.current.has('w') || keysPressed.current.has('arrowup')) {
-        isInDirection = dy < -50;
-      } else if (keysPressed.current.has('s') || keysPressed.current.has('arrowdown')) {
-        isInDirection = dy > 50;
-      } else if (keysPressed.current.has('a') || keysPressed.current.has('arrowleft')) {
-        isInDirection = dx < -50;
-      } else if (keysPressed.current.has('d') || keysPressed.current.has('arrowright')) {
-        isInDirection = dx > 50;
-      }
-
-      if (isInDirection && distance < minDistance) {
-        minDistance = distance;
-        targetNode = node;
-      }
-    });
-
-    if (targetNode) {
-      setCurrentNodeId(targetNode.id);
-      setNodeDetails(targetNode);
-      setCameraTarget(-targetNode.worldX, -targetNode.worldY);
-      keysPressed.current.clear();
-    }
-  };
 
   useEffect(() => {
+    const navigateToNextNode = () => {
+      const currentNode = nodes.at(currentNodeId);
+      if (!currentNode) return;
+
+      let targetNode = null;
+      let minDistance = Infinity;
+
+      nodes.forEach(node => {
+        if (node.id === currentNodeId) return;
+
+        const dx = node.worldX - currentNode.worldX;
+        const dy = node.worldY - currentNode.worldY;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        let isInDirection = false;
+        if (keysPressed.current.has('w') || keysPressed.current.has('arrowup')) {
+          isInDirection = dy < -50;
+        } else if (keysPressed.current.has('s') || keysPressed.current.has('arrowdown')) {
+          isInDirection = dy > 50;
+        } else if (keysPressed.current.has('a') || keysPressed.current.has('arrowleft')) {
+          isInDirection = dx < -50;
+        } else if (keysPressed.current.has('d') || keysPressed.current.has('arrowright')) {
+          isInDirection = dx > 50;
+        }
+
+        if (isInDirection && distance < minDistance) {
+          minDistance = distance;
+          targetNode = node;
+        }
+      });
+
+      if (targetNode) {
+        setCurrentNodeId(targetNode.id);
+        setNodeDetails(targetNode);
+        setCameraTarget(-targetNode.worldX, -targetNode.worldY);
+        keysPressed.current.clear();
+      }
+    };
     if (showPromptCenter || isTypingPrompt || showFeedbackModal) return;
 
     const handleKeyDown = (e) => {
