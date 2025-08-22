@@ -1,6 +1,6 @@
 // Coordinate system utilities
 
-import * as d3 from 'd3';
+import * as d3 from 'd3-force';
 import { WORLD_CENTER, NODE_SIZE, NODE_SPACING, VIEWPORT_CENTER, RAD_PER_DEPTH } from '../constants/graphConstants';
 
 export const worldToScreen = (worldX, worldY) => ({
