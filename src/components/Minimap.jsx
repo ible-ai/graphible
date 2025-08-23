@@ -4,14 +4,14 @@ import { useState } from 'react';
 import { Maximize2, Minimize2 } from 'lucide-react';
 import { getMinimapBounds } from '../utils/coordinateUtils';
 
-const Minimap = ({ 
-  nodes, 
-  connections, 
-  currentNodeId, 
-  camera, 
+const Minimap = ({
+  nodes,
+  connections,
+  currentNodeId,
+  camera,
   colorScheme,
   onNavigateToNode,
-  onCameraMove 
+  onCameraMove
 }) => {
   const [minimapExpanded, setMinimapExpanded] = useState(false);
   const [minimapZoom, setMinimapZoom] = useState(1.0);
@@ -20,41 +20,43 @@ const Minimap = ({
 
   const bounds = getMinimapBounds(nodes);
 
-const handleMinimapClick = (e) => {
-  const rect = e.currentTarget.getBoundingClientRect();
-  const x = (e.clientX - rect.left) / rect.width;
-  const y = (e.clientY - rect.top) / rect.height;
+  const handleMinimapClick = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width;
+    const y = (e.clientY - rect.top) / rect.height;
 
-  const worldX = bounds.minX + (bounds.maxX - bounds.minX) * x;
-  const worldY = bounds.minY + (bounds.maxY - bounds.minY) * y;
-  
-  onCameraMove(-worldX, -worldY)
-};
+    const worldX = bounds.minX + (bounds.maxX - bounds.minX) * x;
+    const worldY = bounds.minY + (bounds.maxY - bounds.minY) * y;
+
+    onCameraMove(-worldX, -worldY);
+  };
 
   return (
     <div
-      className="absolute bottom-4 right-4 bg-black/90 backdrop-blur rounded-lg border border-gray-600 transition-all duration-300 minimap-container"
+      className="absolute bottom-6 right-6 bg-white/90 backdrop-blur-md rounded-2xl border border-slate-200/50 transition-all duration-300 minimap-container shadow-lg font-inter"
       style={{
-        width: minimapExpanded ? 600 : 200,
-        height: minimapExpanded ? 600 : 180,
+        width: minimapExpanded ? 600 : 280,
+        height: minimapExpanded ? 400 : 200,
         zIndex: 100
       }}
     >
       <div
-        className="p-3 flex items-center justify-between cursor-pointer hover:bg-white/5 border-b border-gray-600"
+        className="p-4 flex items-center justify-between cursor-pointer hover:bg-slate-50/50 border-b border-slate-200/50 rounded-t-2xl transition-colors duration-200"
         onClick={() => setMinimapExpanded(!minimapExpanded)}
       >
-        <span className="text-white text-sm font-semibold">Graph Overview</span>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-400">{nodes.length} nodes</span>
-          {minimapExpanded ? 
-            <Minimize2 size={14} className="text-white" /> : 
-            <Maximize2 size={14} className="text-white" />
+        <span className="text-slate-800 text-sm font-medium">Graph Overview</span>
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-slate-600 bg-slate-100 px-2 py-1 rounded-md">
+            {nodes.length} nodes
+          </span>
+          {minimapExpanded ?
+            <Minimize2 size={16} className="text-slate-600" /> :
+            <Maximize2 size={16} className="text-slate-600" />
           }
         </div>
       </div>
 
-      <div className="relative overflow-hidden" style={{ height: minimapExpanded ? 550 : 130 }}>
+      <div className="relative overflow-hidden" style={{ height: minimapExpanded ? 340 : 140 }}>
         <svg
           className="w-full h-full cursor-crosshair"
           viewBox={`${bounds.minX} ${bounds.minY} ${bounds.maxX - bounds.minX} ${bounds.maxY - bounds.minY}`}
@@ -80,44 +82,52 @@ const handleMinimapClick = (e) => {
                 y1={fromNode.worldY}
                 x2={toNode.worldX}
                 y2={toNode.worldY}
-                stroke={colorScheme.accent}
-                strokeWidth="2"
-                opacity="0.6"
+                stroke="rgb(203, 213, 225)"
+                strokeWidth="3"
+                opacity="0.4"
+                strokeLinecap="round"
               />
             );
           })}
 
           {/* Minimap nodes */}
-          {nodes.map(node => (
-            <g key={node.id}>
-              <circle
-                cx={node.worldX}
-                cy={node.worldY}
-                r={node.id === currentNodeId ? "60" : "36"}
-                fill={node.type === 'root' ? '#FCD34D' : 
-                      (node.id === currentNodeId ? colorScheme.accent : colorScheme.primary)}
-                stroke={node.type === 'root' ? '#F59E0B' : colorScheme.secondary}
-                strokeWidth="2"
-                className="cursor-pointer hover:opacity-80 transition-opacity"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onNavigateToNode(node.id);
-                }}
-              />
-              {minimapExpanded && (
-                <text
-                  x={node.worldX}
-                  y={node.worldY + 4}
-                  fontSize="10"
-                  fill="white"
-                  textAnchor="middle"
-                  className="pointer-events-none select-none"
-                >
-                  {node.label.slice(0, 6)}
-                </text>
-              )}
-            </g>
-          ))}
+          {nodes.map(node => {
+            const isRoot = node.type === 'root';
+            const isCurrent = node.id === currentNodeId;
+
+            return (
+              <g key={node.id}>
+                <circle
+                  cx={node.worldX}
+                  cy={node.worldY}
+                  r={isCurrent ? "80" : "50"}
+                  fill={isRoot ? 'rgb(99, 102, 241)' : (isCurrent ? 'rgb(67, 56, 202)' : 'rgb(148, 163, 184)')} // indigo-500, indigo-700, slate-400
+                  stroke={isRoot ? 'rgb(67, 56, 202)' : (isCurrent ? 'rgb(55, 48, 163)' : 'rgb(100, 116, 139)')} // indigo-700, indigo-800, slate-500
+                  strokeWidth={isCurrent ? "6" : "3"}
+                  className="cursor-pointer hover:opacity-80 transition-opacity"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onNavigateToNode(node.id);
+                  }}
+                  style={{
+                    filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1))'
+                  }}
+                />
+                {minimapExpanded && (
+                  <text
+                    x={node.worldX}
+                    y={node.worldY + 5}
+                    fontSize="12"
+                    fill="rgb(51, 65, 85)"
+                    textAnchor="middle"
+                    className="pointer-events-none select-none font-medium"
+                  >
+                    {node.label.slice(0, 8)}
+                  </text>
+                )}
+              </g>
+            );
+          })}
 
           {/* Viewport indicator */}
           <rect
@@ -126,10 +136,14 @@ const handleMinimapClick = (e) => {
             width={window.innerWidth / camera.zoom}
             height={window.innerHeight / camera.zoom}
             fill="none"
-            stroke="yellow"
-            strokeWidth="3"
-            opacity="0.8"
-            rx="5"
+            stroke="rgb(99, 102, 241)"
+            strokeWidth="4"
+            opacity="0.6"
+            rx="8"
+            strokeDasharray="8,4"
+            style={{
+              filter: 'drop-shadow(0 2px 4px rgba(99, 102, 241, 0.2))'
+            }}
           />
         </svg>
       </div>

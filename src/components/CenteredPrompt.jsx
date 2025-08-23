@@ -1,14 +1,19 @@
 // Initial prompt interface
 
 import { useEffect, useState, useCallback } from 'react';
-import { Brain, FolderOpen, Globe, Zap } from 'lucide-react';
+import { Brain, FolderOpen, Globe, Zap, Server, HelpCircle } from 'lucide-react';
+import ModelSelector from './ModelSelector';
 
 const CenteredPrompt = ({
   showPromptCenter,
   setShowPromptCenter,
   llmConnected,
   onSubmit,
-  onShowSaveLoad
+  onShowSaveLoad,
+  onShowInstallationGuide,
+  currentModel,
+  onModelChange,
+  onTestConnection
 }) => {
   const [inputPrompt, setInputPrompt] = useState(
     'I want to understand the transformer architecture.'
@@ -43,95 +48,117 @@ const CenteredPrompt = ({
     }
   }, [handleSubmit]);
 
+  const getModelDisplayInfo = () => {
+    if (!currentModel) return { name: 'No Model', icon: Brain, color: 'text-slate-400' };
+
+    if (currentModel.type === 'local') {
+      return {
+        name: `Local: ${currentModel.model}`,
+        icon: Server,
+        color: 'text-slate-600',
+        detail: currentModel.address
+      };
+    } else if (currentModel.type === 'external') {
+      const modelMap = {
+        'gemini-2.5-flash-lite': 'Gemini 2.5 Flash Lite',
+        'gemini-2.5-flash': 'Gemini 2.5 Flash',
+        'gemini-2.5-pro': 'Gemini 2.5 Pro'
+      };
+
+      return {
+        name: modelMap[currentModel.model] || currentModel.model,
+        icon: Globe,
+        color: 'text-indigo-600',
+        detail: 'Google AI'
+      };
+    }
+
+    return { name: 'Unknown Model', icon: Brain, color: 'text-slate-400' };
+  };
+
   if (!showPromptCenter) return null;
 
+  const modelInfo = getModelDisplayInfo();
+  const ModelIcon = modelInfo.icon;
+
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-20">
+    <div className="fixed inset-0 flex items-center justify-center z-20 bg-gradient-to-br from-slate-50 to-slate-100 font-inter">
+      {/* Model Selector - positioned same as in main interface */}
+      <div className="absolute top-6 left-6 z-30">
+        <ModelSelector
+          currentModel={currentModel}
+          onModelChange={onModelChange}
+          connectionStatus={llmConnected}
+          onTestConnection={onTestConnection}
+        />
+      </div>
+
       <div className="text-center max-w-2xl mx-4">
         <div className="mb-8">
-          <Brain className="mx-auto mb-4 text-blue-400 animate-pulse" size={64} />
-          <h1 className="text-4xl font-bold text-white mb-2">Graphible</h1>
-          <p className="text-gray-300">Follow what makes you curious.</p>
-          <div className="mt-2 flex items-center justify-center gap-2">
-            <Globe size={16} className="text-green-400" />
-            <span className="text-sm text-green-400">Web App Ready</span>
+          <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-slate-200 to-slate-300 rounded-2xl shadow-sm flex items-center justify-center">
+            <Brain className="text-slate-600" size={40} />
           </div>
+          <h1 className="text-5xl font-medium text-slate-800 mb-4 tracking-tight">Graphible</h1>
+          <p className="text-slate-600 text-lg">Follow what makes you curious.</p>
         </div>
 
-        <div
-          className="w-full bg-black/80 backdrop-blur rounded-lg p-6 border border-gray-600"
-          style={{
-            width: '750px',
-            overflowY: 'hidden',
-            minHeight: '100px',
-            maxHeight: '1000px',
-            boxSizing: 'border-box'
-          }}
-        >
-          <div className="items-center gap-3 mb-4">
+        <div className="w-full bg-white/70 backdrop-blur-sm rounded-2xl p-8 border border-slate-200/50 shadow-lg">
+          <div className="mb-6">
             <input
               id="main-prompt"
               onChange={(e) => setInputPrompt(e.target.value)}
               value={inputPrompt}
               placeholder="Enter your new prompt here..."
-              className="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 text-lg focus:border-blue-500 focus:outline-none resize-none overflow-hidden"
+              className="w-full px-6 py-4 bg-white/80 border border-slate-200/50 rounded-xl text-slate-800 placeholder-slate-500 text-lg focus:border-slate-400 focus:outline-none shadow-sm transition-all duration-200 font-inter"
               autoFocus
               onKeyUp={handleKeyPress}
             />
           </div>
 
-          <div className="flex gap-2 mb-4">
+          <div className="flex gap-3 mb-6">
             <button
               onClick={() => onSubmit(inputPrompt)}
-              className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold flex items-center justify-center gap-2"
+              className="flex-1 px-8 py-4 bg-slate-800 text-white rounded-xl hover:bg-slate-700 transition-all duration-200 font-medium flex items-center justify-center gap-3 shadow-lg font-inter"
             >
               <Zap size={20} />
-              Go
+              Start Exploring
             </button>
             <button
               onClick={onShowSaveLoad}
-              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center gap-2 transition-colors"
+              className="px-6 py-4 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 hover:border-slate-300 flex items-center gap-3 transition-all duration-200 shadow-sm font-inter"
             >
-              <FolderOpen size={16} />
-              Load Saved
+              <FolderOpen size={18} />
+              Load
+            </button>
+            <button
+              onClick={onShowInstallationGuide}
+              className="px-6 py-4 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-xl hover:bg-indigo-100 hover:border-indigo-300 flex items-center gap-3 transition-all duration-200 shadow-sm font-inter"
+              title="Setup Guide"
+            >
+              <HelpCircle size={18} />
+              Help
             </button>
           </div>
 
           {/* Connection Status */}
-          <div className="bg-gray-800/50 rounded-lg p-3">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-300">LLM Connection:</span>
-              <div className="flex items-center gap-2">
-                {llmConnected === 'connected' && (
-                  <>
-                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                    <span className="text-green-400">Ollama Connected</span>
-                  </>
-                )}
-                {llmConnected === 'pending' && (
-                  <>
-                    <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
-                    <span className="text-yellow-400">Connecting...</span>
-                  </>
-                )}
-                {llmConnected === 'disconnected' && (
-                  <>
-                    <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                    <span className="text-red-400">Offline</span>
-                  </>
-                )}
+          {llmConnected === 'disconnected' && (
+            <div className="bg-rose-50/50 backdrop-blur-sm rounded-xl p-4 border border-rose-200/30">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-2 h-2 bg-rose-500 rounded-full shadow-rose-500/50 shadow-sm"></div>
+                <span className="text-rose-700 font-medium text-sm">No model connected</span>
+              </div>
+
+              <div className="text-sm text-slate-600">
+                <div className="mb-2">You can still try to generate content, or configure a model first:</div>
+                <button
+                  onClick={onShowInstallationGuide}
+                  className="text-indigo-600 hover:text-indigo-500 underline text-sm font-medium inline-block"
+                >
+                  View setup guide →
+                </button>
               </div>
             </div>
-
-            {llmConnected !== 'connected' && (
-              <div className="mt-2 text-xs text-orange-400 bg-orange-900/20 p-2 rounded">
-                <strong>To connect local LLM:</strong><br />
-                1. Install <a href="https://ollama.ai" target="_blank" rel="noopener" className="text-blue-400 hover:underline">Ollama</a><br />
-                2. Run: <code className="bg-gray-700 px-1 rounded">OLLAMA_ORIGINS=* ollama serve</code><br />
-                3. Pull model: <code className="bg-gray-700 px-1 rounded">ollama pull gemma3:4b</code>
-              </div>
-            )}
-          </div>
+          )}
         </div>
       </div>
     </div>

@@ -1,6 +1,6 @@
 // Shows LLM generation progress
 
-import { Zap, Circle } from 'lucide-react';
+import { Brain, Circle } from 'lucide-react';
 
 const GenerationStatusBar = ({ generationStatus, streamingContent }) => {
   if (!generationStatus.isGenerating) return null;
@@ -11,23 +11,26 @@ const GenerationStatusBar = ({ generationStatus, streamingContent }) => {
   };
 
   return (
-    <div className="fixed top-20 left-1/2 -translate-x-1/2 z-30 bg-blue-900/90 backdrop-blur rounded-lg p-4 border border-blue-500 min-w-[300px]">
+    <div className="fixed top-20 left-1/2 -translate-x-1/2 z-30 bg-white/90 backdrop-blur-md rounded-2xl p-4 border border-slate-200/50 min-w-[320px] shadow-lg font-inter">
       <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2">
-          <div className="animate-pulse">
-            <Zap size={20} className="text-yellow-400" />
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 bg-gradient-to-br from-slate-100 to-slate-200 rounded-xl flex items-center justify-center">
+            <Brain size={16} className="text-slate-600 animate-pulse" />
           </div>
-          <span className="text-white font-semibold">building nodes.</span>
+          <span className="text-slate-800 font-medium">Building nodes...</span>
         </div>
 
-        <div className="flex-1 flex items-center gap-4 text-sm text-blue-200">
-          <div className="flex items-center gap-1">
-            <Circle size={8} className="fill-green-400 text-green-400 animate-pulse" />
+        <div className="flex-1 flex items-center justify-end gap-4 text-sm text-slate-600">
+          <div className="flex items-center gap-2">
+            <Circle size={8} className="fill-emerald-500 text-emerald-500 animate-pulse" />
             <span>{generationStatus.tokensGenerated} tokens</span>
           </div>
-          <div>⏱️ {formatTime(generationStatus.elapsedTime)}</div>
+          <div className="flex items-center gap-1">
+            <span>⏱️</span>
+            <span>{formatTime(generationStatus.elapsedTime)}</span>
+          </div>
           {generationStatus.currentNodeId !== null && (
-            <div className="text-blue-300">
+            <div className="text-slate-500 bg-slate-100 px-2 py-1 rounded-md text-xs">
               Node: {generationStatus.currentNodeId}
             </div>
           )}
@@ -35,9 +38,10 @@ const GenerationStatusBar = ({ generationStatus, streamingContent }) => {
       </div>
 
       {streamingContent && (
-        <div className="mt-3 p-2 bg-black/30 rounded text-xs text-gray-300 max-h-20 overflow-y-auto">
-          <div className="font-mono whitespace-pre-wrap">
-            {streamingContent.substring(Math.max(0, streamingContent.length - 200))}...
+        <div className="mt-4 p-3 bg-slate-50/80 rounded-xl border border-slate-200/30 max-h-24 overflow-y-auto">
+          <div className="font-mono text-xs text-slate-600 whitespace-pre-wrap leading-relaxed">
+            {streamingContent.substring(Math.max(0, streamingContent.length - 300))}
+            {streamingContent.length > 300 && '...'}
           </div>
         </div>
       )}

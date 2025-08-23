@@ -19,25 +19,32 @@ const ConnectionComponent = ({ fromNode, toNode, colorScheme, camera }) => {
   const unitX = dx / distance;
   const unitY = dy / distance;
 
-  const fromX = fromScreen.x + NODE_SIZE.width * 3 / 4;
-  const fromY = fromScreen.y + NODE_SIZE.height * 3 / 4;
-  const toX = toScreen.x + NODE_SIZE.width * 3 / 4;
-  const toY = toScreen.y + NODE_SIZE.height * 3 / 4;
+  // Adjust for larger node sizes
+  const nodeWidth = NODE_SIZE.width * 1.2;
+  const nodeHeight = NODE_SIZE.height * 1.5;
+
+  const fromX = fromScreen.x + nodeWidth * 0.75;
+  const fromY = fromScreen.y + nodeHeight * 0.75;
+  const toX = toScreen.x + nodeWidth * 0.75;
+  const toY = toScreen.y + nodeHeight * 0.75;
 
   // Create curved path for better visual appeal
   const midX = (fromX + toX) / 2;
   const midY = (fromY + toY) / 2;
-  const controlOffset = distance * 0.2;
+  const controlOffset = Math.min(distance * 0.15, 60); // Limit curve amount
   const controlX = midX + (-unitY * controlOffset);
   const controlY = midY + (unitX * controlOffset);
 
   const baseStrokeWidth = 2;
   const path = `M${fromX},${fromY} Q${controlX},${controlY} ${toX},${toY}`;
+
+  // Calculate opacity based on distance and zoom for performance
   const distanceScalar = Math.sqrt(
     Math.pow(camera.x - midX, 2) + Math.pow(camera.y - midY, 2)
   );
   const opacity = Math.max(Math.min(distanceScalar * camera.zoom, 1.0), 0.0);
-  const strokeWidth = Math.max(opacity * baseStrokeWidth, 0.0);
+  const scaledOpacity = 0.6 * opacity;
+  const strokeWidth = Math.max(opacity * baseStrokeWidth, 0.8);
 
   return (
     <g>
@@ -47,12 +54,13 @@ const ConnectionComponent = ({ fromNode, toNode, colorScheme, camera }) => {
         stroke={colorScheme.accent}
         strokeWidth={strokeWidth}
         fill="none"
-        opacity={opacity}
-        strokeOpacity={opacity}
+        strokeOpacity={scaledOpacity}
         markerEnd="url(#arrowhead)"
+        strokeLinecap="round"
         style={{
           overflow: 'visible',
           zIndex: 1,
+          filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1))',
         }}
       />
 
@@ -60,27 +68,29 @@ const ConnectionComponent = ({ fromNode, toNode, colorScheme, camera }) => {
       <circle
         cx={fromX}
         cy={fromY}
-        r="3"
-        fill={colorScheme.primary}
+        r="4"
+        fill={colorScheme.border}
         stroke="white"
         opacity={opacity}
-        strokeWidth="1"
+        strokeWidth="2"
         style={{
-          zIndex: 1,
+          zIndex: 2,
           overflow: 'visible',
+          filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1))',
         }}
       />
       <circle
         cx={toX}
         cy={toY}
-        r="3"
-        fill={colorScheme.secondary}
+        r="4"
+        fill={colorScheme.primary}
         opacity={opacity}
         stroke="white"
-        strokeWidth="1"
+        strokeWidth="2"
         style={{
-          zIndex: 1,
+          zIndex: 2,
           overflow: 'visible',
+          filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1))',
         }}
       />
     </g>

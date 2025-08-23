@@ -21,6 +21,8 @@ import Minimap from './components/Minimap';
 import FeedbackModal from './components/FeedbackModal';
 import NewPromptBox from './components/NewPromptBox';
 import SaveLoadModal from './components/SaveLoadModal';
+import ModelSelector from './components/ModelSelector';
+import InstallationGuide from './components/InstallationGuide';
 
 // Import constants and utilities
 import { colorSchemes } from './constants/graphConstants';
@@ -96,9 +98,22 @@ const Graphible = () => {
   const [showPromptCenter, setShowPromptCenter] = useState(true);
   const [initialPromptText, setInitialPromptText] = useState('');
   const [isTypingPrompt, setIsTypingPrompt] = useState(false);
+  const [showInstallationGuide, setShowInstallationGuide] = useState(false);
 
   // Custom hooks
   const { camera, setCameraImmediate, setCameraTarget } = useCamera();
+
+  // Enhanced LLM connection with model selection
+  const {
+    llmConnected,
+    currentModel,
+    testLLMConnection,
+    generateWithLLM,
+    handleModelChange,
+    loadSavedConfig,
+    hasTestedInitially
+  } = useLLMConnection();
+
   const {
     nodes,
     connections,
@@ -109,12 +124,11 @@ const Graphible = () => {
     setCurrentNodeId,
     addNode,
     resetGraph,
-    generateWithLLM,
+    generateWithLLM: generateGraphWithLLM,
     applyLayoutOptimization,
     setConnections
-  } = useGraphState();
+  } = useGraphState(generateWithLLM);
 
-  const { llmConnected, testLLMConnection } = useLLMConnection();
   const {
     feedbackHistory,
     showFeedbackModal,
@@ -145,13 +159,33 @@ const Graphible = () => {
     showFeedbackModal
   });
 
-  // Use UI personality color scheme, fall back to preferences
-  const currentScheme = colorSchemes[uiPersonality.colorScheme || preferences.colorScheme];
+  // Use UI personality color scheme, fall back to preferences, then default
+  const currentScheme = colorSchemes[uiPersonality.colorScheme || preferences.colorScheme || 'default'];
 
   // Initialize LLM connection
   useEffect(() => {
-    testLLMConnection();
-  }, [testLLMConnection]);
+    const initializeConnection = async () => {
+      const savedConfig = loadSavedConfig();
+      console.log('App initialization - loaded config:', savedConfig);
+
+      // Load saved Google API key if it exists and we're using external config
+      if (savedConfig.type === 'external' && savedConfig.provider === 'google' && !savedConfig.apiKey) {
+        const savedApiKey = localStorage.getItem('graphible-google-api-key');
+        if (savedApiKey) {
+          const updatedConfig = { ...savedConfig, apiKey: savedApiKey };
+          handleModelChange(updatedConfig);
+          console.log('Updated config with saved API key:', updatedConfig);
+        }
+      }
+
+      // Only test connection once on app startup
+      if (!hasTestedInitially) {
+        await testLLMConnection(savedConfig);
+      }
+    };
+
+    initializeConnection();
+  }, []); // Empty dependency array - only run once on mount
 
   // Node focusing
   useEffect(() => {
@@ -209,18 +243,30 @@ const Graphible = () => {
   const handleInitialPromptSubmit = async (prompt) => {
     if (!prompt.trim()) return;
 
+    // Always proceed, but test connection if not already connected
     if (llmConnected !== 'connected') {
+
       const isConnected = await testLLMConnection();
       if (!isConnected) {
-        alert('Cannot connect to LLM server. Please ensure Ollama is running at http://localhost:11434');
-        return;
+        // Show a more user-friendly message but still allow them to proceed
+        const modelType = currentModel.type === 'local' ? 'local model (Ollama)' : 'external API';
+        const proceed = window.confirm(
+          `Could not connect to ${modelType}. Would you like to try generating anyway? ` +
+          `(You can configure your model settings using the dropdown in the top-left)`
+        );
+        if (!proceed) return;
       }
     }
 
     resetGraph();
     setShowPromptCenter(false);
 
-    await generateWithLLM(prompt);
+    await generateGraphWithLLM(prompt, null, null, currentModel);
+  };
+
+  // Enhanced prompt generation that passes currentModel
+  const enhancedGenerateWithLLM = async (prompt, prevWorldX, prevWorldY) => {
+    return generateGraphWithLLM(prompt, prevWorldX, prevWorldY, currentModel);
   };
 
   // Mouse drag handling with proper event detection
@@ -350,8 +396,7 @@ const Graphible = () => {
 
   return (
     <div
-      className="w-screen h-screen relative"
-      style={{ backgroundColor: currentScheme.bg }}
+      className="w-screen h-screen relative bg-gradient-to-br from-slate-50 to-slate-100 font-inter"
     >
       <GenerationStatusBar
         generationStatus={generationStatus}
@@ -364,6 +409,10 @@ const Graphible = () => {
         llmConnected={llmConnected}
         onSubmit={handleInitialPromptSubmit}
         onShowSaveLoad={() => setShowSaveLoad(true)}
+        onShowInstallationGuide={() => setShowInstallationGuide(true)}
+        currentModel={currentModel}
+        onModelChange={handleModelChange}
+        onTestConnection={testLLMConnection}
       />
 
       {!showPromptCenter && (
@@ -381,46 +430,50 @@ const Graphible = () => {
             </div>
           )}
 
-          {/* LLM Status Indicator */}
-          <div className="absolute top-4 right-4 flex items-center space-x-2 z-40">
-            <span className="text-xs text-gray-400">LLM Status:</span>
-            {llmConnected === 'pending' && <Circle size={12} className="animate-pulse text-yellow-400" />}
-            {llmConnected === 'connected' && <Circle size={12} className="text-green-500" />}
-            {llmConnected === 'disconnected' && <Circle size={12} className="text-red-500" />}
-          </div>
-
           {/* Header */}
-          <div className="absolute top-0 left-0 right-0 z-10 bg-black/90 backdrop-blur border-b border-gray-700 p-4">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <Brain className="text-blue-400" size={24} />
-                <h1 className="text-xl font-bold text-white">graph.ible</h1>
-                <div className={`px-2 py-1 rounded text-xs ${llmConnected === 'connected' ? 'bg-green-600' : 'bg-red-600'}`}>
-                  {llmConnected === 'connected' ? 'LLM Connected' : 'LLM Offline'}
+          <div className="absolute top-0 left-0 right-0 z-10 bg-white/80 backdrop-blur-md border-b border-slate-200/50 p-4 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gradient-to-br from-slate-200 to-slate-300 rounded-xl shadow-sm flex items-center justify-center">
+                    <Brain className="text-slate-600" size={20} />
+                  </div>
+                  <h1 className="text-xl font-light text-slate-800 tracking-tight">graph.ible</h1>
                 </div>
+
+                {/* Model Selector */}
+                <ModelSelector
+                  currentModel={currentModel}
+                  onModelChange={handleModelChange}
+                  connectionStatus={llmConnected}
+                  onTestConnection={testLLMConnection}
+                />
+              </div>
+
+              <div className="flex items-center gap-3">
                 <button
                   onClick={applyLayoutOptimization}
                   disabled={nodes.length < 2}
-                  className="flex items-center gap-2 px-3 py-1 bg-gray-700 text-white rounded hover:bg-gray-600 transition-colors disabled:opacity-50"
+                  className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 hover:border-slate-300 transition-all duration-200 disabled:opacity-50 shadow-sm"
                 >
                   <Circle size={16} />
                   Optimize Layout
                 </button>
+                <button
+                  onClick={resetCamera}
+                  className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 hover:border-slate-300 transition-all duration-200 shadow-sm"
+                >
+                  <RotateCcw size={16} />
+                  Reset View
+                </button>
+                <button
+                  onClick={() => setShowSaveLoad(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 hover:border-slate-300 transition-all duration-200 shadow-sm"
+                >
+                  <Save size={16} />
+                  Save/Load
+                </button>
               </div>
-              <button
-                onClick={resetCamera}
-                className="flex items-center gap-2 px-3 py-1 bg-gray-700 text-white rounded hover:bg-gray-600 transition-colors"
-              >
-                <RotateCcw size={16} />
-                Reset View
-              </button>
-              <button
-                onClick={() => setShowSaveLoad(true)}
-                className="flex items-center gap-2 px-3 py-1 bg-gray-700 text-white rounded hover:bg-gray-600 transition-colors"
-              >
-                <Save size={16} />
-                Save/Load
-              </button>
             </div>
           </div>
 
@@ -449,7 +502,7 @@ const Graphible = () => {
                   >
                     <polygon
                       points="0 0, 10 3.5, 0 7"
-                      fill={currentScheme.accent}
+                      fill="rgb(148, 163, 184)"
                     />
                   </marker>
                 </defs>
@@ -525,7 +578,7 @@ const Graphible = () => {
         currentNodeId={currentNodeId}
         nodeDetails={nodeDetails}
         generationStatus={generationStatus}
-        onGenerate={generateWithLLM}
+        onGenerate={enhancedGenerateWithLLM}
         isTypingPrompt={isTypingPrompt}
         setIsTypingPrompt={setIsTypingPrompt}
         uiPersonality={uiPersonality}
@@ -544,6 +597,11 @@ const Graphible = () => {
         onSave={saveCurrentGraph}
         onLoad={loadGraph}
         onDelete={deleteGraph}
+      />
+
+      <InstallationGuide
+        showGuide={showInstallationGuide}
+        onClose={() => setShowInstallationGuide(false)}
       />
     </div>
   );

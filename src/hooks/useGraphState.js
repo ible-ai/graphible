@@ -6,7 +6,7 @@ import { applyForceDirectedLayout } from '../utils/coordinateUtils';
 import { calculateNodePosition } from '../utils/coordinateUtils';
 import { extractJsonFromLlmResponse, countCharacter } from '../utils/llmUtils';
 
-export const useGraphState = () => {
+export const useGraphState = (generateWithLLM) => {
   const [nodes, setNodes] = useState([]);
   const [connections, setConnections] = useState([]);
   const [currentNodeId, setCurrentNodeId] = useState(null);
@@ -42,7 +42,6 @@ export const useGraphState = () => {
   const createNode = (id, label, type, description, content, prevWorldX, prevWorldY, batchId, parentNodeId, nodeDepth, context = '', preceedingSiblingNodes = []) => {
     let position;
     position = calculateNodePosition(content, description, preceedingSiblingNodes, nodeDepth);
-
 
     if (preceedingSiblingNodes.length === 0 && prevWorldX !== undefined && prevWorldY !== undefined) {
       position.worldX += prevWorldX;
@@ -85,8 +84,19 @@ export const useGraphState = () => {
     });
   };
 
-  const generateWithLLM = async (prompt, prevWorldX = null, prevWorldY = null) => {
-    console.log('Starting generation with prompt:', prompt);
+  const parseStreamResponse = (chunk) => {
+    try {
+      const decoded = JSON.parse(chunk);
+      return decoded.response || '';
+    } catch (e) {
+      console.error('Error parsing stream response:', e);
+      return '';
+    }
+  };
+
+  const generateGraphWithLLM = async (prompt, prevWorldX = null, prevWorldY = null, modelConfig) => {
+    console.log('generateGraphWithLLM starting with prompt:', prompt);
+    console.log('Using model config:', modelConfig);
 
     const currentBatch = generationBatch;
     setGenerationBatch(prev => prev + 1);
@@ -102,41 +112,36 @@ export const useGraphState = () => {
     let preceedingSiblingNodes = [];
 
     try {
-      const response = await fetch(`${LLM_CONFIG.BASE_URL}${LLM_CONFIG.GENERATE_ENDPOINT}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: LLM_CONFIG.MODEL,
-          prompt: `Generate a structured learning graph that provides a step-by-step response to: ${prompt}.
-          Format your response as a sequence of node definitions. Each node should be an individual, un-nested, json-parseable dictionary.
-          Respond with repeated nodes, each formatted with JSON:
-          '''json
-          {
-            "label": "<generate a label to broadly characterize the user prompt>",
-            "type": "<label the type of data generate amongst: root|concept|example|detail>",
-            "description": "<generate a description of the interaction>",
-            "content": "<generate detail content that satisfies some part of the query>",
-          }
-          '''
-          Separate each node with four (4) new lines (\\n).
+      const fullPrompt = `Generate a structured learning graph that provides a step-by-step response to: ${prompt}.
+Format your response as a sequence of node definitions. Each node should be an individual, un-nested, json-parseable dictionary.
+Respond with repeated nodes, each formatted with JSON:
+'''json
+{
+  "label": "<generate a label to broadly characterize the user prompt>",
+  "type": "<label the type of data generate amongst: root|concept|example|detail>",
+  "description": "<generate a description of the interaction>",
+  "content": "<generate detail content that satisfies some part of the query>",
+}
+'''
+Separate each node with four (4) new lines (\\n).
 
-          The first node should represent the user prompt like:
-          '''json
-          {
-            "label": "<generate a label of the user query here>",
-            "type": "root",
-            "description": "<generate a description of any recent interaction that might be helpful>",
-            "content": "<add the user prompt here>",
-          }
-          '''
-          Make it educational and well-structured. Position nodes in a logical flow.
-          Your response must be completely JSON parseable so never include excess characters or descriptions beyond your JSON-compatible response.`,
-          stream: true
-        })
-      });
+The first node should represent the user prompt like:
+'''json
+{
+  "label": "<generate a label of the user query here>",
+  "type": "root",
+  "description": "<generate a description of any recent interaction that might be helpful>",
+  "content": "<add the user prompt here>",
+}
+'''
+Make it educational and well-structured. Position nodes in a logical flow.
+Your response must be completely JSON parseable so never include excess characters or descriptions beyond your JSON-compatible response.`;
+
+      // Pass the model config explicitly to generateWithLLM
+      const response = await generateWithLLM(fullPrompt, true, modelConfig);
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        throw new Error(`Generation request failed: ${response.status}`);
       }
 
       const reader = response.body.getReader();
@@ -158,16 +163,10 @@ export const useGraphState = () => {
         }
 
         const chunkText = decoder.decode(value, { stream: true });
-        let decoded_response;
+        let chunk = '';
 
-        try {
-          decoded_response = JSON.parse(chunkText);
-        } catch (e) {
-          console.error('Failed to parse chunk as JSON:', e);
-          continue;
-        }
+        chunk = parseStreamResponse(chunkText);
 
-        const chunk = decoded_response.response;
         if (!chunk) continue;
 
         setGenerationStatus(prev => ({
@@ -232,7 +231,7 @@ export const useGraphState = () => {
     } catch (error) {
       console.error('LLM streaming fetch error:', error);
       setGenerationStatus(prev => ({ ...prev, isGenerating: false, currentNodeId: null }));
-      alert(`Failed to generate graph: ${error.message}\n\nPlease check that your LLM server is running at ${LLM_CONFIG.BASE_URL}`);
+      alert(`Failed to generate graph: ${error.message}\n\nPlease check your model configuration and connection.`);
     }
   };
 
@@ -256,9 +255,8 @@ export const useGraphState = () => {
     currentStreamingNodeId,
     setCurrentNodeId,
     addNode,
-    // updateGenerationStatus,
     resetGraph,
-    generateWithLLM,
+    generateWithLLM: generateGraphWithLLM,
     applyLayoutOptimization,
     setConnections
   };

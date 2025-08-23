@@ -1,4 +1,4 @@
-// Individual graph node display with adaptive UI
+// Individual graph node display
 
 import { ThumbsUp, ThumbsDown, Brain, Circle } from 'lucide-react';
 import { worldToScreen } from '../utils/coordinateUtils';
@@ -21,145 +21,137 @@ const NodeComponent = ({
   const getNodeStyles = () => {
     if (showPromptCenter) return { opacity: 0, pointerEvents: 'none' };
 
-    const isCurrentScalar = isCurrent ? 1.0 : 0.8;
+    const isCurrentScalar = isCurrent ? 1.0 : 0.9;
     const opacity = isCurrentScalar;
 
-    // Base styles from uiPersonality
-    const baseStyles = {
+    let baseStyles = {
       transform: `scale(${isCurrentScalar})`,
       opacity: opacity,
-      transition: uiPersonality.animations?.transition || 'all 0.3s ease-out',
-      zIndex: isCurrent ? 1 : 2,
+      transition: 'all 0.3s ease-out',
+      zIndex: isCurrent ? 10 : 5,
       pointerEvents: 'auto',
-      padding: uiPersonality.layout?.padding || '16px',
-      borderRadius: uiPersonality.layout?.borderRadius || '12px',
-      borderWidth: uiPersonality.layout?.borderWidth || '2px',
-      boxShadow: uiPersonality.effects?.shadow || '0 4px 6px rgba(0, 0, 0, 0.3)',
-      fontSize: uiPersonality.typography?.fontSize || '14px',
-      fontWeight: uiPersonality.typography?.fontWeight || 'normal',
-      fontFamily: uiPersonality.typography?.fontFamily || 'system'
+      padding: '20px',
+      borderRadius: '16px',
+      borderWidth: '1px',
+      fontSize: '14px',
+      fontWeight: '400',
+      fontFamily: 'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      backdropFilter: 'blur(8px)',
     };
-    // TODO: remove hardcoded themes.
-    // Apply theme-specific overrides
-    if (uiPersonality.theme === 'goth') {
-      baseStyles.backgroundColor = node.type === 'root' ? '#2a1a1a' : '#1a1a1a';
-      baseStyles.color = '#e0e0e0';
-      baseStyles.borderColor = '#666';
-      baseStyles.boxShadow = isCurrent
-        ? '0 0 30px rgba(255, 0, 0, 0.5)'
-        : '0 0 20px rgba(255, 0, 0, 0.3)';
-    } else if (uiPersonality.theme === 'cyber') {
-      baseStyles.backgroundColor = node.type === 'root' ? '#001122' : '#000011';
-      baseStyles.color = '#00ffff';
-      baseStyles.borderColor = '#00ff00';
-      baseStyles.boxShadow = isCurrent
-        ? '0 0 30px rgba(0, 255, 255, 0.8)'
-        : '0 0 15px rgba(0, 255, 255, 0.4)';
-      baseStyles.textShadow = '0 0 5px rgba(0, 255, 255, 0.5)';
-    } else if (uiPersonality.theme === 'elegant') {
-      baseStyles.backgroundColor = node.type === 'root' ? '#f8f9fa' : '#ffffff';
-      baseStyles.color = '#2c3e50';
-      baseStyles.borderColor = '#bdc3c7';
-      baseStyles.boxShadow = isCurrent
-        ? '0 8px 32px rgba(0, 0, 0, 0.1)'
-        : '0 4px 16px rgba(0, 0, 0, 0.05)';
+
+    // Root node styling - using colorScheme root colors
+    if (node.type === 'root') {
+      baseStyles = {
+        ...baseStyles,
+        backgroundColor: colorScheme.rootBg,
+        borderColor: colorScheme.rootBorder,
+        color: colorScheme.rootText,
+        boxShadow: isCurrent
+          ? `0 8px 32px ${colorScheme.rootBorder}40, 0 0 0 2px ${colorScheme.rootBorder}50`
+          : `0 4px 16px ${colorScheme.rootBorder}25`,
+      };
     } else {
-      let nodeStyle = uiPersonality.colors?.default;
-      if (node.type === 'root') {
-        nodeStyle = {...nodeStyle, ...uiPersonality.colors?.root};
-      }
-      // Default 'tech' theme or fallback to uiPersonality colors
-      baseStyles.backgroundColor = nodeStyle?.backgroundColor ||
-        (node.type === 'root' ? '#FCD34D' : (isCurrent ? colorScheme.accent : colorScheme.primary));
-      baseStyles.color = uiPersonality.colors?.textColor ||
-        (node.type === 'root' ? '#1F2937' : 'white');
-      baseStyles.borderColor = uiPersonality.colors?.borderColor ||
-        (node.type === 'root' ? '#F59E0B' : (isCurrent ? '#FBBF24' : colorScheme.secondary));
 
-      if (isCurrent) {
-        baseStyles.boxShadow = uiPersonality.effects?.shadow || '0 0 20px rgba(59, 130, 246, 0.5)';
-      }
-    }
-
-    // Apply custom CSS if provided
-    if (uiPersonality.customCSS) {
-      // Custom CSS would be applied globally, so we don't override here
+      baseStyles = {
+        ...baseStyles,
+        backgroundColor: isCurrent ? colorScheme.surface : 'rgba(255, 255, 255, 0.85)',
+        borderColor: isCurrent ? colorScheme.primary : colorScheme.border,
+        color: colorScheme.text,
+        boxShadow: isCurrent
+          ? `0 12px 24px rgba(0, 0, 0, 0.08), 0 0 0 2px ${colorScheme.primary}33`
+          : '0 4px 12px rgba(0, 0, 0, 0.04), 0 2px 4px rgba(0, 0, 0, 0.06)',
+      };
     }
 
     return baseStyles;
   };
 
-  const getButtonStyles = () => {
-    const positiveColor = uiPersonality.colors?.positiveColor || '#10B981';
-    const negativeColor = uiPersonality.colors?.negativeColor || '#EF4444';
-
+      const getButtonStyles = () => {
     return {
       positive: {
-        backgroundColor: positiveColor,
-        padding: '4px',
-        borderRadius: '4px',
+        backgroundColor: colorScheme.success,
+        padding: '6px',
+        borderRadius: '8px',
         border: 'none',
         cursor: 'pointer',
-        transition: 'all 0.2s ease'
+        transition: 'all 0.2s ease',
+        boxShadow: `0 2px 4px ${colorScheme.success}33`,
       },
       negative: {
-        backgroundColor: negativeColor,
-        padding: '4px',
-        borderRadius: '4px',
+        backgroundColor: colorScheme.error,
+        padding: '6px',
+        borderRadius: '8px',
         border: 'none',
         cursor: 'pointer',
-        transition: 'all 0.2s ease'
+        transition: 'all 0.2s ease',
+        boxShadow: `0 2px 4px ${colorScheme.error}33`,
       }
     };
   };
 
   const nodeStyles = getNodeStyles();
   const buttonStyles = getButtonStyles();
-  const dimensions = { width: NODE_SIZE.width, height: NODE_SIZE.height };
+  const dimensions = {
+    width: NODE_SIZE.width * 1.2,
+    height: NODE_SIZE.height * 1.5
+  };
 
   return (
     <div
       id={`node-${node.id}`}
-      className={`absolute shadow-lg border-2 node-component ${isClickable ? 'cursor-pointer' : 'cursor-wait'}`}
+      className={`absolute node-component ${isClickable ? 'cursor-pointer' : 'cursor-wait'} font-inter`}
       style={{
         left: screenPos.x + dimensions.width / 4,
         top: screenPos.y - dimensions.height / 2,
-        maxWidth: NODE_SIZE.width,
-        minHeight: NODE_SIZE.height,
+        width: dimensions.width,
+        minHeight: dimensions.height,
         ...nodeStyles
       }}
       onClick={() => isClickable && onClick(node)}
     >
       {/* Streaming indicator */}
       {isStreaming && (
-        <div className="absolute -top-2 -right-2 w-4 h-4 bg-blue-500 rounded-full animate-ping" />
+        <div className="absolute -top-2 -right-2 w-3 h-3 bg-indigo-500 rounded-full animate-ping" />
       )}
 
       {/* Header */}
-      <div className="flex items-center space-x-2 mb-2">
-        <Brain size={16} style={{ color: nodeStyles.color }} />
-        <h3 className="text-sm font-bold" style={{ color: nodeStyles.color }}>
-          {node.label || `Node ${node.id}`}
-        </h3>
-        {isStreaming && (
-          <Circle className="animate-pulse text-yellow-400" size={10} />
-        )}
+      <div className="flex items-center space-x-3 mb-3">
+        <div
+          className="p-2 rounded-lg"
+          style={{
+            backgroundColor: node.type === 'root' ?
+              `${colorScheme.rootBorder}1A` : // 10% opacity
+              `${colorScheme.accent}1A` // 10% opacity
+          }}
+        >
+          <Brain size={16} style={{ color: nodeStyles.color }} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <h3 className="text-sm font-semibold mb-1 leading-tight" style={{ color: nodeStyles.color }}>
+            {node.label || `Node ${node.id}`}
+          </h3>
+          {isStreaming && (
+            <div className="flex items-center gap-1">
+              <Circle className="animate-pulse text-indigo-500" size={8} />
+              <span className="text-xs text-indigo-600 font-medium">Generating...</span>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Description */}
       <p
-        className="text-xs mb-3"
+        className="text-xs mb-4 leading-relaxed line-clamp-3"
         style={{
           color: nodeStyles.color,
           opacity: 0.8,
-          fontFamily: nodeStyles.fontFamily
         }}
       >
         {node.description}
       </p>
 
-      {/* Action buttons */}
-      <div className="flex justify-center gap-2">
+      {/* Action buttons - Removed until functionality is fixed */}
+      {/* <div className="flex justify-center gap-3">
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -167,14 +159,9 @@ const NodeComponent = ({
           }}
           style={buttonStyles.positive}
           title="Positive feedback"
-          onMouseEnter={(e) => {
-            e.target.style.opacity = '0.8';
-          }}
-          onMouseLeave={(e) => {
-            e.target.style.opacity = '1';
-          }}
+          className="hover:scale-105 active:scale-95 transition-transform duration-150"
         >
-          <ThumbsUp size={12} className="text-white" />
+          <ThumbsUp size={14} className="text-white" />
         </button>
         <button
           onClick={(e) => {
@@ -183,27 +170,18 @@ const NodeComponent = ({
           }}
           style={buttonStyles.negative}
           title="Negative feedback"
-          onMouseEnter={(e) => {
-            e.target.style.opacity = '0.8';
-          }}
-          onMouseLeave={(e) => {
-            e.target.style.opacity = '1';
-          }}
+          className="hover:scale-105 active:scale-95 transition-transform duration-150"
         >
-          <ThumbsDown size={12} className="text-white" />
+          <ThumbsDown size={14} className="text-white" />
         </button>
-      </div>
+      </div> */}
 
-      {/* Theme-specific decorative elements */}
-      {uiPersonality.theme === 'cyber' && (
-        <div className="absolute inset-0 rounded-xl pointer-events-none">
-          <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-cyan-400 to-transparent opacity-60"></div>
-          <div className="absolute bottom-0 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-cyan-400 to-transparent opacity-60"></div>
-        </div>
-      )}
-
-      {uiPersonality.theme === 'playful' && (
-        <div className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full opacity-70 animate-pulse"></div>
+      {/* Subtle corner accent for current node */}
+      {isCurrent && (
+        <div
+          className="absolute top-2 right-2 w-2 h-2 rounded-full opacity-60"
+          style={{ backgroundColor: colorScheme.primary }}
+        ></div>
       )}
     </div>
   );

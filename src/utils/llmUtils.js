@@ -9,7 +9,8 @@ export const extractJsonFromLlmResponse = (responseString) => {
       const jsonData = JSON.parse(match[1]);
       const remainderString = responseString.replace(match[0], '');
       return [jsonData, remainderString];
-    } catch (e) {
+    } catch (error) {
+      console.log("Failed to extract Json from LLM response", error);
       return [null, responseString];
     }
   }
@@ -23,7 +24,8 @@ export const extractJsonFromLlmResponse = (responseString) => {
       const jsonData = JSON.parse(jsonString);
       const remainderString = responseString.substring(lastBraceIndex + 1);
       return [jsonData, remainderString];
-    } catch (e) {
+    } catch (error) {
+      console.log("Failed to extract Json from LLM response", error);
       return [null, responseString];
     }
   }
@@ -45,12 +47,12 @@ export const createFeedbackAnalysisPrompt = (userInput, isPositive) => {
   return `Analyze this user feedback about a learning interface node:
     Feedback: "${userInput}"
     Sentiment: ${isPositive ? 'positive' : 'negative'}
-    
+
     Categorize the feedback into one of these categories and extract the key concern:
     - content: about the information, accuracy, depth, or educational value
     - visual: about colors, layout, fonts, appearance, or visual design
     - layout: about positioning, spacing, organization, or structure
     - interaction: about controls, navigation, responsiveness, or user experience
-    
+
     Respond with JSON: {"category": "category_name", "concern": "brief_description", "suggestion": "improvement_suggestion"}`;
 };
