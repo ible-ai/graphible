@@ -104,21 +104,7 @@ const InstallationGuide = ({ showGuide, onClose }) => {
             <div className="bg-gray-800/50 rounded-lg p-4 space-y-4">
               <div className="space-y-3">
                 <div>
-                  <h4 className="text-white font-medium mb-2">Get your Google AI API Key</h4>
-                  <div className="mt-2 p-3 bg-gray-900 rounded">
-                    <p className="text-gray-400 text-xs mb-2">Example usage:</p>
-                    <code className="text-green-400 text-xs block">
-                      {`const ai = new GoogleGenAI(apiKey);
-const response = await ai.models.generateContent({
-  model: "gemini-2.5-flash",
-  contents: "Your prompt here"
-});`}
-                    </code>
-                  </div>
-                </div>
-
-                <div>
-                  <h4 className="text-white font-medium mb-2">2. Get API Key</h4>
+                  <h4 className="text-white font-medium mb-2">1. Get API Key</h4>
                   <div className="space-y-2">
                     <p className="text-gray-300 text-sm">
                       Get your free API key from Google AI Studio:
@@ -136,7 +122,7 @@ const response = await ai.models.generateContent({
                 </div>
 
                 <div>
-                  <h4 className="text-white font-medium mb-2">3. Available Models</h4>
+                  <h4 className="text-white font-medium mb-2">2. Available Models</h4>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     {[
                       {
