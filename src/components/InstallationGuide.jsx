@@ -74,9 +74,8 @@ const InstallationGuide = ({ showGuide, onClose }) => {
                   <h4 className="text-white font-medium mb-2">3. Pull a Model</h4>
                   <div className="space-y-2">
                     {[
-                      { cmd: 'ollama pull gemma2:2b', desc: 'Lightweight (1.6GB)' },
-                      { cmd: 'ollama pull gemma3:4b', desc: 'Recommended (2.5GB)' },
-                      { cmd: 'ollama pull llama3.2:3b', desc: 'Alternative (2GB)' }
+                      { cmd: 'ollama pull gemma3:4b', desc: 'Workhorse' },
+                      { cmd: 'ollama pull gemma3:270m', desc: 'Lightweight' },
                     ].map((model, idx) => (
                       <div key={idx} className="flex items-center gap-2 bg-gray-900 p-3 rounded">
                         <code className="text-green-400 flex-1 font-mono text-sm">{model.cmd}</code>
@@ -105,19 +104,7 @@ const InstallationGuide = ({ showGuide, onClose }) => {
             <div className="bg-gray-800/50 rounded-lg p-4 space-y-4">
               <div className="space-y-3">
                 <div>
-                  <h4 className="text-white font-medium mb-2">1. Install Google Generative AI SDK</h4>
-                  <p className="text-gray-300 text-sm mb-2">
-                    Install the official Google AI SDK for JavaScript:
-                  </p>
-                  <div className="flex items-center gap-2 bg-gray-900 p-3 rounded font-mono text-sm">
-                    <code className="text-green-400 flex-1">npm install @google/genai</code>
-                    <button
-                      onClick={() => copyToClipboard('npm install @google/genai', 'npm-install')}
-                      className="text-gray-400 hover:text-white transition-colors"
-                    >
-                      {copiedText === 'npm-install' ? <Check size={16} /> : <Copy size={16} />}
-                    </button>
-                  </div>
+                  <h4 className="text-white font-medium mb-2">Get your Google AI API Key</h4>
                   <div className="mt-2 p-3 bg-gray-900 rounded">
                     <p className="text-gray-400 text-xs mb-2">Example usage:</p>
                     <code className="text-green-400 text-xs block">
