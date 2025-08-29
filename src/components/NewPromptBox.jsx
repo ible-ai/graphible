@@ -1,7 +1,6 @@
-// Pop-up prompt input interface with consistent modern styling
-
+// Enhanced prompt input with selected nodes - DIRECT REPLACEMENT for NewPromptBox.jsx
 import { useState, useCallback, useEffect } from 'react';
-import { X, Send, Link, Sparkles } from 'lucide-react';
+import { X, Send, Link, Sparkles, Eye, EyeOff } from 'lucide-react';
 
 const NewPromptBox = ({
   initialPromptText,
@@ -16,21 +15,22 @@ const NewPromptBox = ({
   adaptivePrompts,
   setAdaptivePrompts,
   nodes,
-  setConnections
+  setConnections,
+  selectedNodes,
 }) => {
+
   const [newPromptInput, setNewPromptInput] = useState('');
   const [includeContext, setIncludeContext] = useState(true);
+  const [includeSelectedNodes, setIncludeSelectedNodes] = useState(true);
+  const [showSelectedPreview, setShowSelectedPreview] = useState(false);
+
 
   // Global typing listener
   useEffect(() => {
     const handleGlobalKeyDown = (e) => {
-      // Don't handle if already typing or in other modals
       if (isTypingPrompt || generationStatus.isGenerating) return;
-
-      // Don't handle if focused on an input element
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
 
-      // Handle single character input to start new prompt
       if (e.key.length === 1 && e.key.match(/^[a-z0-9 ]$/i)) {
         setNewPromptInput(e.key);
         setIsTypingPrompt(true);
@@ -48,32 +48,67 @@ const NewPromptBox = ({
     setNewPromptInput('');
   }, [setIsTypingPrompt]);
 
+
   const handleSubmit = useCallback(async () => {
     if (!newPromptInput.trim()) return;
 
     setIsTypingPrompt(false);
 
     let finalPromptToLLM = newPromptInput;
+    const buildContextString = () => {
+      let contextString = '';
 
-    // TODO: allow user to select nodes for inclusion.
-    if (includeContext) {
-      let contextString = `Building on our previous discussion about "${initialPromptText}".`;
-      if (currentNodeId !== null && nodeDetails) {
-        contextString += ` Currently focused on the node "${nodeDetails.label}" (ID: ${currentNodeId}) which describes "${nodeDetails.description}". Its content is: "${nodeDetails.content}".`;
+      // Previous context
+      if (includeContext) {
+        contextString += `Building on our previous discussion about "${initialPromptText}".`;
+        if (currentNodeId !== null && nodeDetails) {
+          contextString += ` Currently focused on the node "${nodeDetails.label}" (ID: ${currentNodeId}) which describes "${nodeDetails.description}". Its content is: "${nodeDetails.content}".`;
+        }
       }
-      contextString += ` Now, based on this context, please generate a new graph for: "${finalPromptToLLM}"`;
-      finalPromptToLLM = contextString;
 
-      // Only include a connection if the user specifies to carry the context forward.
-      setConnections(prevConnections => [...prevConnections, {
-        from: currentNodeId,
-        to: nodes.length
-      }]);
+      // Selected nodes context
+      if (includeSelectedNodes && selectedNodes.length > 0) {
+        contextString += ` Additionally, please consider these selected nodes as context:\n`;
+        selectedNodes.forEach((node, index) => {
+          contextString += `${index + 1}. "${node.label}" (ID: ${node.id}): ${node.description}\n`;
+          if (node.content && node.content.length > 0) {
+            contextString += `   Content: ${node.content}\n`;
+          }
+        });
+      }
+
+      return contextString;
+    };
+    const contextString = buildContextString();
+
+    if (contextString) {
+      finalPromptToLLM = `${contextString}\n\nNow, based on this context, please generate a new graph for: "${newPromptInput}"`;
+
+      // Add connection from current node if including context
+      if (includeContext && currentNodeId !== null) {
+        setConnections(prevConnections => [...prevConnections, {
+          from: currentNodeId,
+          to: nodes.length
+        }]);
+      }
     }
+
     const curNode = nodes[currentNodeId];
-    await onGenerate(finalPromptToLLM, curNode.worldX, curNode.worldY);
+    await onGenerate(finalPromptToLLM, curNode?.worldX, curNode?.worldY);
     setNewPromptInput('');
-  }, [newPromptInput, includeContext, initialPromptText, currentNodeId, nodeDetails, onGenerate, nodes, setConnections, setIsTypingPrompt]);
+  }, [
+    newPromptInput,
+    includeContext,
+    currentNodeId,
+    nodes,
+    setConnections,
+    setIsTypingPrompt,
+    onGenerate,
+    includeSelectedNodes,
+    initialPromptText,
+    nodeDetails,
+    selectedNodes
+  ]);
 
   const handleKeyPress = useCallback((e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -89,7 +124,7 @@ const NewPromptBox = ({
 
   return (
     <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-40 font-inter">
-      <div className="w-full max-w-2xl mx-4">
+      <div className="w-full max-w-3xl mx-4">
         <div className="bg-white/90 backdrop-blur-md rounded-2xl border border-slate-200/50 shadow-xl overflow-hidden">
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-slate-200/50">
@@ -98,6 +133,11 @@ const NewPromptBox = ({
                 <Sparkles className="text-indigo-600" size={16} />
               </div>
               <h3 className="text-slate-800 text-lg font-medium">Continue Exploring</h3>
+              {selectedNodes.length > 0 && (
+                <div className="text-sm text-blue-600 bg-blue-50 px-2 py-1 rounded-lg">
+                  {selectedNodes.length} node{selectedNodes.length !== 1 ? 's' : ''} selected
+                </div>
+              )}
             </div>
             <button
               onClick={handleClose}
@@ -110,59 +150,124 @@ const NewPromptBox = ({
 
           {/* Content */}
           <div className="p-6">
-            {/* Context indicator */}
-            {includeContext && nodeDetails && (
-              <div className="mb-4 p-3 bg-indigo-50/50 rounded-xl border border-indigo-200/30">
-                <div className="flex items-start gap-3">
-                  <Link className="text-indigo-500 mt-0.5" size={16} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-indigo-800">
-                      Building from: {nodeDetails.label}
-                    </p>
-                    <p className="text-xs text-indigo-600 mt-1 line-clamp-2">
-                      {nodeDetails.description}
-                    </p>
+            {/* Context indicators */}
+            <div className="space-y-3 mb-4">
+              {/* Previous context */}
+              {includeContext && nodeDetails && (
+                <div className="p-3 bg-indigo-50/50 rounded-xl border border-indigo-200/30">
+                  <div className="flex items-start gap-3">
+                    <Link className="text-indigo-500 mt-0.5" size={16} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-indigo-800">
+                        Building from: {nodeDetails.label}
+                      </p>
+                      <p className="text-xs text-indigo-600 mt-1 line-clamp-2">
+                        {nodeDetails.description}
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
+
+              {/* Selected nodes context */}
+              {includeSelectedNodes && selectedNodes.length > 0 && (
+                <div className="p-3 bg-blue-50/50 rounded-xl border border-blue-200/30">
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="text-blue-500" size={16} />
+                      <p className="text-sm font-medium text-blue-800">
+                        Including {selectedNodes.length} selected node{selectedNodes.length !== 1 ? 's' : ''} as context
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setShowSelectedPreview(!showSelectedPreview)}
+                      className="text-blue-600 hover:text-blue-700 p-1 rounded"
+                      title={showSelectedPreview ? "Hide preview" : "Show preview"}
+                    >
+                      {showSelectedPreview ? <EyeOff size={14} /> : <Eye size={14} />}
+                    </button>
+                  </div>
+
+                  {showSelectedPreview && (
+                    <div className="max-h-32 overflow-y-auto space-y-2">
+                      {selectedNodes.map((node, index) => (
+                        <div key={node.id} className="text-xs bg-white/60 rounded p-2">
+                          <div className="font-medium text-blue-800">
+                            {index + 1}. {node.label || `Node ${node.id}`}
+                          </div>
+                          <div className="text-blue-600 mt-1 line-clamp-2">
+                            {node.description}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* Input field */}
             <div className="mb-4">
-              <input
-                type="text"
+              <textarea
                 value={newPromptInput}
                 onChange={(e) => setNewPromptInput(e.target.value)}
                 placeholder="What would you like to explore next?"
-                className="w-full px-4 py-3 bg-slate-50/50 border border-slate-200/50 rounded-xl text-slate-800 placeholder-slate-500 text-base focus:border-indigo-300 focus:bg-white/80 focus:outline-none transition-all duration-200 shadow-sm"
+                className="w-full px-4 py-3 bg-slate-50/50 border border-slate-200/50 rounded-xl text-slate-800 placeholder-slate-500 text-base focus:border-indigo-300 focus:bg-white/80 focus:outline-none transition-all duration-200 shadow-sm resize-none"
+                rows="3"
                 autoFocus
                 onKeyDown={handleKeyPress}
               />
             </div>
 
             {/* Options */}
-            <div className="flex items-center justify-between mb-6">
-              <label className="flex items-center text-slate-600 text-sm cursor-pointer group">
-                <div className="relative">
-                  <input
-                    type="checkbox"
-                    checked={includeContext}
-                    onChange={(e) => setIncludeContext(e.target.checked)}
-                    className="sr-only"
-                  />
-                  <div className={`w-4 h-4 rounded border-2 transition-all duration-200 ${includeContext
+            <div className="flex items-center justify-between mb-6 text-sm">
+              <div className="space-y-2">
+                <label className="flex items-center text-slate-600 cursor-pointer group">
+                  <div className="relative">
+                    <input
+                      type="checkbox"
+                      checked={includeContext}
+                      onChange={(e) => setIncludeContext(e.target.checked)}
+                      className="sr-only"
+                    />
+                    <div className={`w-4 h-4 rounded border-2 transition-all duration-200 ${includeContext
                       ? 'bg-indigo-500 border-indigo-500'
                       : 'border-slate-300 group-hover:border-slate-400'
-                    }`}>
-                    {includeContext && (
-                      <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                    )}
+                      }`}>
+                      {includeContext && (
+                        <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      )}
+                    </div>
                   </div>
-                </div>
-                <span className="ml-3">Include previous context</span>
-              </label>
+                  <span className="ml-3">Include previous context</span>
+                </label>
+
+                {selectedNodes.length > 0 && (
+                  <label className="flex items-center text-slate-600 cursor-pointer group">
+                    <div className="relative">
+                      <input
+                        type="checkbox"
+                        checked={includeSelectedNodes}
+                        onChange={(e) => setIncludeSelectedNodes(e.target.checked)}
+                        className="sr-only"
+                      />
+                      <div className={`w-4 h-4 rounded border-2 transition-all duration-200 ${includeSelectedNodes
+                        ? 'bg-blue-500 border-blue-500'
+                        : 'border-slate-300 group-hover:border-slate-400'
+                        }`}>
+                        {includeSelectedNodes && (
+                          <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        )}
+                      </div>
+                    </div>
+                    <span className="ml-3">Include selected nodes ({selectedNodes.length})</span>
+                  </label>
+                )}
+              </div>
 
               <div className="text-xs text-slate-500">
                 Press Enter to continue • ESC to cancel

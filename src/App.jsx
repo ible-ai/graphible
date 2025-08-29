@@ -1,7 +1,7 @@
 // Main application
 
 import { useState, useEffect, useCallback } from 'react';
-import { Brain, RotateCcw, Save, Circle } from 'lucide-react';
+import { Brain, RotateCcw, Save, Circle, MousePointer, Link, Trash2, Target } from 'lucide-react';
 
 // Import custom hooks
 import { useCamera } from './hooks/useCamera';
@@ -10,12 +10,13 @@ import { useGraphState } from './hooks/useGraphState';
 import { useLLMConnection } from './hooks/useLLMConnection';
 import { useFeedback } from './hooks/useFeedback';
 import { useSaveLoad } from './hooks/useSaveLoad';
+import { useNodeManipulation } from './hooks/useNodeManipulation';
+import { useNodeSelection } from './hooks/useNodeSelection';
 
 // Import components
 import CenteredPrompt from './components/CenteredPrompt';
 import GenerationStatusBar from './components/GenerationStatusBar';
 import NodeComponent from './components/NodeComponent';
-import ConnectionComponent from './components/ConnectionComponent';
 import NodeDetailsPanel from './components/NodeDetailsPanel';
 import Minimap from './components/Minimap';
 import FeedbackModal from './components/FeedbackModal';
@@ -23,6 +24,8 @@ import NewPromptBox from './components/NewPromptBox';
 import SaveLoadModal from './components/SaveLoadModal';
 import ModelSelector from './components/ModelSelector';
 import InstallationGuide from './components/InstallationGuide';
+import DeletionStoreModal from './components/DeletionStoreModal';
+import ConnectionManager from './components/ConnectionManager';
 
 // Import constants and utilities
 import { colorSchemes } from './constants/graphConstants';
@@ -36,7 +39,7 @@ const Graphible = () => {
     nodeSize: 'medium'
   });
 
-  // Simplified UI Personality state - consistent structure
+  // UI Personality state - keeping existing structure
   const [uiPersonality, setUiPersonality] = useState({
     theme: 'tech',
     colorScheme: 'blue',
@@ -99,11 +102,12 @@ const Graphible = () => {
   const [initialPromptText, setInitialPromptText] = useState('');
   const [isTypingPrompt, setIsTypingPrompt] = useState(false);
   const [showInstallationGuide, setShowInstallationGuide] = useState(false);
+  const [showDeletionStore, setShowDeletionStore] = useState(false);
+  const [showConnectionManager, setShowConnectionManager] = useState(false);
 
   // Custom hooks
   const { camera, setCameraImmediate, setCameraTarget } = useCamera();
 
-  // Enhanced LLM connection with model selection
   const {
     llmConnected,
     currentModel,
@@ -126,8 +130,43 @@ const Graphible = () => {
     resetGraph,
     generateWithLLM: generateGraphWithLLM,
     applyLayoutOptimization,
-    setConnections
+    setConnections,
+    setNodes
   } = useGraphState(generateWithLLM);
+
+  // Node manipulation and selection hooks
+  const {
+    isDraggingNode,
+    isResizingNode,
+    startNodeDrag,
+    updateNodeDrag,
+    endNodeDrag,
+    startNodeResize,
+    updateNodeResize,
+    endNodeResize,
+    deleteNode,
+    restoreNode,
+    permanentlyDeleteNode,
+    deletedNodes,
+    addConnection,
+    removeConnection
+  } = useNodeManipulation(nodes, setNodes, connections, setConnections);
+
+  const {
+    selectedNodes,
+    selectionMode,
+    isDragSelecting,
+    toggleSelectionMode,
+    toggleNodeSelection,
+    isNodeSelected,
+    clearSelections,
+    autoSelectRecentBatch,
+    startDragSelection,
+    updateDragSelection,
+    endDragSelection,
+    getSelectionBox,
+    selectedCount
+  } = useNodeSelection();
 
   const {
     feedbackHistory,
@@ -156,19 +195,25 @@ const Graphible = () => {
     showPromptCenter,
     generationStatus,
     isTypingPrompt,
-    showFeedbackModal
+    showFeedbackModal: showFeedbackModal !== null
   });
+
+  // Auto-select most recent batch when generation completes
+  useEffect(() => {
+    if (!generationStatus.isGenerating && nodes.length > 0 && generationStatus.currentNodeId !== null) {
+      autoSelectRecentBatch(nodes, Math.max(...nodes.map(n => n.batchId || 0)));
+    }
+  }, [generationStatus.isGenerating, nodes, generationStatus.currentNodeId, autoSelectRecentBatch]);
 
   // Use UI personality color scheme, fall back to preferences, then default
   const currentScheme = colorSchemes[uiPersonality.colorScheme || preferences.colorScheme || 'default'];
 
   // Initialize LLM connection
-  useEffect(() => {
+  useCallback(() => {
     const initializeConnection = async () => {
       const savedConfig = loadSavedConfig();
       console.log('App initialization - loaded config:', savedConfig);
 
-      // Load saved Google API key if it exists and we're using external config
       if (savedConfig.type === 'external' && savedConfig.provider === 'google' && !savedConfig.apiKey) {
         const savedApiKey = localStorage.getItem('graphible-google-api-key');
         if (savedApiKey) {
@@ -178,14 +223,13 @@ const Graphible = () => {
         }
       }
 
-      // Only test connection once on app startup
       if (!hasTestedInitially) {
         await testLLMConnection(savedConfig);
       }
     };
 
     initializeConnection();
-  }, []); // Empty dependency array - only run once on mount
+  }, [loadSavedConfig, handleModelChange, testLLMConnection, hasTestedInitially]);
 
   // Node focusing
   useEffect(() => {
@@ -195,8 +239,87 @@ const Graphible = () => {
     }
   }, [currentNodeId, showPromptCenter, nodes]);
 
+  // Handle node manipulation mouse events
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (isDraggingNode !== null) {
+        updateNodeDrag(e.clientX, e.clientY, camera);
+      }
+      if (isResizingNode !== null) {
+        updateNodeResize(e.clientX, e.clientY);
+      }
+      if (isDragSelecting) {
+        updateDragSelection(e.clientX, e.clientY, camera);
+      }
+    };
+
+    const handleMouseUp = () => {
+      if (isDraggingNode !== null) {
+        endNodeDrag();
+      }
+      if (isResizingNode !== null) {
+        endNodeResize();
+      }
+      if (isDragSelecting) {
+        endDragSelection(nodes);
+      }
+    };
+
+    if (isDraggingNode !== null || isResizingNode !== null || isDragSelecting) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+
+      if (isDraggingNode !== null) {
+        document.body.style.cursor = 'grabbing';
+      } else if (isResizingNode !== null) {
+        document.body.style.cursor = 'se-resize';
+      }
+      document.body.style.userSelect = 'none';
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = 'default';
+      document.body.style.userSelect = '';
+    };
+  }, [
+    isDraggingNode,
+    isResizingNode,
+    isDragSelecting,
+    updateNodeDrag,
+    updateNodeResize,
+    updateDragSelection,
+    endNodeDrag,
+    endNodeResize,
+    endDragSelection,
+    camera,
+    nodes
+  ]);
+
+  // Layout optimization that preserves selections
+  const applyLayoutOptimizationWithSelection = useCallback(() => {
+    applyLayoutOptimization();
+    if (nodes.length > 1) {
+
+      // Restore selections after layout optimization
+      setTimeout(() => {
+        selectedNodes.forEach(nodeId => {
+          if (nodes.some(n => n.id === nodeId)) {
+            toggleNodeSelection(nodeId);
+          }
+        });
+      }, 100);
+    }
+  }, [nodes, selectedNodes, toggleNodeSelection, applyLayoutOptimization]);
+
   // Event handlers
   const handleNodeClick = (node) => {
+    if (selectionMode) {
+      toggleNodeSelection(node.id);
+      return;
+    }
+
     setCurrentNodeId(node.id);
     setNodeDetails(node);
     setCameraTarget(-node.worldX, -node.worldY);
@@ -216,17 +339,15 @@ const Graphible = () => {
   };
 
   const loadGraph = (graphData) => {
-    // Reset state and load graph data
     resetGraph();
-    // Load nodes and connections
     graphData.nodes.forEach(node => addNode(node));
     setCurrentNodeId(graphData.currentNodeId);
     setInitialPromptText(graphData.name);
     setShowPromptCenter(false);
     setShowSaveLoad(false);
     setNodeDetails(null);
+    clearSelections();
 
-    // Reset UI personality to default when loading a graph
     setUiPersonality(prevUiPersonality => ({
       ...prevUiPersonality,
       theme: 'tech',
@@ -236,19 +357,15 @@ const Graphible = () => {
     }));
     setAdaptivePrompts([]);
 
-    // Reset camera
     setCameraImmediate(0, 0, 1.0);
   };
 
   const handleInitialPromptSubmit = async (prompt) => {
     if (!prompt.trim()) return;
 
-    // Always proceed, but test connection if not already connected
     if (llmConnected !== 'connected') {
-
       const isConnected = await testLLMConnection();
       if (!isConnected) {
-        // Show a more user-friendly message but still allow them to proceed
         const modelType = currentModel.type === 'local' ? 'local model (Ollama)' : 'external API';
         const proceed = window.confirm(
           `Could not connect to ${modelType}. Would you like to try generating anyway? ` +
@@ -259,40 +376,51 @@ const Graphible = () => {
     }
 
     resetGraph();
+    clearSelections();
     setShowPromptCenter(false);
 
     await generateGraphWithLLM(prompt, null, null, currentModel);
   };
 
-  // Enhanced prompt generation that passes currentModel
   const enhancedGenerateWithLLM = async (prompt, prevWorldX, prevWorldY) => {
     return generateGraphWithLLM(prompt, prevWorldX, prevWorldY, currentModel);
   };
 
-  // Mouse drag handling with proper event detection
+  // Background drag handling
   useEffect(() => {
     const handleMouseDown = (e) => {
-      // Only start dragging if clicking on the background (not on interactive elements)
-      if (
-        e.target.closest('.node-component') ||
-        e.target.closest('.minimap-container') ||
-        e.target.closest('.details-panel') ||
-        e.target.closest('button') ||
-        e.target.closest('input') ||
-        e.target.closest('textarea')
-      ) {
+      if (isDraggingNode !== null || isResizingNode !== null) return;
+
+      const clickedElement = e.target;
+      const isInteractiveClick =
+        clickedElement.closest('.node-component') ||
+        clickedElement.closest('.minimap-container') ||
+        clickedElement.closest('.details-panel') ||
+        clickedElement.closest('button') ||
+        clickedElement.closest('input') ||
+        clickedElement.closest('textarea') ||
+        clickedElement.closest('.modal') ||
+        clickedElement.closest('select') ||
+        clickedElement.closest('a');
+
+      if (isInteractiveClick) {
         return;
       }
 
-      setIsDragging(true);
-      setDragStart({ x: e.clientX, y: e.clientY });
-      document.body.style.cursor = 'grabbing';
-      document.body.style.userSelect = 'none';
+      if (selectionMode) {
+        startDragSelection(e.clientX, e.clientY, camera);
+      } else {
+        setIsDragging(true);
+        setDragStart({ x: e.clientX, y: e.clientY });
+        document.body.style.cursor = 'grabbing';
+        document.body.style.userSelect = 'none';
+      }
+
       e.preventDefault();
     };
 
     const handleMouseMove = (e) => {
-      if (!isDragging) return;
+      if (isDragSelecting || !isDragging) return;
 
       const deltaX = e.clientX - dragStart.x;
       const deltaY = e.clientY - dragStart.y;
@@ -315,23 +443,28 @@ const Graphible = () => {
       }
     };
 
-    // Add listeners to document to catch all mouse events
     document.addEventListener('mousedown', handleMouseDown);
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
-
-    // Handle mouse leave to stop dragging
-    document.addEventListener('mouseleave', handleMouseUp);
 
     return () => {
       document.removeEventListener('mousedown', handleMouseDown);
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
-      document.removeEventListener('mouseleave', handleMouseUp);
       document.body.style.cursor = 'default';
       document.body.style.userSelect = '';
     };
-  }, [isDragging, camera, setCameraImmediate, dragStart]);
+  }, [
+    isDragging,
+    camera,
+    setCameraImmediate,
+    dragStart,
+    selectionMode,
+    isDraggingNode,
+    isResizingNode,
+    isDragSelecting,
+    startDragSelection
+  ]);
 
   // Zoom handling
   const handleWheel = useCallback((e) => {
@@ -369,7 +502,6 @@ const Graphible = () => {
         styleElement.textContent = uiPersonality.customCSS;
       }
 
-      // Apply font family to body
       if (uiPersonality.typography?.fontFamily && uiPersonality.typography.fontFamily !== 'system') {
         if (uiPersonality.typography.fontFamily.includes('bubble')) {
           document.body.style.fontFamily = '"Comic Sans MS", cursive, sans-serif';
@@ -395,9 +527,7 @@ const Graphible = () => {
   }, [uiPersonality]);
 
   return (
-    <div
-      className="w-screen h-screen relative bg-gradient-to-br from-slate-50 to-slate-100 font-inter"
-    >
+    <div className="w-screen h-screen relative bg-gradient-to-br from-slate-50 to-slate-100 font-inter">
       <GenerationStatusBar
         generationStatus={generationStatus}
         streamingContent={streamingContent}
@@ -417,15 +547,13 @@ const Graphible = () => {
 
       {!showPromptCenter && (
         <>
-          {/* UI Personality Indicator */}
-          {adaptivePrompts.length > 0 && (
-            <div className="absolute bottom-4 left-4 bg-black/80 backdrop-blur rounded-lg p-3 text-white text-xs max-w-xs z-40">
-              <div className="font-semibold mb-1">Current Style:</div>
-              <div>Theme: {uiPersonality.theme}</div>
-              <div>Colors: {uiPersonality.colorScheme}</div>
-              <div>Font: {uiPersonality.typography?.fontFamily}</div>
-              <div className="mt-2 text-gray-300">
-                Adaptations: {adaptivePrompts.length}
+          {/* Mode indicators */}
+          {(selectionMode || selectedCount > 0) && (
+            <div className="absolute bottom-8 left-6 bg-blue-500/90 backdrop-blur rounded-lg p-3 text-white text-sm z-40 opacity-60">
+              <div className="font-semibold mb-1">Selection Mode</div>
+              <div>{selectedCount} node{selectedCount !== 1 ? 's' : ''} selected</div>
+              <div className="text-blue-100 text-xs mt-1">
+                Click nodes to select • Click mode button to exit
               </div>
             </div>
           )}
@@ -441,7 +569,6 @@ const Graphible = () => {
                   <h1 className="text-xl font-light text-slate-800 tracking-tight">graph.ible</h1>
                 </div>
 
-                {/* Model Selector */}
                 <ModelSelector
                   currentModel={currentModel}
                   onModelChange={handleModelChange}
@@ -451,23 +578,79 @@ const Graphible = () => {
               </div>
 
               <div className="flex items-center gap-3">
+                {/* Mode toggle buttons */}
+                <div className="flex bg-white border border-slate-200 rounded-lg p-1">
+                  <button
+                    onClick={() => {
+                      if (selectionMode) toggleSelectionMode();
+                    }}
+                    className={`flex items-center gap-2 px-3 py-1 rounded-md text-sm transition-all duration-200 ${!selectionMode
+                        ? 'bg-slate-100 text-slate-800'
+                        : 'text-slate-600 hover:text-slate-800'
+                      }`}
+                    title="Normal mode"
+                  >
+                    <MousePointer size={14} />
+                    Normal
+                  </button>
+                  <button
+                    onClick={toggleSelectionMode}
+                    className={`flex items-center gap-2 px-3 py-1 rounded-md text-sm transition-all duration-200 ${selectionMode
+                        ? 'bg-blue-100 text-blue-300 opacity-80'
+                        : 'text-slate-600 hover:text-slate-800'
+                      }`}
+                    title="Selection mode"
+                  >
+                    <Target size={14} />
+                    Select
+                    {selectedCount > 0 && (
+                      <span className="bg-blue-500 text-white px-1.5 py-0.5 rounded-full text-xs">
+                        {selectedCount}
+                      </span>
+                    )}
+                  </button>
+                </div>
+
+                {/* Action buttons */}
                 <button
-                  onClick={applyLayoutOptimization}
+                  onClick={applyLayoutOptimizationWithSelection}
                   disabled={nodes.length < 2}
+                  style={{ fontSize: '12px' }}
                   className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 hover:border-slate-300 transition-all duration-200 disabled:opacity-50 shadow-sm"
                 >
                   <Circle size={16} />
                   Optimize Layout
                 </button>
+
                 <button
-                  onClick={resetCamera}
+                  onClick={() => setShowConnectionManager(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 hover:border-slate-300 transition-all duration-200 shadow-sm"
+                  style={{ fontSize: '12px' }}
+                >
+                  <Link size={16} />
+                  Connections
+                </button>
+
+                <button
+                  onClick={() => setShowDeletionStore(true)}
+                  style={{ fontSize: '12px' }}
                   className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 hover:border-slate-300 transition-all duration-200 shadow-sm"
                 >
+                  <Trash2 size={16} /> Deleted ({deletedNodes.size})
+                </button>
+
+                <button
+                  onClick={resetCamera}
+                  style={{ fontSize: '12px' }}
+                  className="flex items-center gap-2 px-2 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 hover:border-slate-300 transition-all duration-200 shadow-sm"
+                  >
                   <RotateCcw size={16} />
                   Reset View
                 </button>
+
                 <button
                   onClick={() => setShowSaveLoad(true)}
+                  style={{ fontSize: '12px' }}
                   className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 hover:border-slate-300 transition-all duration-200 shadow-sm"
                 >
                   <Save size={16} />
@@ -486,10 +669,13 @@ const Graphible = () => {
                 transformOrigin: 'center center'
               }}
             >
-              {/* SVG for connections */}
+              {/* SVG for connections - positioned to match world coordinates */}
               <svg
                 className="absolute top-0 left-0 w-full h-full pointer-events-none"
-                style={{ overflow: 'visible' }}
+                style={{
+                  overflow: 'visible',
+                  transform: 'translate(50vw, 50vh)'
+                }}
               >
                 <defs>
                   <marker
@@ -507,15 +693,73 @@ const Graphible = () => {
                   </marker>
                 </defs>
 
-                {connections.map((conn, index) => (
-                  <ConnectionComponent
-                    key={index}
-                    fromNode={nodes[conn.from]}
-                    toNode={nodes[conn.to]}
-                    colorScheme={currentScheme}
-                    camera={camera}
-                  />
-                ))}
+                {connections.map((conn, index) => {
+                  const fromNode = nodes[conn.from];
+                  const toNode = nodes[conn.to];
+
+                  if (!fromNode || !toNode) return null;
+
+                  const fromX = fromNode.worldX;
+                  const fromY = fromNode.worldY;
+                  const toX = toNode.worldX;
+                  const toY = toNode.worldY;
+
+                  const dx = toX - fromX;
+                  const dy = toY - fromY;
+                  const distance = Math.sqrt(dx * dx + dy * dy);
+
+                  if (distance === 0) return null;
+
+                  const midX = (fromX + toX) / 2;
+                  const midY = (fromY + toY) / 2;
+                  const controlOffset = Math.min(distance * 0.15, 60);
+                  const unitX = dx / distance;
+                  const unitY = dy / distance;
+                  const controlX = midX + (-unitY * controlOffset);
+                  const controlY = midY + (unitX * controlOffset);
+
+                  const path = `M${fromX},${fromY} Q${controlX},${controlY} ${toX},${toY}`;
+
+                  return (
+                    <g key={index}>
+                      <path
+                        d={path}
+                        stroke="rgb(148, 163, 184)"
+                        strokeWidth="2"
+                        fill="none"
+                        strokeOpacity="0.6"
+                        markerEnd="url(#arrowhead)"
+                        strokeLinecap="round"
+                        style={{
+                          filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1))',
+                        }}
+                      />
+
+                      <circle
+                        cx={fromX}
+                        cy={fromY}
+                        r="4"
+                        fill="rgb(148, 163, 184)"
+                        stroke="white"
+                        strokeWidth="2"
+                        style={{
+                          filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1))',
+                        }}
+                      />
+                      <circle
+                        cx={toX}
+                        cy={toY}
+                        r="4"
+                        fill="rgb(59, 130, 246)"
+                        stroke="white"
+                        strokeWidth="2"
+                        style={{
+                          filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1))',
+                        }}
+                      />
+                    </g>
+                  );
+                })}
               </svg>
 
               {/* Nodes */}
@@ -525,14 +769,41 @@ const Graphible = () => {
                   node={node}
                   isCurrent={node.id === currentNodeId}
                   isStreaming={currentStreamingNodeId === node.id}
+                  isSelected={isNodeSelected(node.id)}
+                  selectionMode={selectionMode}
                   onClick={handleNodeClick}
                   onFeedback={handleFeedback}
                   colorScheme={currentScheme}
                   showPromptCenter={showPromptCenter}
                   generationStatus={generationStatus}
                   uiPersonality={uiPersonality}
+                  // Manipulation handlers
+                  onStartDrag={startNodeDrag}
+                  onStartResize={startNodeResize}
+                  onDelete={deleteNode}
+                  // Selection handlers
+                  onToggleSelection={toggleNodeSelection}
+                  camera={camera}
                 />
               ))}
+
+              {/* Selection box overlay */}
+              {isDragSelecting && (() => {
+                const selectionBox = getSelectionBox();
+                if (!selectionBox) return null;
+
+                return (
+                  <div
+                    className="absolute border-2 border-blue-500 bg-blue-500 bg-opacity-20 pointer-events-none z-20 opacity-10"
+                    style={{
+                      left: selectionBox.x,
+                      top: selectionBox.y,
+                      width: selectionBox.width,
+                      height: selectionBox.height,
+                    }}
+                  />
+                );
+              })()}
             </div>
           </div>
 
@@ -587,6 +858,7 @@ const Graphible = () => {
         setAdaptivePrompts={setAdaptivePrompts}
         nodes={nodes}
         setConnections={setConnections}
+        selectedNodes={selectedNodes}
       />
 
       <SaveLoadModal
@@ -603,8 +875,32 @@ const Graphible = () => {
         showGuide={showInstallationGuide}
         onClose={() => setShowInstallationGuide(false)}
       />
+
+      {/* New Modals - will need to create these components */}
+      {showDeletionStore && (
+        <DeletionStoreModal
+          isOpen={showDeletionStore}
+          onClose={() => setShowDeletionStore(false)}
+          deletedNodes={deletedNodes}
+          onRestoreNode={restoreNode}
+          onPermanentlyDeleteNode={permanentlyDeleteNode}
+        />
+      )}
+
+      {showConnectionManager && (
+        <ConnectionManager
+          isOpen={showConnectionManager}
+          onClose={() => setShowConnectionManager(false)}
+          nodes={nodes}
+          connections={connections}
+          onAddConnection={addConnection}
+          onRemoveConnection={removeConnection}
+        />
+      )}
     </div>
   );
 };
+
+Graphible.displayName = 'Graphible';
 
 export default Graphible;
