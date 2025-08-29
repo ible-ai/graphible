@@ -37,14 +37,6 @@ const GenerationStatusBar = ({ generationStatus, streamingContent }) => {
         </div>
       </div>
 
-      {streamingContent && (
-        <div className="mt-4 p-3 bg-slate-50/80 rounded-xl border border-slate-200/30 max-h-24 overflow-y-auto">
-          <div className="font-mono text-xs text-slate-600 whitespace-pre-wrap leading-relaxed">
-            {streamingContent.substring(Math.max(0, streamingContent.length - 300))}
-            {streamingContent.length > 300 && '...'}
-          </div>
-        </div>
-      )}
     </div>
   );
 };
