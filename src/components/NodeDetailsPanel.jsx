@@ -90,6 +90,7 @@ const NodeDetailsPanel = ({ nodeDetails, onClose, feedbackHistory, uiPersonality
         left: position.x,
         top: position.y,
         width: size.width,
+        zIndex: 4,
       }}
     >
       {/* Header with drag handle */}
