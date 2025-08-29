@@ -403,11 +403,10 @@ const Graphible = () => {
         clickedElement.closest('select') ||
         clickedElement.closest('a');
 
-      if (isInteractiveClick) {
-        return;
-      }
+      if (isInteractiveClick) return;
 
       if (selectionMode) {
+        // Use the fixed coordinate system for drag selection
         startDragSelection(e.clientX, e.clientY, camera);
       } else {
         setIsDragging(true);
@@ -420,14 +419,22 @@ const Graphible = () => {
     };
 
     const handleMouseMove = (e) => {
-      if (isDragSelecting || !isDragging) return;
+      if (isDragSelecting) {
+        updateDragSelection(e.clientX, e.clientY, camera);
+        return;
+      }
 
+      if (!isDragging) return;
+
+      // Fixed camera movement calculation
       const deltaX = e.clientX - dragStart.x;
       const deltaY = e.clientY - dragStart.y;
 
+      // Apply delta in world space, accounting for zoom
       setCameraImmediate(
         camera.x + deltaX / camera.zoom,
-        camera.y + deltaY / camera.zoom
+        camera.y + deltaY / camera.zoom,
+        camera.zoom
       );
 
       setDragStart({ x: e.clientX, y: e.clientY });
@@ -463,7 +470,8 @@ const Graphible = () => {
     isDraggingNode,
     isResizingNode,
     isDragSelecting,
-    startDragSelection
+    startDragSelection,
+    updateDragSelection
   ]);
 
   // Zoom handling
@@ -557,7 +565,6 @@ const Graphible = () => {
               </div>
             </div>
           )}
-
           {/* Header */}
           <div className="absolute top-0 left-0 right-0 z-10 bg-white/80 backdrop-blur-md border-b border-slate-200/50 p-4 shadow-sm">
             <div className="flex items-center justify-between">
@@ -585,8 +592,8 @@ const Graphible = () => {
                       if (selectionMode) toggleSelectionMode();
                     }}
                     className={`flex items-center gap-2 px-3 py-1 rounded-md text-sm transition-all duration-200 ${!selectionMode
-                        ? 'bg-slate-100 text-slate-800'
-                        : 'text-slate-600 hover:text-slate-800'
+                      ? 'bg-slate-100 text-slate-800'
+                      : 'text-slate-600 hover:text-slate-800'
                       }`}
                     title="Normal mode"
                   >
@@ -596,8 +603,8 @@ const Graphible = () => {
                   <button
                     onClick={toggleSelectionMode}
                     className={`flex items-center gap-2 px-3 py-1 rounded-md text-sm transition-all duration-200 ${selectionMode
-                        ? 'bg-blue-100 text-blue-300 opacity-80'
-                        : 'text-slate-600 hover:text-slate-800'
+                      ? 'bg-blue-100 text-blue-300 opacity-80'
+                      : 'text-slate-600 hover:text-slate-800'
                       }`}
                     title="Selection mode"
                   >
@@ -643,7 +650,7 @@ const Graphible = () => {
                   onClick={resetCamera}
                   style={{ fontSize: '12px' }}
                   className="flex items-center gap-2 px-2 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 hover:border-slate-300 transition-all duration-200 shadow-sm"
-                  >
+                >
                   <RotateCcw size={16} />
                   Reset View
                 </button>
@@ -661,21 +668,27 @@ const Graphible = () => {
           </div>
 
           {/* Main Content */}
-          <div className="pt-20 w-full h-full relative">
+          <div className="pt-20 w-full h-full relative overflow-hidden">
+            {/* Background container that handles camera transformation */}
             <div
-              className="relative w-full h-full overflow-visible"
+              className="absolute inset-0 w-full h-full"
               style={{
-                transform: `scale(${camera.zoom}) translate(${camera.x}px, ${camera.y}px)`,
-                transformOrigin: 'center center'
+                transform: `translate(${window.innerWidth / 2 + camera.x * camera.zoom}px, ${window.innerHeight / 2 + camera.y * camera.zoom}px) scale(${camera.zoom})`,
+                transformOrigin: '0 0'
               }}
             >
-              {/* SVG for connections - positioned to match world coordinates */}
+              {/* SVG for connections - positioned in world coordinates */}
               <svg
-                className="absolute top-0 left-0 w-full h-full pointer-events-none"
+                className="absolute inset-0 w-full h-full pointer-events-none"
                 style={{
                   overflow: 'visible',
-                  transform: 'translate(50vw, 50vh)'
+                  // The SVG coordinate system now matches world coordinates
+                  left: -window.innerWidth / 2 / camera.zoom,
+                  top: -window.innerHeight / 2 / camera.zoom,
+                  width: window.innerWidth / camera.zoom,
+                  height: window.innerHeight / camera.zoom
                 }}
+                viewBox={`${-window.innerWidth / 2 / camera.zoom} ${-window.innerHeight / 2 / camera.zoom} ${window.innerWidth / camera.zoom} ${window.innerHeight / camera.zoom}`}
               >
                 <defs>
                   <marker
@@ -685,6 +698,7 @@ const Graphible = () => {
                     refX="9"
                     refY="3.5"
                     orient="auto"
+                    markerUnits="userSpaceOnUse"
                   >
                     <polygon
                       points="0 0, 10 3.5, 0 7"
@@ -710,6 +724,7 @@ const Graphible = () => {
 
                   if (distance === 0) return null;
 
+                  // Create curved path
                   const midX = (fromX + toX) / 2;
                   const midY = (fromY + toY) / 2;
                   const controlOffset = Math.min(distance * 0.15, 60);
@@ -725,7 +740,7 @@ const Graphible = () => {
                       <path
                         d={path}
                         stroke="rgb(148, 163, 184)"
-                        strokeWidth="2"
+                        strokeWidth={2 / camera.zoom} // Scale stroke width with zoom
                         fill="none"
                         strokeOpacity="0.6"
                         markerEnd="url(#arrowhead)"
@@ -738,10 +753,10 @@ const Graphible = () => {
                       <circle
                         cx={fromX}
                         cy={fromY}
-                        r="4"
+                        r={4 / camera.zoom}
                         fill="rgb(148, 163, 184)"
                         stroke="white"
-                        strokeWidth="2"
+                        strokeWidth={2 / camera.zoom}
                         style={{
                           filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1))',
                         }}
@@ -749,10 +764,10 @@ const Graphible = () => {
                       <circle
                         cx={toX}
                         cy={toY}
-                        r="4"
+                        r={4 / camera.zoom}
                         fill="rgb(59, 130, 246)"
                         stroke="white"
-                        strokeWidth="2"
+                        strokeWidth={2 / camera.zoom}
                         style={{
                           filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1))',
                         }}
@@ -762,44 +777,54 @@ const Graphible = () => {
                 })}
               </svg>
 
-              {/* Nodes */}
+              {/* Nodes positioned in world coordinates */}
               {nodes.map(node => (
-                <NodeComponent
+                <div
                   key={node.id}
-                  node={node}
-                  isCurrent={node.id === currentNodeId}
-                  isStreaming={currentStreamingNodeId === node.id}
-                  isSelected={isNodeSelected(node.id)}
-                  selectionMode={selectionMode}
-                  onClick={handleNodeClick}
-                  onFeedback={handleFeedback}
-                  colorScheme={currentScheme}
-                  showPromptCenter={showPromptCenter}
-                  generationStatus={generationStatus}
-                  uiPersonality={uiPersonality}
-                  // Manipulation handlers
-                  onStartDrag={startNodeDrag}
-                  onStartResize={startNodeResize}
-                  onDelete={deleteNode}
-                  // Selection handlers
-                  onToggleSelection={toggleNodeSelection}
-                  camera={camera}
-                />
+                  style={{
+                    position: 'absolute',
+                    left: node.worldX,
+                    top: node.worldY,
+                    transform: 'translate(-50%, -50%)' // Center the node on its world position
+                  }}
+                >
+                  <NodeComponent
+                    node={node}
+                    isCurrent={node.id === currentNodeId}
+                    isStreaming={currentStreamingNodeId === node.id}
+                    isSelected={isNodeSelected(node.id)}
+                    selectionMode={selectionMode}
+                    onClick={handleNodeClick}
+                    onFeedback={handleFeedback}
+                    colorScheme={currentScheme}
+                    showPromptCenter={showPromptCenter}
+                    generationStatus={generationStatus}
+                    uiPersonality={uiPersonality}
+                    // Manipulation handlers
+                    onStartDrag={startNodeDrag}
+                    onStartResize={startNodeResize}
+                    onDelete={deleteNode}
+                    // Selection handlers
+                    onToggleSelection={toggleNodeSelection}
+                    camera={camera}
+                  />
+                </div>
               ))}
 
-              {/* Selection box overlay */}
+              {/* Selection box overlay - positioned in world coordinates */}
               {isDragSelecting && (() => {
                 const selectionBox = getSelectionBox();
                 if (!selectionBox) return null;
 
                 return (
                   <div
-                    className="absolute border-2 border-blue-500 bg-blue-500 bg-opacity-20 pointer-events-none z-20 opacity-10"
+                    className="absolute border-2 border-blue-500 bg-blue-500 bg-opacity-20 pointer-events-none z-20"
                     style={{
                       left: selectionBox.x,
                       top: selectionBox.y,
                       width: selectionBox.width,
                       height: selectionBox.height,
+                      opacity: 0.3
                     }}
                   />
                 );
@@ -807,6 +832,7 @@ const Graphible = () => {
             </div>
           </div>
 
+          {/* UI panels that stay in screen coordinates */}
           <NodeDetailsPanel
             nodeDetails={nodeDetails}
             onClose={() => setNodeDetails(null)}

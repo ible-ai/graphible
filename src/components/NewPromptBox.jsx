@@ -66,13 +66,16 @@ const NewPromptBox = ({
         }
       }
 
-      // Selected nodes context
+      // Selected nodes context - use the actual node objects
       if (includeSelectedNodes && selectedNodes.length > 0) {
         contextString += ` Additionally, please consider these selected nodes as context:\n`;
-        selectedNodes.forEach((node, index) => {
-          contextString += `${index + 1}. "${node.label}" (ID: ${node.id}): ${node.description}\n`;
-          if (node.content && node.content.length > 0) {
-            contextString += `   Content: ${node.content}\n`;
+        selectedNodes.forEach((nodeId, index) => {
+          const node = nodes.find(n => n.id === nodeId);
+          if (node) {
+            contextString += `${index + 1}. "${node.label}" (ID: ${node.id}): ${node.description}\n`;
+            if (node.content && node.content.length > 0) {
+              contextString += `   Content: ${node.content}\n`;
+            }
           }
         });
       }

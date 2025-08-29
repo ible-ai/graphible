@@ -1,6 +1,7 @@
 // Hook for handling node selection for context inclusion with drag selection
-import { useState, useCallback } from 'react';
-import { worldToScreen } from '../utils/coordinateUtils';
+
+import { useState, useCallback, useRef, useEffect } from 'react';
+import { screenToWorld } from '../utils/coordinateUtils';
 
 export const useNodeSelection = () => {
   const [selectedNodes, setSelectedNodes] = useState(new Set());
@@ -8,6 +9,55 @@ export const useNodeSelection = () => {
   const [isDragSelecting, setIsDragSelecting] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [dragEnd, setDragEnd] = useState({ x: 0, y: 0 });
+
+  // Memory management: Track refs to avoid stale closures
+  const currentNodesRef = useRef(new Set());
+  const cleanupTimeoutRef = useRef(null);
+  const lastCleanupRef = useRef(0);
+
+  // Cleanup function to remove invalid selections
+  const cleanupInvalidSelections = useCallback((validNodeIds) => {
+    const validIds = new Set(validNodeIds);
+    currentNodesRef.current = validIds;
+
+    setSelectedNodes(prev => {
+      const cleaned = new Set();
+      for (const nodeId of prev) {
+        if (validIds.has(nodeId)) {
+          cleaned.add(nodeId);
+        }
+      }
+      return cleaned.size !== prev.size ? cleaned : prev;
+    });
+  }, []);
+
+  // Debounced cleanup to avoid excessive calls
+  const scheduleCleanup = useCallback((validNodeIds) => {
+    const now = Date.now();
+    // Throttle cleanup calls to max once per 200ms
+    if (now - lastCleanupRef.current < 200) {
+      return;
+    }
+    lastCleanupRef.current = now;
+
+    if (cleanupTimeoutRef.current) {
+      clearTimeout(cleanupTimeoutRef.current);
+    }
+
+    cleanupTimeoutRef.current = setTimeout(() => {
+      cleanupInvalidSelections(validNodeIds);
+      cleanupTimeoutRef.current = null;
+    }, 100);
+  }, [cleanupInvalidSelections]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (cleanupTimeoutRef.current) {
+        clearTimeout(cleanupTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Toggle selection mode on/off
   const toggleSelectionMode = useCallback(() => {
@@ -24,7 +74,10 @@ export const useNodeSelection = () => {
 
   // Auto-select nodes from the most recent generation batch
   const autoSelectRecentBatch = useCallback((nodes, currentBatchId) => {
-    if (!Array.isArray(nodes)) return;
+    if (!Array.isArray(nodes) || nodes.length === 0) return;
+
+    const validNodeIds = nodes.map(n => n.id);
+    scheduleCleanup(validNodeIds);
 
     // Find the most recent batch ID
     const maxBatchId = Math.max(...nodes.map(n => n.batchId || 0));
@@ -36,22 +89,12 @@ export const useNodeSelection = () => {
       .map(node => node.id);
 
     setSelectedNodes(new Set(recentNodeIds));
-  }, []);
+  }, [scheduleCleanup]);
 
-  // FIXME
-  const clientToWorldCoords = (clientX, clientY, camera) => {
-    console.log(clientX, clientY);
-    const worldX = (clientX - window.innerWidth / 2) / camera.zoom - 2 * camera.x;
-    const worldY = (clientY - window.innerHeight / 2) / camera.zoom - (1 - 1/camera.zoom) * camera.y / 2;
-    const pos = worldToScreen(worldX, worldY);
-    // const x = (clientX - (window.innerWidth / 2 + camera.x) * (1 - camera.zoom)) / camera.zoom;
-    // const y = (clientY - (window.innerHeight / 2 + camera.y) * (1 - camera.zoom)) / camera.zoom;// + (camera.zoom - 4 ) *  camera.y;
-    // const worldX = (clientX - (window.innerWidth / 2) * (1 - camera.zoom) + camera.x) / camera.zoom;
-    // const worldX = (clientX - window.innerWidth / 2) * (1 - camera.zoom) / camera.zoom;
-    // const worldY = (clientY - (window.innerHeight / 2) * (1 - camera.zoom) + camera.y) / camera.zoom;// + (camera.zoom - 4 ) *  camera.y;
-    // return { x: x, y: y };
-    return pos;
-  };
+  // Fixed coordinate conversion using the new coordinate system
+  const clientToWorldCoords = useCallback((clientX, clientY, camera) => {
+    return screenToWorld(clientX, clientY, camera);
+  }, []);
 
   // Start drag selection
   const startDragSelection = useCallback((clientX, clientY, camera) => {
@@ -60,7 +103,7 @@ export const useNodeSelection = () => {
     const coords = clientToWorldCoords(clientX, clientY, camera);
     setDragStart(coords);
     setDragEnd(coords);
-  }, [selectionMode]);
+  }, [selectionMode, clientToWorldCoords]);
 
   // Update drag selection
   const updateDragSelection = useCallback((clientX, clientY, camera) => {
@@ -68,9 +111,8 @@ export const useNodeSelection = () => {
 
     // Convert screen coordinates to world coordinates
     const coords = clientToWorldCoords(clientX, clientY, camera);
-
     setDragEnd(coords);
-  }, [isDragSelecting]);
+  }, [isDragSelecting, clientToWorldCoords]);
 
   // End drag selection and select nodes in area
   const endDragSelection = useCallback((nodes) => {
@@ -82,6 +124,10 @@ export const useNodeSelection = () => {
       console.warn('endDragSelection: nodes is not an array:', nodes);
       return;
     }
+
+    // Clean up selections before adding new ones
+    const validNodeIds = nodes.map(n => n.id);
+    scheduleCleanup(validNodeIds);
 
     const minX = Math.min(dragStart.x, dragEnd.x);
     const maxX = Math.max(dragStart.x, dragEnd.x);
@@ -103,7 +149,7 @@ export const useNodeSelection = () => {
       nodeIds.forEach(id => newSet.add(id));
       return newSet;
     });
-  }, [isDragSelecting, dragStart, dragEnd]);
+  }, [isDragSelecting, dragStart, dragEnd, scheduleCleanup]);
 
   // Toggle selection of a specific node
   const toggleNodeSelection = useCallback((nodeId) => {
@@ -142,19 +188,73 @@ export const useNodeSelection = () => {
     };
   }, [isDragSelecting, dragStart, dragEnd]);
 
+  // Enhanced selector that returns actual node objects, not just IDs
+  const getSelectedNodeObjects = useCallback((allNodes) => {
+    if (!Array.isArray(allNodes)) return [];
+
+    return allNodes.filter(node => selectedNodes.has(node.id));
+  }, [selectedNodes]);
+
+  // Batch select nodes by IDs
+  const selectNodes = useCallback((nodeIds) => {
+    if (!Array.isArray(nodeIds)) return;
+
+    setSelectedNodes(prev => {
+      const newSet = new Set(prev);
+      nodeIds.forEach(id => newSet.add(id));
+      return newSet;
+    });
+  }, []);
+
+  // Batch deselect nodes by IDs
+  const deselectNodes = useCallback((nodeIds) => {
+    if (!Array.isArray(nodeIds)) return;
+
+    setSelectedNodes(prev => {
+      const newSet = new Set(prev);
+      nodeIds.forEach(id => newSet.delete(id));
+      return newSet;
+    });
+  }, []);
+
+  // Select all visible nodes
+  const selectAllNodes = useCallback((allNodes) => {
+    if (!Array.isArray(allNodes)) return;
+
+    const allNodeIds = allNodes.map(node => node.id);
+    setSelectedNodes(new Set(allNodeIds));
+  }, []);
+
   return {
+    // State
     selectedNodes,
     selectionMode,
     isDragSelecting,
+    selectedCount: selectedNodes.size,
+
+    // Mode management
     toggleSelectionMode,
+
+    // Selection management
     toggleNodeSelection,
     isNodeSelected,
     clearSelections,
+    selectNodes,
+    deselectNodes,
+    selectAllNodes,
+
+    // Batch operations
     autoSelectRecentBatch,
+    getSelectedNodeObjects,
+
+    // Drag selection
     startDragSelection,
     updateDragSelection,
     endDragSelection,
     getSelectionBox,
-    selectedCount: selectedNodes.size
+
+    // Memory management
+    cleanupInvalidSelections,
+    scheduleCleanup
   };
 };

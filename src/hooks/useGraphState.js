@@ -1,8 +1,10 @@
-// Graph nodes, connections, and LLM generation - FIXED VERSION
-import { useState, useEffect, useCallback } from 'react';
+// Complete useGraphState.js - Full Implementation with memory management
+// This is a complete replacement for your existing useGraphState.js
+
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { NODE_SIZE } from '../constants/graphConstants';
 import { applyForceDirectedLayout, calculateNodePosition } from '../utils/coordinateUtils';
-import { extractJsonFromLlmResponse, validateNodeJson, debugJsonParsing } from '../utils/llmUtils';
+import { extractJsonFromLlmResponse, validateNodeJson, debugJsonParsing, createFallbackNode } from '../utils/llmUtils';
 
 export const useGraphState = (generateWithLLM) => {
   const [nodes, setNodes] = useState([]);
@@ -13,7 +15,8 @@ export const useGraphState = (generateWithLLM) => {
   const [streamingContent, setStreamingContent] = useState('');
   const [currentStreamingNodeId, setCurrentStreamingNodeId] = useState(null);
 
-  const [generationStatus, setGenerationStatus] = useState({
+  // Memory optimization: Use refs for values that don't need to trigger re-renders
+  const generationStateRef = useRef({
     isGenerating: false,
     currentNodeId: null,
     tokensGenerated: 0,
@@ -21,32 +24,68 @@ export const useGraphState = (generateWithLLM) => {
     elapsedTime: 0
   });
 
-  // Timer for generation status
+  const [generationStatus, setGenerationStatus] = useState(generationStateRef.current);
+
+  // Cleanup intervals on unmount
+  const intervalRef = useRef(null);
+  const abortControllerRef = useRef(null);
+
   useEffect(() => {
-    let interval;
-    if (generationStatus.isGenerating && generationStatus.startTime) {
-      interval = setInterval(() => {
-        setGenerationStatus(prev => ({
-          ...prev,
-          elapsedTime: Date.now() - prev.startTime
-        }));
-      }, 1000);
-    }
     return () => {
-      if (interval) clearInterval(interval);
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
+
+  // Timer for generation status with cleanup
+  useEffect(() => {
+    if (generationStatus.isGenerating && generationStatus.startTime) {
+      intervalRef.current = setInterval(() => {
+        const newElapsedTime = Date.now() - generationStatus.startTime;
+
+        setGenerationStatus(prev => {
+          const updated = { ...prev, elapsedTime: newElapsedTime };
+          generationStateRef.current = updated;
+          return updated;
+        });
+      }, 1000);
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    }
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
     };
   }, [generationStatus.isGenerating, generationStatus.startTime]);
 
-  const createNode = (id, label, type, description, content, prevWorldX, prevWorldY, batchId, parentNodeId, nodeDepth, context = '', preceedingSiblingNodes = []) => {
-    let position;
-    position = calculateNodePosition(content, description, preceedingSiblingNodes, nodeDepth);
+  // Memoized node lookup for better performance
+  const nodeMap = useMemo(() => {
+    const map = new Map();
+    nodes.forEach(node => map.set(node.id, node));
+    return map;
+  }, [nodes]);
+
+  // Optimized node creation with memory pooling considerations
+  const createNode = useCallback((id, label, type, description, content, prevWorldX, prevWorldY, batchId, parentNodeId, nodeDepth, context = '', preceedingSiblingNodes = []) => {
+    let position = calculateNodePosition(content, description, preceedingSiblingNodes, nodeDepth);
 
     if (preceedingSiblingNodes.length === 0 && prevWorldX !== undefined && prevWorldY !== undefined) {
       position.worldX += prevWorldX;
       position.worldY += prevWorldY;
     }
 
-    return {
+    // Return frozen object to prevent accidental mutations
+    return Object.freeze({
       id: Number(id),
       label: label || `Node ${id}`,
       type: type || 'concept',
@@ -59,14 +98,37 @@ export const useGraphState = (generateWithLLM) => {
       parentNodeId: parentNodeId,
       depth: nodeDepth,
       width: NODE_SIZE.width,
-    };
-  };
+      // Add timestamp for debugging and potential cleanup
+      createdAt: Date.now()
+    });
+  }, []);
 
-  const addNode = (nodeData) => {
-    setNodes(prev => [...prev, nodeData]);
-  };
+  const addNode = useCallback((nodeData) => {
+    setNodes(prev => {
+      // Prevent duplicate nodes
+      if (prev.some(node => node.id === nodeData.id)) {
+        console.warn(`Attempted to add duplicate node: ${nodeData.id}`);
+        return prev;
+      }
+      return [...prev, nodeData];
+    });
+  }, []);
 
-  const resetGraph = () => {
+  // Enhanced reset with proper cleanup
+  const resetGraph = useCallback(() => {
+    // Clear any ongoing intervals
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+
+    // Abort any ongoing generation
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+
+    // Reset all state
     setNodes([]);
     setConnections([]);
     setCurrentNodeId(null);
@@ -74,14 +136,36 @@ export const useGraphState = (generateWithLLM) => {
     setCurrentStreamingNodeId(null);
     setGenerationBatch(0);
     setCurrNodeDepth(0);
-    setGenerationStatus({
+
+    const resetStatus = {
       isGenerating: false,
       currentNodeId: null,
       tokensGenerated: 0,
       startTime: null,
       elapsedTime: 0
-    });
-  };
+    };
+
+    generationStateRef.current = resetStatus;
+    setGenerationStatus(resetStatus);
+  }, []);
+
+  // Optimized connection cleanup
+  const cleanupOrphanedConnections = useCallback(() => {
+    const nodeIds = new Set(nodes.map(n => n.id));
+
+    setConnections(prev =>
+      prev.filter(conn =>
+        nodeIds.has(conn.from) && nodeIds.has(conn.to)
+      )
+    );
+  }, [nodes]);
+
+  // Automatic cleanup when nodes change
+  useEffect(() => {
+    if (nodes.length > 0) {
+      cleanupOrphanedConnections();
+    }
+  }, [nodes, cleanupOrphanedConnections]);
 
   const parseStreamResponse = (chunk) => {
     try {
@@ -127,14 +211,28 @@ export const useGraphState = (generateWithLLM) => {
     }
   };
 
+  const updateGenerationStatus = useCallback((updates) => {
+    setGenerationStatus(prev => {
+      const updated = { ...prev, ...updates };
+      generationStateRef.current = updated;
+      return updated;
+    });
+  }, []);
+
   const generateGraphWithLLM = async (prompt, prevWorldX = null, prevWorldY = null, modelConfig) => {
     console.log('generateGraphWithLLM starting with prompt:', prompt);
     console.log('Using model config:', modelConfig);
 
+    // Create new abort controller for this generation
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    abortControllerRef.current = new AbortController();
+
     const currentBatch = generationBatch;
     setGenerationBatch(prev => prev + 1);
 
-    setGenerationStatus({
+    updateGenerationStatus({
       isGenerating: true,
       currentNodeId: null,
       tokensGenerated: 0,
@@ -144,6 +242,7 @@ export const useGraphState = (generateWithLLM) => {
 
     let preceedingSiblingNodes = [];
     let rawResponseBuffer = '';
+    let fallbackNodeCount = 0;
 
     try {
       const fullPrompt = `Generate a structured learning graph that provides a step-by-step response to: ${prompt}.
@@ -184,6 +283,12 @@ Your response must be completely JSON parseable so never include excess characte
       let lastProcessedLength = 0;
 
       while (true) {
+        // Check for abort signal
+        if (abortControllerRef.current?.signal.aborted) {
+          console.log('Generation aborted by user');
+          break;
+        }
+
         const { done, value } = await reader.read();
         if (done) {
           console.log('Stream finished');
@@ -199,14 +304,28 @@ Your response must be completely JSON parseable so never include excess characte
                 newNodeCount++;
               } else {
                 console.warn('Invalid final node JSON:', validation.error);
+                // Create fallback node from remaining content
+                const fallbackNode = createFallbackNode(remainingContent, nodes.length + newNodeCount);
+                await processNewNode(fallbackNode, newNodeCount, currentBatch, prevWorldX, prevWorldY, preceedingSiblingNodes);
+                newNodeCount++;
+                fallbackNodeCount++;
               }
+            } else if (remainingContent.trim().length > 20) {
+              // Create fallback node if we have substantial remaining content
+              const fallbackNode = createFallbackNode(remainingContent, nodes.length + newNodeCount);
+              await processNewNode(fallbackNode, newNodeCount, currentBatch, prevWorldX, prevWorldY, preceedingSiblingNodes);
+              newNodeCount++;
+              fallbackNodeCount++;
             }
           }
 
-          setGenerationStatus(prev => ({ ...prev, isGenerating: false }));
+          updateGenerationStatus({ isGenerating: false });
           setStreamingContent('');
           setCurrentStreamingNodeId(null);
           setCurrNodeDepth(prev => (prev + 1));
+
+          // Log generation summary
+          console.log(`Generation complete: ${newNodeCount} nodes created${fallbackNodeCount > 0 ? ` (${fallbackNodeCount} fallback nodes)` : ''}`);
           break;
         }
 
@@ -215,7 +334,7 @@ Your response must be completely JSON parseable so never include excess characte
 
         if (!chunk) continue;
 
-        setGenerationStatus(prev => ({
+        updateGenerationStatus(prev => ({
           ...prev,
           tokensGenerated: prev.tokensGenerated + chunk.split(' ').length
         }));
@@ -233,11 +352,15 @@ Your response must be completely JSON parseable so never include excess characte
           const validation = validateNodeJson(parsedData);
           if (!validation.valid) {
             console.warn('Invalid node JSON:', validation.error, parsedData);
-            continue;
+            // Try to create a fallback node
+            const fallbackNode = createFallbackNode(JSON.stringify(parsedData), nodes.length + newNodeCount);
+            await processNewNode(fallbackNode, newNodeCount, currentBatch, prevWorldX, prevWorldY, preceedingSiblingNodes);
+            newNodeCount++;
+            fallbackNodeCount++;
+          } else {
+            await processNewNode(parsedData, newNodeCount, currentBatch, prevWorldX, prevWorldY, preceedingSiblingNodes);
+            newNodeCount++;
           }
-
-          await processNewNode(parsedData, newNodeCount, currentBatch, prevWorldX, prevWorldY, preceedingSiblingNodes);
-          newNodeCount++;
 
           // Update buffer and tracking
           rawResponseBuffer = newRawResponseBuffer;
@@ -251,10 +374,26 @@ Your response must be completely JSON parseable so never include excess characte
       if (rawResponseBuffer) {
         console.error('Raw response buffer at error:', rawResponseBuffer.substring(0, 500));
         debugJsonParsing(rawResponseBuffer);
+
+        // Try to create at least one fallback node from the failed response
+        if (rawResponseBuffer.trim().length > 20) {
+          const fallbackNode = createFallbackNode(rawResponseBuffer, nodes.length);
+          await processNewNode(fallbackNode, 0, currentBatch, prevWorldX, prevWorldY, preceedingSiblingNodes);
+        }
       }
 
-      setGenerationStatus(prev => ({ ...prev, isGenerating: false, currentNodeId: null }));
-      alert(`Failed to generate graph: ${error.message}\n\nPlease check your model configuration and connection.`);
+      updateGenerationStatus({ isGenerating: false, currentNodeId: null });
+
+      // More user-friendly error message
+      const errorMessage = error.name === 'AbortError' ?
+        'Generation was cancelled.' :
+        `Failed to generate graph: ${error.message}\n\nPlease check your model configuration and connection.`;
+
+      if (error.name !== 'AbortError') {
+        alert(errorMessage);
+      }
+    } finally {
+      abortControllerRef.current = null;
     }
   };
 
@@ -269,19 +408,57 @@ Your response must be completely JSON parseable so never include excess characte
     }
   }, [nodes, connections]);
 
+  // Method to cancel ongoing generation
+  const cancelGeneration = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+  }, []);
+
+  // Method to get node by ID efficiently
+  const getNodeById = useCallback((nodeId) => {
+    return nodeMap.get(nodeId) || null;
+  }, [nodeMap]);
+
+  // Method to get connected nodes
+  const getConnectedNodes = useCallback((nodeId) => {
+    const connectedIds = new Set();
+    connections.forEach(conn => {
+      if (conn.from === nodeId) connectedIds.add(conn.to);
+      if (conn.to === nodeId) connectedIds.add(conn.from);
+    });
+
+    return Array.from(connectedIds).map(id => nodeMap.get(id)).filter(Boolean);
+  }, [connections, nodeMap]);
+
   return {
+    // State
     nodes,
     connections,
     generationStatus,
     streamingContent,
     currentNodeId,
     currentStreamingNodeId,
+    nodeMap, // Expose the optimized node lookup
+
+    // State setters
     setCurrentNodeId,
+    setConnections,
+    setNodes,
+
+    // Node operations
     addNode,
+    createNode,
+    getNodeById,
+    getConnectedNodes,
+
+    // Graph operations
     resetGraph,
     generateWithLLM: generateGraphWithLLM,
     applyLayoutOptimization,
-    setConnections,
-    setNodes
+    cancelGeneration,
+
+    // Cleanup
+    cleanupOrphanedConnections
   };
 };

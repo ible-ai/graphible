@@ -3,19 +3,58 @@
 import * as d3 from 'd3-force';
 import { WORLD_CENTER, NODE_SIZE, NODE_SPACING, VIEWPORT_CENTER, RAD_PER_DEPTH } from '../constants/graphConstants';
 
-export const worldToScreen = (worldX, worldY) => ({
-  x: worldX + VIEWPORT_CENTER.x,
-  y: worldY + VIEWPORT_CENTER.y
-});
+// Core coordinate transformation functions
+export const worldToScreen = (worldX, worldY, camera = { x: 0, y: 0, zoom: 1 }) => {
+  // Apply camera transformation: translate by camera position, then scale by zoom
+  const screenX = (worldX + camera.x) * camera.zoom + window.innerWidth / 2;
+  const screenY = (worldY + camera.y) * camera.zoom + window.innerHeight / 2;
+
+  return { x: screenX, y: screenY };
+};
+
+export const screenToWorld = (screenX, screenY, camera = { x: 0, y: 0, zoom: 1 }) => {
+  // Reverse the worldToScreen transformation
+  const worldX = (screenX - window.innerWidth / 2) / camera.zoom - camera.x;
+  const worldY = (screenY - window.innerHeight / 2) / camera.zoom - camera.y;
+
+  return { x: worldX, y: worldY };
+};
+
+// Fixed client coordinates to world coordinates conversion
+export const clientToWorld = (clientX, clientY, camera = { x: 0, y: 0, zoom: 1 }) => {
+  return screenToWorld(clientX, clientY, camera);
+};
+
+// Get the world-space bounds of the viewport
+export const getViewportBounds = (camera = { x: 0, y: 0, zoom: 1 }) => {
+  const topLeft = screenToWorld(0, 0, camera);
+  const bottomRight = screenToWorld(window.innerWidth, window.innerHeight, camera);
+
+  return {
+    left: topLeft.x,
+    top: topLeft.y,
+    right: bottomRight.x,
+    bottom: bottomRight.y,
+    width: bottomRight.x - topLeft.x,
+    height: bottomRight.y - topLeft.y
+  };
+};
+
+// Check if a world coordinate is visible in the current viewport
+export const isWorldPointVisible = (worldX, worldY, camera = { x: 0, y: 0, zoom: 1 }, margin = 0) => {
+  const bounds = getViewportBounds(camera);
+  return worldX >= bounds.left - margin &&
+         worldX <= bounds.right + margin &&
+         worldY >= bounds.top - margin &&
+         worldY <= bounds.bottom + margin;
+};
 
 export const depthToScalar = (depth) => {
-
   const rads = depth * RAD_PER_DEPTH + Math.PI;
   return { y: Math.cos(rads), x: Math.sin(rads) };
 };
 
 export const calculateNodePosition = (newNodeContent, newNodeDescription, preceedingSiblingNodes, depth) => {
-
   const estimatedNewDimensions = estimateNewNodeDimensions(newNodeContent, newNodeDescription);
   let horizontalSpacing = NODE_SPACING.x;
   let verticalSpacing = NODE_SPACING.x;
@@ -49,16 +88,15 @@ export const calculateNodePosition = (newNodeContent, newNodeDescription, precee
   };
 };
 
-export const getCurrentElementDimensions = (id, prefix) => {
+export const getCurrentElementDimensions = (id, prefix = 'node-') => {
   const elementId = `${prefix}${id}`;
   const element = document.getElementById(elementId);
   if (element == null) {
     return { width: NODE_SIZE.width, height: NODE_SIZE.height };
   }
-  const to_return = { width: element.clientWidth, height: element.clientHeight };
-  console.log(to_return);
-  return to_return;
-}
+  const rect = element.getBoundingClientRect();
+  return { width: rect.width, height: rect.height };
+};
 
 // TODO cache the node size at rendering time and tie it to the node object.
 export const getCurrentNodeDimensions = (node) => {
