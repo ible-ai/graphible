@@ -156,9 +156,9 @@ export const useLLMConnection = () => {
 
         const processChunk = (chunk) => {
           let text = '';
-          for (let candIdx = 0; candIdx < chunk.candidates.length ; candIdx++) {
+          for (let candIdx = 0; candIdx < chunk.candidates.length; candIdx++) {
             const parts = chunk.candidates[candIdx].content.parts;
-            for (let partIdx = 0; partIdx < parts.length ; partIdx++) {
+            for (let partIdx = 0; partIdx < parts.length; partIdx++) {
               text += parts[partIdx].text;
             }
           }
@@ -203,12 +203,19 @@ export const useLLMConnection = () => {
           }
         });
 
-        const text = response.text();
+        if (response === null) {
+
+          return {
+            ok: false,
+            json: async () => ({ response: '' }),
+            status: 200
+          };
+        }
 
         // Create a response that matches the expected format
         return {
           ok: true,
-          json: async () => ({ response: text }),
+          json: async () => ({ response: response.text }),
           status: 200
         };
       }
@@ -216,7 +223,7 @@ export const useLLMConnection = () => {
     throw new Error('Unsupported external provider');
   };
 
-  const handleModelChange = (newConfig) => {
+  const handleModelChange = useCallback((newConfig) => {
     console.log('handleModelChange called with:', newConfig);
     setCurrentModel(newConfig);
     // Save to localStorage for persistence
@@ -226,7 +233,7 @@ export const useLLMConnection = () => {
     if (newConfig.type === 'external' && newConfig.apiKey) {
       localStorage.setItem('graphible-google-api-key', newConfig.apiKey);
     }
-  };
+  }, []);
 
   // Load saved model config on initialization
   const loadSavedConfig = useCallback(() => {

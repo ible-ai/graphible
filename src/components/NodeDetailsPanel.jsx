@@ -3,6 +3,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { X, Move } from 'lucide-react';
 import ReactMarkdown from "react-markdown";
+import RemarkMathPlugin from 'remark-math';
+import RehypeKatex from 'rehype-katex';
+
 
 const NodeDetailsPanel = ({ nodeDetails, onClose, feedbackHistory, uiPersonality }) => {
   const [position, setPosition] = useState({ x: 24, y: 120 });
@@ -116,7 +119,10 @@ const NodeDetailsPanel = ({ nodeDetails, onClose, feedbackHistory, uiPersonality
           style={{ height: size.height - 90 }}
         >
           <div className="text-slate-700 text-sm leading-relaxed prose prose-slate max-w-none">
-            <ReactMarkdown>{nodeDetails.content}</ReactMarkdown>
+            <ReactMarkdown
+              remarkPlugins={[RemarkMathPlugin]}
+              rehypePlugins={[RehypeKatex]}
+            >{nodeDetails.content}</ReactMarkdown>
           </div>
 
           {/* Feedback history for this node */}

@@ -192,9 +192,9 @@ const NodeComponent = memo(({
         style={{
           color: nodeStyles.color,
           opacity: 0.8,
-          wordWrap: 'break-word',
-          overflowWrap: 'break-word',
-          hyphens: 'auto',
+          // wordWrap: 'break-word',
+          // overflowWrap: 'break-word',
+          // hyphens: 'auto',
           maxHeight: `${height - 120}px` // Leave space for header and controls
         }}
       >

@@ -1,7 +1,7 @@
 // Initial prompt interface
 
 import { useEffect, useState, useCallback } from 'react';
-import { Brain, FolderOpen, Globe, Zap, Server, HelpCircle } from 'lucide-react';
+import { Brain, FolderOpen, Globe, Zap, Server, Settings } from 'lucide-react';
 import ModelSelector from './ModelSelector';
 
 const CenteredPrompt = ({
@@ -13,7 +13,8 @@ const CenteredPrompt = ({
   onShowInstallationGuide,
   currentModel,
   onModelChange,
-  onTestConnection
+  onTestConnection,
+  onShowSetupWizard
 }) => {
   const [inputPrompt, setInputPrompt] = useState(
     'I want to understand the transformer architecture.'
@@ -131,12 +132,12 @@ const CenteredPrompt = ({
               Load
             </button>
             <button
-              onClick={onShowInstallationGuide}
+              onClick={onShowSetupWizard}
               className="px-6 py-4 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-xl hover:bg-indigo-100 hover:border-indigo-300 flex items-center gap-3 transition-all duration-200 shadow-sm font-inter"
-              title="Setup Guide"
+              title="Setup Wizard"
             >
-              <HelpCircle size={18} />
-              Help
+              <Settings size={18} />
+              Setup
             </button>
           </div>
 

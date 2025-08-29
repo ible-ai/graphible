@@ -1,7 +1,7 @@
 // Main application
 
 import { useState, useEffect, useCallback } from 'react';
-import { Brain, RotateCcw, Save, Circle, MousePointer, Link, Trash2, Target } from 'lucide-react';
+import { Brain, RotateCcw, Save, Circle, MousePointer, Link, Trash2, Target, CircleQuestionMark } from 'lucide-react';
 
 // Import custom hooks
 import { useCamera } from './hooks/useCamera';
@@ -26,9 +26,11 @@ import ModelSelector from './components/ModelSelector';
 import InstallationGuide from './components/InstallationGuide';
 import DeletionStoreModal from './components/DeletionStoreModal';
 import ConnectionManager from './components/ConnectionManager';
+import SetupWizard from './components/SetupWizard/SetupWizard';
 
 // Import constants and utilities
 import { colorSchemes } from './constants/graphConstants';
+import { loadSetupConfig } from './utils/setupWizardUtils';
 
 const Graphible = () => {
   // Core state
@@ -107,6 +109,10 @@ const Graphible = () => {
 
   // Custom hooks
   const { camera, setCameraImmediate, setCameraTarget } = useCamera();
+
+  // Add these state variables to your App component:
+  const [showSetupWizard, setShowSetupWizard] = useState(false);
+  const [isFirstRun, setIsFirstRun] = useState(false);
 
   const {
     llmConnected,
@@ -198,6 +204,120 @@ const Graphible = () => {
     showFeedbackModal: showFeedbackModal !== null
   });
 
+  // Add this useEffect to check for first run (add to your existing useEffects)
+  useEffect(() => {
+    const setupConfig = loadSetupConfig();
+    if (!setupConfig.isComplete) {
+      setIsFirstRun(true);
+      setShowSetupWizard(true);
+    }
+  }, []);
+
+  // Modify your existing LLM connection initialization useEffect:
+  useEffect(() => {
+    const initializeConnection = async () => {
+      let setupConfig = null;
+      setTimeout(() => {
+        setupConfig = loadSetupConfig();
+      }, 2000);
+      if (setupConfig === null || setupConfig?.isComplete) return;
+
+      if (setupConfig.isComplete && setupConfig.config) {
+        // Use saved setup configuration
+        const savedConfig = setupConfig.config;
+        console.log('Using saved setup config:', savedConfig);
+
+        if (savedConfig.type === 'external' && savedConfig.provider === 'google' && !savedConfig.apiKey) {
+          const savedApiKey = localStorage.getItem('graphible-google-api-key');
+          if (savedApiKey) {
+            const updatedConfig = { ...savedConfig, apiKey: savedApiKey };
+            handleModelChange(updatedConfig);
+            console.log('Updated config with saved API key:', updatedConfig);
+          }
+        } else {
+          handleModelChange(savedConfig);
+        }
+
+        if (!hasTestedInitially) {
+          await testLLMConnection(savedConfig);
+        }
+      } else if (!showSetupWizard) {
+        // Fallback to legacy configuration loading
+        const legacyConfig = loadSavedConfig();
+        console.log('App initialization - loaded legacy config:', legacyConfig);
+
+        if (legacyConfig.type === 'external' && legacyConfig.provider === 'google' && !legacyConfig.apiKey) {
+          const savedApiKey = localStorage.getItem('graphible-google-api-key');
+          if (savedApiKey) {
+            const updatedConfig = { ...legacyConfig, apiKey: savedApiKey };
+            handleModelChange(updatedConfig);
+            console.log('Updated legacy config with saved API key:', updatedConfig);
+          }
+        }
+
+        if (!hasTestedInitially) {
+          await testLLMConnection(legacyConfig);
+        }
+      }
+    };
+
+    if (!isFirstRun) {
+      initializeConnection();
+    }
+  }, [loadSavedConfig, handleModelChange, testLLMConnection, hasTestedInitially, isFirstRun, showSetupWizard]);
+
+  // Add these handler functions to your App component:
+  const handleSetupComplete = useCallback((config) => {
+    console.log('Setup completed with config:', config);
+    setIsFirstRun(false);
+
+    if (config.type !== 'demo') {
+      handleModelChange(config);
+      // Test the connection
+      setTimeout(() => testLLMConnection(config), 500);
+    }
+  }, [handleModelChange, testLLMConnection]);
+
+  const handleSetupClose = useCallback(() => {
+    setShowSetupWizard(false);
+
+    // If this was first run and they closed without completing,
+    // show the regular centered prompt
+    if (isFirstRun) {
+      setIsFirstRun(false);
+      // The regular prompt will show since no model is configured
+    }
+  }, [isFirstRun]);
+
+  const handleLoadDemoGraph = useCallback((demoData) => {
+    // Load the demo graph data
+    resetGraph();
+    demoData.nodes.forEach(node => addNode(node));
+    setCurrentNodeId(demoData.currentNodeId);
+    setInitialPromptText(demoData.name);
+    setShowPromptCenter(false);
+    setNodeDetails(null);
+    clearSelections();
+
+    // Reset UI personality for demo
+    setUiPersonality(prevUiPersonality => ({
+      ...prevUiPersonality,
+      theme: 'tech',
+      colorScheme: 'blue',
+      fontFamily: 'system',
+      customCSS: ''
+    }));
+    setAdaptivePrompts([]);
+
+    setCameraImmediate(0, 0, 1.0);
+  }, [resetGraph, addNode, setCurrentNodeId, setInitialPromptText, setShowPromptCenter,
+    setNodeDetails, clearSelections, setUiPersonality, setAdaptivePrompts, setCameraImmediate]);
+
+  // Modify your CenteredPrompt to include setup wizard trigger
+  const handleShowSetupWizard = useCallback(() => {
+    setShowSetupWizard(true);
+  }, []);
+
   // Auto-select most recent batch when generation completes
   useEffect(() => {
     if (!generationStatus.isGenerating && nodes.length > 0 && generationStatus.currentNodeId !== null) {
@@ -211,8 +331,11 @@ const Graphible = () => {
   // Initialize LLM connection
   useCallback(() => {
     const initializeConnection = async () => {
-      const savedConfig = loadSavedConfig();
-      console.log('App initialization - loaded config:', savedConfig);
+      let savedConfig;
+      setTimeout(() => {
+        savedConfig = loadSavedConfig();
+        console.log('App initialization - loaded config:', savedConfig);
+      }, 1500);
 
       if (savedConfig.type === 'external' && savedConfig.provider === 'google' && !savedConfig.apiKey) {
         const savedApiKey = localStorage.getItem('graphible-google-api-key');
@@ -224,7 +347,9 @@ const Graphible = () => {
       }
 
       if (!hasTestedInitially) {
-        await testLLMConnection(savedConfig);
+        setTimeout(async () => {
+          await testLLMConnection(savedConfig);
+        }, 1500);
       }
     };
 
@@ -547,7 +672,8 @@ const Graphible = () => {
         llmConnected={llmConnected}
         onSubmit={handleInitialPromptSubmit}
         onShowSaveLoad={() => setShowSaveLoad(true)}
-        onShowInstallationGuide={() => setShowInstallationGuide(true)}
+        onShowInstallationGuide={handleShowSetupWizard} // Change this line
+        onShowSetupWizard={handleShowSetupWizard} // Add this line
         currentModel={currentModel}
         onModelChange={handleModelChange}
         onTestConnection={testLLMConnection}
@@ -570,9 +696,6 @@ const Graphible = () => {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-gradient-to-br from-slate-200 to-slate-300 rounded-xl shadow-sm flex items-center justify-center">
-                    <Brain className="text-slate-600" size={20} />
-                  </div>
                   <h1 className="text-xl font-light text-slate-800 tracking-tight">graph.ible</h1>
                 </div>
 
@@ -583,6 +706,15 @@ const Graphible = () => {
                   onTestConnection={testLLMConnection}
                 />
               </div>
+              <button
+                onClick={() => setShowSetupWizard(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 hover:border-slate-300 transition-all duration-200 shadow-sm"
+                style={{ fontSize: '12px' }}
+                title="Reconfigure AI model"
+              >
+                <CircleQuestionMark size={16} />
+                Wizard
+              </button>
 
               <div className="flex items-center gap-3">
                 {/* Mode toggle buttons */}
@@ -923,6 +1055,15 @@ const Graphible = () => {
           onRemoveConnection={removeConnection}
         />
       )}
+
+      <SetupWizard
+        isOpen={showSetupWizard}
+        onClose={handleSetupClose}
+        onComplete={handleSetupComplete}
+        onModelChange={handleModelChange}
+        onLoadDemoGraph={handleLoadDemoGraph}
+      />
+
     </div>
   );
 };
