@@ -73,12 +73,18 @@ const ModelSelector = ({
         }
     };
 
+    const isLocal = () => { return currentModel.type === 'local' };
+
     const getDisplayName = () => {
         if (currentModel.type === 'external') {
             const model = googleModels.find(m => m.id === currentModel.model);
-            return model ? model.name : currentModel.model;
+            if (model) return model.name;
+            // Fall back to local
+            setActiveTab(currentModel.type);
+
+            return currentModel.model;
         }
-        return `Local: ${currentModel.model || 'gemma3:4b'}`;
+        return `${currentModel.model || 'gemma3:4b'}`;
     };
 
     return (
@@ -88,11 +94,13 @@ const ModelSelector = ({
                 onClick={() => setIsOpen(!isOpen)}
                 className="flex items-center gap-3 px-4 py-2 bg-white/80 border border-slate-200 rounded-lg text-slate-700 hover:border-slate-300 hover:bg-white transition-all duration-300 shadow-sm"
                 style={{
-                    boxShadow: isOpen ? '0 0 0 3px rgb(148 163 184 / 0.1)' : undefined
+                    boxShadow: isOpen ? '0 0 0 3px rgb(148 163 184 / 0.1)' : undefined,
+                    backgroundColor: isLocal()? 'black' : 'white',
+                    color: isLocal()? 'white' : 'black',
                 }}
             >
                 <div className="flex items-center gap-2">
-                    {currentModel.type === 'local' ? (
+                    {activeTab === 'local' ? (
                         <Server size={16} className="text-slate-600" />
                     ) : (
                         <Globe size={16} className="text-indigo-600" />
@@ -116,8 +124,8 @@ const ModelSelector = ({
                         <button
                             onClick={() => setActiveTab('local')}
                             className={`flex-1 px-4 py-3 text-sm font-medium transition-all duration-200 relative ${activeTab === 'local'
-                                    ? 'text-slate-800 bg-slate-50'
-                                    : 'text-slate-600 hover:text-slate-800 hover:bg-slate-50'
+                                ? 'text-slate-800 bg-slate-50'
+                                : 'text-slate-600 hover:text-slate-800 hover:bg-slate-50'
                                 }`}
                         >
                             <div className="flex items-center gap-2 justify-center z-2">
@@ -132,8 +140,8 @@ const ModelSelector = ({
                         <button
                             onClick={() => setActiveTab('external')}
                             className={`flex-1 px-4 py-3 text-sm font-medium transition-all duration-200 relative ${activeTab === 'external'
-                                    ? 'text-indigo-700 bg-indigo-50'
-                                    : 'text-slate-600 hover:text-slate-800 hover:bg-slate-50'
+                                ? 'text-indigo-700 bg-indigo-50'
+                                : 'text-slate-600 hover:text-slate-800 hover:bg-slate-50'
                                 }`}
                         >
                             <div className="flex items-center gap-2 justify-center">
@@ -232,8 +240,8 @@ const ModelSelector = ({
                                             <label
                                                 key={model.id}
                                                 className={`flex items-center p-3 border rounded cursor-pointer transition-all duration-200 group ${externalConfig.model === model.id
-                                                        ? 'border-purple-500 bg-purple-500/10 text-purple-300'
-                                                        : 'border-gray-600 hover:border-purple-400 hover:bg-purple-500/5'
+                                                    ? 'border-purple-500 bg-purple-500/10 text-purple-300'
+                                                    : 'border-gray-600 hover:border-purple-400 hover:bg-purple-500/5'
                                                     }`}
                                                 onMouseEnter={(e) => {
                                                     if (externalConfig.model !== model.id) {
@@ -259,8 +267,8 @@ const ModelSelector = ({
                                                     <div className="text-xs text-gray-400">{model.description}</div>
                                                 </div>
                                                 <div className={`w-4 h-4 border-2 rounded-full transition-all duration-200 ${externalConfig.model === model.id
-                                                        ? 'border-purple-500 bg-purple-500'
-                                                        : 'border-gray-400'
+                                                    ? 'border-purple-500 bg-purple-500'
+                                                    : 'border-gray-400'
                                                     }`}>
                                                     {externalConfig.model === model.id && (
                                                         <div className="w-2 h-2 bg-white rounded-full m-0.5" />
