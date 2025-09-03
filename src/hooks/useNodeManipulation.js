@@ -25,32 +25,33 @@ export const useNodeManipulation = (nodes, setNodes, connections, setConnections
     // Convert click position to world coordinates
     const worldClick = clientToWorld(clientX, clientY, camera);
 
-    // Calculate offset between click position and node center
+    // Store the offset between click position and node center
     dragOffsetRef.current = {
       x: worldClick.x - node.worldX,
       y: worldClick.y - node.worldY
     };
 
     setIsDraggingNode(nodeId);
-    console.log(`Starting drag for node ${nodeId} at world position (${node.worldX}, ${node.worldY})`);
   }, [nodes, clientToWorld]);
 
   // Update node position during drag
   const updateNodeDrag = useCallback((clientX, clientY, camera) => {
     if (isDraggingNode === null) return;
 
-    // Convert client coordinates to world coordinates
-    const worldX = (clientX - window.innerWidth / 2) / camera.zoom - camera.x - dragOffsetRef.current.x;
-    const worldY = (clientY - window.innerHeight / 2) / camera.zoom - camera.y - dragOffsetRef.current.y;
+    const worldMouse = clientToWorld(clientX, clientY, camera);
+
+    // Apply the stored offset to get the correct node position
+    const newWorldX = worldMouse.x - dragOffsetRef.current.x;
+    const newWorldY = worldMouse.y - dragOffsetRef.current.y;
 
     setNodes(prevNodes =>
       prevNodes.map(node =>
         node.id === isDraggingNode
-          ? { ...node, worldX, worldY }
+          ? { ...node, worldX: newWorldX, worldY: newWorldY }
           : node
       )
     );
-  }, [isDraggingNode, setNodes]);
+  }, [isDraggingNode, setNodes, clientToWorld]);
 
   // End node drag
   const endNodeDrag = useCallback(() => {
