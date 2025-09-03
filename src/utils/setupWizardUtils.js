@@ -2,6 +2,12 @@
 
 import { CONNECTION_STATUS, MODEL_TYPES } from '../constants/setupWizardConstants';
 
+export const shouldAutoAdvance = (detectionResults) => {
+    // Only auto-advance if we have a clear success with models
+    return detectionResults?.local?.status === CONNECTION_STATUS.SUCCESS &&
+           detectionResults.local.models.length > 0;
+};
+
 // Detection utilities with abort signal support
 export const detectAvailableModels = async (abortSignal) => {
     const results = {

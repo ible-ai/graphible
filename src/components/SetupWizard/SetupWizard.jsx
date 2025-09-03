@@ -13,6 +13,7 @@ import {
 
 import {
     detectAvailableModels,
+    shouldAutoAdvance,
     testModelConnection,
     saveSetupConfig,
     loadSetupConfig,
@@ -167,7 +168,6 @@ const SetupWizard = ({
 
     // Detection logic with proper abort handling
     const handleDetection = useCallback(async () => {
-        // Cancel any previous detection
         if (abortControllerRef.current) {
             abortControllerRef.current.abort();
         }
@@ -179,7 +179,6 @@ const SetupWizard = ({
         try {
             const results = await detectAvailableModels(abortControllerRef.current.signal);
 
-            // Check if we were aborted
             if (abortControllerRef.current.signal.aborted) {
                 return;
             }
@@ -187,7 +186,7 @@ const SetupWizard = ({
             setDetectionResults(results);
 
             // Auto-advance if we found working local models (with delay to show results)
-            if (results.local.status === CONNECTION_STATUS.SUCCESS && results.local.models.length > 0) {
+            if (shouldAutoAdvance(results)) {
                 setTimeout(() => {
                     if (!abortControllerRef.current?.signal.aborted) {
                         const firstModel = results.local.models[0];
@@ -219,6 +218,19 @@ const SetupWizard = ({
         }
     }, [handleTestConnection]);
 
+    // Auto-run detection with better timing
+    useEffect(() => {
+        if (currentStep === SETUP_STEPS.DETECTION && !detectionResults && !isDetecting) {
+            // Small delay to prevent immediate execution
+            const timeoutId = setTimeout(() => {
+                if (!abortControllerRef.current?.signal.aborted) {
+                    handleDetection();
+                }
+            }, 800);
+
+            return () => clearTimeout(timeoutId);
+        }
+    }, [currentStep, isDetecting, detectionResults, handleDetection]);
     // Auto-run detection after welcome (with race condition protection)
     useCallback(() => {
         if (currentStep === SETUP_STEPS.DETECTION && !detectionResults && !isDetecting) {
