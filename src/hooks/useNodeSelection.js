@@ -4,13 +4,14 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { screenToWorld } from '../utils/coordinateUtils';
 
 export const useNodeSelection = () => {
-  const [selectedNodes, setSelectedNodes] = useState(new Set());
+  const [selectedNodeIds, setSelectedNodeIds] = useState(new Set());
   const [selectionMode, setSelectionMode] = useState(false);
   const [isDragSelecting, setIsDragSelecting] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [dragEnd, setDragEnd] = useState({ x: 0, y: 0 });
 
   // Memory management: Track refs to avoid stale closures
+  const selectedNodeIdsRef = useRef(new Set());
   const currentNodesRef = useRef(new Set());
   const cleanupTimeoutRef = useRef(null);
   const lastCleanupRef = useRef(0);
@@ -20,14 +21,15 @@ export const useNodeSelection = () => {
     const validIds = new Set(validNodeIds);
     currentNodesRef.current = validIds;
 
-    setSelectedNodes(prev => {
+    setSelectedNodeIds(prev => {
       const cleaned = new Set();
       for (const nodeId of prev) {
         if (validIds.has(nodeId)) {
           cleaned.add(nodeId);
         }
       }
-      return cleaned.size !== prev.size ? cleaned : prev;
+      selectedNodeIdsRef.current = cleaned.size !== prev.size ? cleaned : prev;
+      return selectedNodeIdsRef.current;
     });
   }, []);
 
@@ -65,7 +67,7 @@ export const useNodeSelection = () => {
       const newMode = !prev;
       if (!newMode) {
         // Clear selections when exiting selection mode
-        setSelectedNodes(new Set());
+        setSelectedNodeIds(new Set());
         setIsDragSelecting(false);
       }
       return newMode;
@@ -73,22 +75,22 @@ export const useNodeSelection = () => {
   }, []);
 
   // Auto-select nodes from the most recent generation batch
-  const autoSelectRecentBatch = useCallback((nodes, currentBatchId) => {
-    if (!Array.isArray(nodes) || nodes.length === 0) return;
+  const autoSelectRecentBatch = useCallback((nodes, currentNodeId) => {
+    const curNode = nodes.find(n => n.id === currentNodeId);
+
+    if (!Array.isArray(nodes) || nodes.length === 0 || curNode === null) return;
 
     const validNodeIds = nodes.map(n => n.id);
     scheduleCleanup(validNodeIds);
 
     // Find the most recent batch ID
     const maxBatchId = Math.max(...nodes.map(n => n.batchId || 0));
-    const recentBatchId = currentBatchId !== undefined ? currentBatchId : maxBatchId;
+    const recentBatchId = curNode?.batchId ? curNode.batchId : maxBatchId;
 
-    // Select all nodes from the most recent batch
-    const recentNodeIds = nodes
-      .filter(node => (node.batchId || 0) === recentBatchId)
-      .map(node => node.id);
-
-    setSelectedNodes(new Set(recentNodeIds));
+    // Select all nodes from the most recent batch or from the existing set of nodes.
+    const newlySelectedNodeIds = nodes
+    .filter(node => (((selectedNodeIdsRef.current.has(node.id)) || (node.batchId || 0) === recentBatchId)) && (node.id <= curNode.id)).map(node => node.id);
+    setSelectedNodeIds(new Set([...newlySelectedNodeIds]));
   }, [scheduleCleanup]);
 
   // Fixed coordinate conversion using the new coordinate system
@@ -144,7 +146,7 @@ export const useNodeSelection = () => {
     );
 
     const nodeIds = nodesInArea.map(node => node.id);
-    setSelectedNodes(prev => {
+    setSelectedNodeIds(prev => {
       const newSet = new Set(prev);
       nodeIds.forEach(id => newSet.add(id));
       return newSet;
@@ -155,7 +157,7 @@ export const useNodeSelection = () => {
   const toggleNodeSelection = useCallback((nodeId) => {
     if (!selectionMode) return;
 
-    setSelectedNodes(prev => {
+    setSelectedNodeIds(prev => {
       const newSet = new Set(prev);
       if (newSet.has(nodeId)) {
         newSet.delete(nodeId);
@@ -168,12 +170,13 @@ export const useNodeSelection = () => {
 
   // Check if a node is selected
   const isNodeSelected = useCallback((nodeId) => {
-    return selectedNodes.has(nodeId);
-  }, [selectedNodes]);
+    return selectedNodeIds.has(nodeId);
+  }, [selectedNodeIds]);
 
   // Clear all selections
   const clearSelections = useCallback(() => {
-    setSelectedNodes(new Set());
+    selectedNodeIdsRef.current = new Set();
+    setSelectedNodeIds(selectedNodeIdsRef.current);
   }, []);
 
   // Get selection box coordinates for rendering
@@ -192,14 +195,14 @@ export const useNodeSelection = () => {
   const getSelectedNodeObjects = useCallback((allNodes) => {
     if (!Array.isArray(allNodes)) return [];
 
-    return allNodes.filter(node => selectedNodes.has(node.id));
-  }, [selectedNodes]);
+    return allNodes.filter(node => selectedNodeIds.has(node.id));
+  }, [selectedNodeIds]);
 
   // Batch select nodes by IDs
   const selectNodes = useCallback((nodeIds) => {
     if (!Array.isArray(nodeIds)) return;
 
-    setSelectedNodes(prev => {
+    setSelectedNodeIds(prev => {
       const newSet = new Set(prev);
       nodeIds.forEach(id => newSet.add(id));
       return newSet;
@@ -210,7 +213,7 @@ export const useNodeSelection = () => {
   const deselectNodes = useCallback((nodeIds) => {
     if (!Array.isArray(nodeIds)) return;
 
-    setSelectedNodes(prev => {
+    setSelectedNodeIds(prev => {
       const newSet = new Set(prev);
       nodeIds.forEach(id => newSet.delete(id));
       return newSet;
@@ -222,15 +225,15 @@ export const useNodeSelection = () => {
     if (!Array.isArray(allNodes)) return;
 
     const allNodeIds = allNodes.map(node => node.id);
-    setSelectedNodes(new Set(allNodeIds));
+    setSelectedNodeIds(new Set(allNodeIds));
   }, []);
 
   return {
     // State
-    selectedNodes,
+    selectedNodeIds,
     selectionMode,
     isDragSelecting,
-    selectedCount: selectedNodes.size,
+    selectedCount: selectedNodeIds.size,
 
     // Mode management
     toggleSelectionMode,

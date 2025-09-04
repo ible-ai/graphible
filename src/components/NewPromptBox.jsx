@@ -1,6 +1,7 @@
 // Enhanced prompt input with selected nodes - DIRECT REPLACEMENT for NewPromptBox.jsx
 import { useState, useCallback, useEffect } from 'react';
 import { X, Send, Link, Sparkles, Eye, EyeOff } from 'lucide-react';
+import { buildContextUpToNode, buildContextString } from '../utils/contextUtils';
 
 const NewPromptBox = ({
   initialPromptText,
@@ -15,14 +16,37 @@ const NewPromptBox = ({
   adaptivePrompts,
   setAdaptivePrompts,
   nodes,
+  connections,
   setConnections,
-  selectedNodes,
+  selectedNodeIds,
 }) => {
 
   const [newPromptInput, setNewPromptInput] = useState('');
   const [includeContext, setIncludeContext] = useState(true);
   const [includeSelectedNodes, setIncludeSelectedNodes] = useState(true);
-  const [showSelectedPreview, setShowSelectedPreview] = useState(false);
+  const [showSelectedPreview, setShowSelectedPreview] = useState(true);
+  const [showContextPreview, setShowContextPreview] = useState(true);
+  const [contextNodeIds, setContextNodeIds] = useState(new Set());
+  const [selectedNodes, setSelectedNodes] = useState([]);
+
+  // Update context highlighting
+  useEffect(() => {
+    if (includeContext && currentNodeId !== null && nodes.length > 0) {
+      const contextNodes = buildContextUpToNode(currentNodeId, nodes, connections);
+      const contextIds = contextNodes.map((node) => (node.id));
+      setContextNodeIds(new Set(contextIds));
+    } else {
+      setContextNodeIds(new Set());
+    }
+  }, [includeContext, currentNodeId, nodes, connections]);
+
+  const styleEffect = useCallback((node) => {
+    return contextNodeIds.has(node.id) ? 'bg-blue-500' : 'bg-gray-300';
+  }, [contextNodeIds]);
+
+  useCallback(() => {
+    setSelectedNodes(nodes.filter(node => selectedNodeIds.has(node.id)));
+  }, [nodes, selectedNodeIds, setSelectedNodes]);
 
 
   // Global typing listener
@@ -32,8 +56,8 @@ const NewPromptBox = ({
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
 
       if (e.key.length === 1 && e.key.match(/^[a-z0-9 ]$/i)) {
-        setNewPromptInput(e.key);
         setIsTypingPrompt(true);
+        setNewPromptInput(e.key);
       }
     };
 
@@ -52,66 +76,26 @@ const NewPromptBox = ({
   const handleSubmit = useCallback(async () => {
     if (!newPromptInput.trim()) return;
 
-    setIsTypingPrompt(false);
+    let finalPrompt = newPromptInput;
 
-    let finalPromptToLLM = newPromptInput;
-    const buildContextString = () => {
-      let contextString = '';
+    // Build context if enabled and we have a current node
+    if (includeContext && currentNodeId !== null && nodes.length > 0) {
+      const contextNodes = buildContextUpToNode(currentNodeId, nodes, connections);
+      finalPrompt = buildContextString(contextNodes, newPromptInput);
 
-      // Previous context
-      if (includeContext) {
-        contextString += `Building on our previous discussion about "${initialPromptText}".`;
-        if (currentNodeId !== null && nodeDetails) {
-          contextString += ` Currently focused on the node "${nodeDetails.label}" (ID: ${currentNodeId}) which describes "${nodeDetails.description}". Its content is: "${nodeDetails.content}".`;
-        }
-      }
-
-      // Selected nodes context - use the actual node objects
-      if (includeSelectedNodes && selectedNodes.length > 0) {
-        contextString += ` Additionally, please consider these selected nodes as context:\n`;
-        selectedNodes.forEach((nodeId, index) => {
-          const node = nodes.find(n => n.id === nodeId);
-          if (node) {
-            contextString += `${index + 1}. "${node.label}" (ID: ${node.id}): ${node.description}\n`;
-            if (node.content && node.content.length > 0) {
-              contextString += `   Content: ${node.content}\n`;
-            }
-          }
-        });
-      }
-
-      return contextString;
-    };
-    const contextString = buildContextString();
-
-    if (contextString) {
-      finalPromptToLLM = `${contextString}\n\nNow, based on this context, please generate a new graph for: "${newPromptInput}"`;
-
-      // Add connection from current node if including context
-      if (includeContext && currentNodeId !== null) {
-        setConnections(prevConnections => [...prevConnections, {
-          from: currentNodeId,
-          to: nodes.length
-        }]);
-      }
+      // Add connection from current node
+      setConnections(prevConnections => [...prevConnections, {
+        from: currentNodeId,
+        to: nodes.length
+      }]);
     }
 
-    const curNode = nodes[currentNodeId];
-    await onGenerate(finalPromptToLLM, curNode?.worldX, curNode?.worldY);
+    setIsTypingPrompt(false);
+    const curNode = nodes.find(n => n.id === currentNodeId);
+    await onGenerate(finalPrompt, curNode?.worldX, curNode?.worldY);
     setNewPromptInput('');
-  }, [
-    newPromptInput,
-    includeContext,
-    currentNodeId,
-    nodes,
-    setConnections,
-    setIsTypingPrompt,
-    onGenerate,
-    includeSelectedNodes,
-    initialPromptText,
-    nodeDetails,
-    selectedNodes
-  ]);
+  }, [newPromptInput, includeContext, currentNodeId, nodes, connections, setConnections, setIsTypingPrompt, onGenerate]);
+
 
   const handleKeyPress = useCallback((e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -136,9 +120,9 @@ const NewPromptBox = ({
                 <Sparkles className="text-indigo-600" size={16} />
               </div>
               <h3 className="text-slate-800 text-lg font-medium">Continue Exploring</h3>
-              {selectedNodes.length > 0 && (
+              {selectedNodeIds.length > 0 && (
                 <div className="text-sm text-blue-600 bg-blue-50 px-2 py-1 rounded-lg">
-                  {selectedNodes.length} node{selectedNodes.length !== 1 ? 's' : ''} selected
+                  {selectedNodeIds.length} node{selectedNodeIds.length !== 1 ? 's' : ''} selected
                 </div>
               )}
             </div>
@@ -173,13 +157,13 @@ const NewPromptBox = ({
               )}
 
               {/* Selected nodes context */}
-              {includeSelectedNodes && selectedNodes.length > 0 && (
+              {includeSelectedNodes && selectedNodeIds.length > 0 && (
                 <div className="p-3 bg-blue-50/50 rounded-xl border border-blue-200/30">
                   <div className="flex items-start justify-between gap-3 mb-2">
                     <div className="flex items-center gap-2">
                       <Sparkles className="text-blue-500" size={16} />
                       <p className="text-sm font-medium text-blue-800">
-                        Including {selectedNodes.length} selected node{selectedNodes.length !== 1 ? 's' : ''} as context
+                        Including {selectedNodeIds.length} selected node{selectedNodeIds.length !== 1 ? 's' : ''} as context
                       </p>
                     </div>
                     <button
@@ -201,6 +185,44 @@ const NewPromptBox = ({
                           <div className="text-blue-600 mt-1 line-clamp-2">
                             {node.description}
                           </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Context Controls */}
+            <div className="mb-4 space-y-3">
+              <label className="flex items-center text-slate-600 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={includeContext}
+                  onChange={(e) => setIncludeContext(e.target.checked)}
+                  className="mr-3 rounded border-slate-300"
+                />
+                <span>Include conversation context up to current node</span>
+              </label>
+
+              {includeContext && currentNodeId !== null && (
+                <div className="pl-7">
+                  <button
+                    onClick={() => setShowContextPreview(!showContextPreview)}
+                    className="text-sm text-indigo-600 hover:text-indigo-500"
+                  >
+                    {showContextPreview ? 'Hide' : 'Show'} context preview
+                  </button>
+
+                  {showContextPreview && (
+                    <div className="mt-2 p-3 bg-slate-50 rounded border text-sm">
+                      <div className="font-medium mb-1">
+                        Context nodes ({contextNodeIds.size} selected):
+                      </div>
+                      {buildContextUpToNode(currentNodeId, nodes, connections).map((node, i) => (
+                        <div key={node.id} className="flex items-center gap-2 text-slate-600 py-1">
+                          <div className={`w-2 h-2 rounded-full ${styleEffect(node.id)}`} />
+                          <span>{i + 1}. "{node.label}"</span>
                         </div>
                       ))}
                     </div>
@@ -247,7 +269,7 @@ const NewPromptBox = ({
                   <span className="ml-3">Include previous context</span>
                 </label>
 
-                {selectedNodes.length > 0 && (
+                {selectedNodeIds.length > 0 && (
                   <label className="flex items-center text-slate-600 cursor-pointer group">
                     <div className="relative">
                       <input
@@ -267,7 +289,7 @@ const NewPromptBox = ({
                         )}
                       </div>
                     </div>
-                    <span className="ml-3">Include selected nodes ({selectedNodes.length})</span>
+                    <span className="ml-3">Include selected nodes ({selectedNodeIds.length})</span>
                   </label>
                 )}
               </div>

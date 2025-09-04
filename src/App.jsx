@@ -1,7 +1,7 @@
 // Main application
 
 import { useState, useEffect, useCallback } from 'react';
-import { Brain, RotateCcw, Save, Circle, MousePointer, Link, Trash2, Target, CircleQuestionMark } from 'lucide-react';
+import { RotateCcw, Save, Circle, MousePointer, Link, Trash2, Target, CircleQuestionMark } from 'lucide-react';
 
 // Import custom hooks
 import { useCamera } from './hooks/useCamera';
@@ -106,13 +106,11 @@ const Graphible = () => {
   const [showInstallationGuide, setShowInstallationGuide] = useState(false);
   const [showDeletionStore, setShowDeletionStore] = useState(false);
   const [showConnectionManager, setShowConnectionManager] = useState(false);
+  const [showSetupWizard, setShowSetupWizard] = useState(false);
+  const [isFirstRun, setIsFirstRun] = useState(false);
 
   // Custom hooks
   const { camera, setCameraImmediate, setCameraTarget } = useCamera();
-
-  // Add these state variables to your App component:
-  const [showSetupWizard, setShowSetupWizard] = useState(false);
-  const [isFirstRun, setIsFirstRun] = useState(false);
 
   const {
     llmConnected,
@@ -159,7 +157,7 @@ const Graphible = () => {
   } = useNodeManipulation(nodes, setNodes, connections, setConnections);
 
   const {
-    selectedNodes,
+    selectedNodeIds,
     selectionMode,
     isDragSelecting,
     toggleSelectionMode,
@@ -204,7 +202,6 @@ const Graphible = () => {
     showFeedbackModal: showFeedbackModal !== null
   });
 
-  // Add this useEffect to check for first run (add to your existing useEffects)
   useEffect(() => {
     const setupConfig = loadSetupConfig();
     if (!setupConfig.isComplete) {
@@ -213,7 +210,6 @@ const Graphible = () => {
     }
   }, []);
 
-  // Modify your existing LLM connection initialization useEffect:
   useEffect(() => {
     const initializeConnection = async () => {
       let setupConfig = null;
@@ -266,7 +262,6 @@ const Graphible = () => {
     }
   }, [loadSavedConfig, handleModelChange, testLLMConnection, hasTestedInitially, isFirstRun, showSetupWizard]);
 
-  // Add these handler functions to your App component:
   const handleSetupComplete = useCallback((config) => {
     console.log('Setup completed with config:', config);
     setIsFirstRun(false);
@@ -313,17 +308,16 @@ const Graphible = () => {
   }, [resetGraph, addNode, setCurrentNodeId, setInitialPromptText, setShowPromptCenter,
     setNodeDetails, clearSelections, setUiPersonality, setAdaptivePrompts, setCameraImmediate]);
 
-  // Modify your CenteredPrompt to include setup wizard trigger
   const handleShowSetupWizard = useCallback(() => {
     setShowSetupWizard(true);
   }, []);
 
   // Auto-select most recent batch when generation completes
   useEffect(() => {
-    if (!generationStatus.isGenerating && nodes.length > 0 && generationStatus.currentNodeId !== null) {
-      autoSelectRecentBatch(nodes, Math.max(...nodes.map(n => n.batchId || 0)));
+    if (nodes.length > 0 && currentNodeId !== null) {
+      autoSelectRecentBatch(nodes, currentNodeId);
     }
-  }, [generationStatus.isGenerating, nodes, generationStatus.currentNodeId, autoSelectRecentBatch]);
+  }, [nodes, currentNodeId, autoSelectRecentBatch]);
 
   // Use UI personality color scheme, fall back to preferences, then default
   const currentScheme = colorSchemes[uiPersonality.colorScheme || preferences.colorScheme || 'default'];
@@ -430,14 +424,14 @@ const Graphible = () => {
 
       // Restore selections after layout optimization
       setTimeout(() => {
-        selectedNodes.forEach(nodeId => {
+        selectedNodeIds.forEach(nodeId => {
           if (nodes.some(n => n.id === nodeId)) {
             toggleNodeSelection(nodeId);
           }
         });
       }, 100);
     }
-  }, [nodes, selectedNodes, toggleNodeSelection, applyLayoutOptimization]);
+  }, [nodes, selectedNodeIds, toggleNodeSelection, applyLayoutOptimization]);
 
   // Event handlers
   const handleNodeClick = (node) => {
@@ -673,8 +667,8 @@ const Graphible = () => {
         llmConnected={llmConnected}
         onSubmit={handleInitialPromptSubmit}
         onShowSaveLoad={() => setShowSaveLoad(true)}
-        onShowInstallationGuide={handleShowSetupWizard} // Change this line
-        onShowSetupWizard={handleShowSetupWizard} // Add this line
+        onShowInstallationGuide={handleShowSetupWizard}
+        onShowSetupWizard={handleShowSetupWizard}
         currentModel={currentModel}
         onModelChange={handleModelChange}
         onTestConnection={testLLMConnection}
@@ -1016,8 +1010,9 @@ const Graphible = () => {
         adaptivePrompts={adaptivePrompts}
         setAdaptivePrompts={setAdaptivePrompts}
         nodes={nodes}
+        connections={connections}
         setConnections={setConnections}
-        selectedNodes={selectedNodes}
+        selectedNodeIds={selectedNodeIds}
       />
 
       <SaveLoadModal
