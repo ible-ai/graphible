@@ -80,8 +80,7 @@ const NewPromptBox = ({
 
     // Build context if enabled and we have a current node
     if (includeContext && currentNodeId !== null && nodes.length > 0) {
-      const contextNodes = buildContextUpToNode(currentNodeId, nodes, connections);
-      finalPrompt = buildContextString(contextNodes, newPromptInput);
+      finalPrompt = buildContextString(currentNodeId, nodes, connections);
 
       // Add connection from current node
       setConnections(prevConnections => [...prevConnections, {
