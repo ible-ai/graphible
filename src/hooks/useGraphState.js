@@ -1,5 +1,4 @@
-// Complete useGraphState.js - Full Implementation with memory management
-// This is a complete replacement for your existing useGraphState.js
+// Program graph state
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { NODE_SIZE } from '../constants/graphConstants';
@@ -330,15 +329,15 @@ Your response must be completely JSON parseable so never include excess characte
         }
 
         const chunkText = decoder.decode(value, { stream: true });
-        const chunkTokens = chunkText.length;
-        updateGenerationStatus({
-          tokensGenerated: generationStateRef.current.tokensGenerated + chunkTokens
-        });
 
         let chunk = parseStreamResponse(chunkText);
 
         if (!chunk) continue;
 
+        const chunkTokens = chunk.length;
+        updateGenerationStatus({
+          tokensGenerated: generationStateRef.current.tokensGenerated + chunkTokens
+        });
 
         rawResponseBuffer += chunk;
         setStreamingContent(rawResponseBuffer);
@@ -440,7 +439,7 @@ Your response must be completely JSON parseable so never include excess characte
     streamingContent,
     currentNodeId,
     currentStreamingNodeId,
-    nodeMap, // Expose the optimized node lookup
+    nodeMap,
 
     // State setters
     setCurrentNodeId,
