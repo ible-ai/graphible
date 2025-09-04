@@ -434,7 +434,7 @@ const Graphible = () => {
   }, [nodes, selectedNodeIds, toggleNodeSelection, applyLayoutOptimization]);
 
   // Event handlers
-  const handleNodeClick = (node) => {
+  const handleNodeClick = useCallback((node) => {
     if (selectionMode) {
       toggleNodeSelection(node.id);
       return;
@@ -442,8 +442,8 @@ const Graphible = () => {
 
     setCurrentNodeId(node.id);
     setNodeDetails(node);
-    setCameraTarget(-node.worldX, -node.worldY);
-  };
+    setCameraImmediate(-node.worldX, -node.worldY, camera.zoom);
+  }, [camera.zoom, toggleNodeSelection, setCurrentNodeId, setNodeDetails, setCameraImmediate, selectionMode]);
 
   const handleFeedback = (nodeId, isPositive) => {
     setShowFeedbackModal({ nodeId, isPositive });
