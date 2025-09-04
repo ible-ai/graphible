@@ -1,63 +1,72 @@
-// Complete useNodeManipulation.js - Full Implementation with fixed coordinates
-// This is a complete replacement for your existing useNodeManipulation.js
+// Node manipulator
 
 import { useState, useCallback, useRef } from 'react';
+import { screenToWorld } from '../utils/coordinateUtils';
+
 
 export const useNodeManipulation = (nodes, setNodes, connections, setConnections) => {
   const [deletedNodes, setDeletedNodes] = useState(new Map()); // Use Map for O(1) access
-  const [isDraggingNode, setIsDraggingNode] = useState(null);
+  const [draggingNodeId, setDraggingNodeId] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
   const [isResizingNode, setIsResizingNode] = useState(null);
   const [resizeStart, setResizeStart] = useState({ x: 0, y: 0, width: 0, height: 0 });
   const dragOffsetRef = useRef({ x: 0, y: 0 });
 
-  // Convert client coordinates to world coordinates
-  const clientToWorld = useCallback((clientX, clientY, camera) => {
-    const worldX = (clientX - window.innerWidth / 2) / camera.zoom - camera.x;
-    const worldY = (clientY - window.innerHeight / 2) / camera.zoom - camera.y;
-    return { x: worldX, y: worldY };
-  }, []);
-
-  // Start dragging a node
-  const startNodeDrag = useCallback((nodeId, clientX, clientY, camera) => {
+  const startNodeDrag = useCallback((nodeId, clientX, clientY) => {
     const node = nodes.find(n => n.id === nodeId);
     if (!node) return;
 
-    // Convert click position to world coordinates
-    const worldClick = clientToWorld(clientX, clientY, camera);
-
-    // Store the offset between click position and node center
+    // Let's try a different approach: store initial positions and calculate deltas
     dragOffsetRef.current = {
-      x: worldClick.x - node.worldX,
-      y: worldClick.y - node.worldY
+      initialMouseX: clientX,
+      initialMouseY: clientY,
+      initialNodeWorldX: node.worldX,
+      initialNodeWorldY: node.worldY
     };
 
-    setIsDraggingNode(nodeId);
-  }, [nodes, clientToWorld]);
+    setDraggingNodeId(nodeId);
+    setIsDragging(true);
 
-  // Update node position during drag
+    console.log('Drag start simple:', {
+      nodeId,
+      initialWorld: { x: node.worldX, y: node.worldY },
+      initialMouse: { x: clientX, y: clientY }
+    });
+  }, [nodes, setIsDragging, setDraggingNodeId]);
+
   const updateNodeDrag = useCallback((clientX, clientY, camera) => {
-    if (isDraggingNode === null) return;
+    if (draggingNodeId === null || !dragOffsetRef.current) return;
 
-    const worldMouse = clientToWorld(clientX, clientY, camera);
+    // Calculate how far the mouse has moved in screen pixels
+    const deltaScreenX = clientX - dragOffsetRef.current.initialMouseX;
+    const deltaScreenY = clientY - dragOffsetRef.current.initialMouseY;
 
-    // Apply the stored offset to get the correct node position
-    const newWorldX = worldMouse.x - dragOffsetRef.current.x;
-    const newWorldY = worldMouse.y - dragOffsetRef.current.y;
+    // Convert this screen delta to world delta
+    // We need to account for zoom when converting screen movement to world movement
+    const deltaWorldX = deltaScreenX / camera.zoom;
+    const deltaWorldY = deltaScreenY / camera.zoom;
+
+    // Apply the delta to the initial world position
+    const newWorldX = dragOffsetRef.current.initialNodeWorldX + deltaWorldX;
+    const newWorldY = dragOffsetRef.current.initialNodeWorldY + deltaWorldY;
 
     setNodes(prevNodes =>
       prevNodes.map(node =>
-        node.id === isDraggingNode
+        node.id === draggingNodeId
           ? { ...node, worldX: newWorldX, worldY: newWorldY }
           : node
       )
     );
-  }, [isDraggingNode, setNodes, clientToWorld]);
+    setIsDragging(false);
+  }, [draggingNodeId, setNodes, setIsDragging]);
 
-  // End node drag
   const endNodeDrag = useCallback(() => {
-    setIsDraggingNode(null);
-    dragOffsetRef.current = { x: 0, y: 0 };
-  }, []);
+    setDraggingNodeId(null);
+    if (draggingNodeId !== null || !isDragging) {
+      console.log('Drag end');
+      dragOffsetRef.current = null;
+    }
+  }, [draggingNodeId, isDragging]);
 
   // Start resizing a node
   const startNodeResize = useCallback((nodeId, clientX, clientY) => {
@@ -265,14 +274,14 @@ export const useNodeManipulation = (nodes, setNodes, connections, setConnections
       activeNodes: nodes.length,
       deletedNodes: deletedNodes.size,
       connections: connections.length,
-      isDragging: isDraggingNode !== null,
+      isDragging: draggingNodeId !== null,
       isResizing: isResizingNode !== null
     };
-  }, [nodes.length, deletedNodes.size, connections.length, isDraggingNode, isResizingNode]);
+  }, [nodes.length, deletedNodes.size, connections.length, draggingNodeId, isResizingNode]);
 
   return {
     // Drag state
-    isDraggingNode,
+    draggingNodeId,
     isResizingNode,
 
     // Drag operations
@@ -301,6 +310,6 @@ export const useNodeManipulation = (nodes, setNodes, connections, setConnections
 
     // Utilities
     getManipulationStats,
-    clientToWorld
+    screenToWorld
   };
 };

@@ -205,13 +205,6 @@ const NodeComponent = memo(({
       {(showControls || isSelected) && !selectionMode && (
         <div className="absolute top-2 right-2 flex gap-1 bg-white/95 rounded-lg p-1 shadow-lg border border-slate-200">
           <button
-            className="drag-handle p-1.5 hover:bg-blue-100 rounded text-blue-600 cursor-grab active:cursor-grabbing transition-colors"
-            onMouseDown={handleDragHandleMouseDown}
-            title="Drag node"
-          >
-            <Move size={14} />
-          </button>
-          <button
             onClick={(e) => {
               e.stopPropagation();
               onDelete?.(node.id);
