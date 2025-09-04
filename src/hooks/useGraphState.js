@@ -330,14 +330,15 @@ Your response must be completely JSON parseable so never include excess characte
         }
 
         const chunkText = decoder.decode(value, { stream: true });
+        const chunkTokens = chunkText.length;
+        updateGenerationStatus({
+          tokensGenerated: generationStateRef.current.tokensGenerated + chunkTokens
+        });
+
         let chunk = parseStreamResponse(chunkText);
 
         if (!chunk) continue;
 
-        updateGenerationStatus(prev => ({
-          ...prev,
-          tokensGenerated: prev.tokensGenerated + chunk.split(' ').length
-        }));
 
         rawResponseBuffer += chunk;
         setStreamingContent(rawResponseBuffer);
