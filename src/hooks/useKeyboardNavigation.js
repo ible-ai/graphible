@@ -21,7 +21,7 @@ export const useKeyboardNavigation = ({
 
   useEffect(() => {
     const navigateToNextNode = () => {
-      const currentNode = nodes.at(currentNodeId);
+      const currentNode = nodes[currentNodeId];
       if (!currentNode) return;
 
       let targetNode = null;
@@ -112,5 +112,5 @@ export const useKeyboardNavigation = ({
       window.removeEventListener('keyup', handleKeyUp);
       clearInterval(interval);
     };
-  }, [nodes, showPromptCenter, generationStatus.isGenerating, camera, setCameraImmediate, isTypingPrompt, showFeedbackModal]);
+  }, [nodes, showPromptCenter, generationStatus.isGenerating, camera, setCameraImmediate, isTypingPrompt, showFeedbackModal, currentNodeId, setCameraTarget, setCurrentNodeId, setNodeDetails]);
 };
