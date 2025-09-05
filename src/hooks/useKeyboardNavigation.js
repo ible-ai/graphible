@@ -79,27 +79,12 @@ export const useKeyboardNavigation = ({
 
       if (keysPressed.current.size === 0) return;
 
-      if (keysPressed.current.has('shift')) {
-        // Free navigation mode
-        let deltaX = 0, deltaY = 0;
-        const speed = 15 / camera.zoom;
-
-        if (keysPressed.current.has('w') || keysPressed.current.has('arrowup')) deltaY += speed;
-        if (keysPressed.current.has('s') || keysPressed.current.has('arrowdown')) deltaY -= speed;
-        if (keysPressed.current.has('a') || keysPressed.current.has('arrowleft')) deltaX += speed;
-        if (keysPressed.current.has('d') || keysPressed.current.has('arrowright')) deltaX -= speed;
-
-        if (deltaX !== 0 || deltaY !== 0) {
-          setCameraImmediate(camera.x + deltaX, camera.y + deltaY);
-        }
-      } else {
-        // Snap navigation between nodes
-        if (keysPressed.current.has('w') || keysPressed.current.has('arrowup') ||
-          keysPressed.current.has('s') || keysPressed.current.has('arrowdown') ||
-          keysPressed.current.has('a') || keysPressed.current.has('arrowleft') ||
-          keysPressed.current.has('d') || keysPressed.current.has('arrowright')) {
-          navigateToNextNode();
-        }
+      // Snap navigation between nodes
+      if (keysPressed.current.has('w') || keysPressed.current.has('arrowup') ||
+        keysPressed.current.has('s') || keysPressed.current.has('arrowdown') ||
+        keysPressed.current.has('a') || keysPressed.current.has('arrowleft') ||
+        keysPressed.current.has('d') || keysPressed.current.has('arrowright')) {
+        navigateToNextNode();
       }
     };
 
