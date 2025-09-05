@@ -721,16 +721,6 @@ const Graphible = () => {
 
       {!showPromptCenter && (
         <>
-          {/* Mode indicators */}
-          {(selectionMode || selectedCount > 0) && (
-            <div className="absolute bottom-8 left-6 bg-blue-500/90 backdrop-blur rounded-lg p-3 text-white text-sm z-40 opacity-60">
-              <div className="font-semibold mb-1">Selection Mode</div>
-              <div>{selectedCount} node{selectedCount !== 1 ? 's' : ''} selected</div>
-              <div className="text-blue-100 text-xs mt-1">
-                Click nodes to select • Click mode button to exit
-              </div>
-            </div>
-          )}
           {/* Header */}
           <div className="absolute top-0 left-0 right-0 z-10 bg-white/80 backdrop-blur-md border-b border-slate-200/50 p-4 shadow-sm">
             <div className="flex items-center justify-between">
