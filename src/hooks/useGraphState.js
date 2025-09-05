@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { NODE_SIZE } from '../constants/graphConstants';
 import { applyForceDirectedLayout, calculateNodePosition } from '../utils/coordinateUtils';
-import { extractJsonFromLlmResponse, validateNodeJson, debugJsonParsing, createFallbackNode } from '../utils/llmUtils';
+import { extractJsonFromLlmResponse, createFallbackNode, extractMultipleJsonFromResponse, resetStreamingParser } from '../utils/llmUtils';
 
 export const useGraphState = (generateWithLLM) => {
   const [nodes, setNodes] = useState([]);
@@ -222,6 +222,9 @@ export const useGraphState = (generateWithLLM) => {
     console.log('generateGraphWithLLM starting with prompt:', prompt);
     console.log('Using model config:', modelConfig);
 
+    // Reset the streaming parser for a new generation
+    resetStreamingParser();
+
     // Create new abort controller for this generation
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -242,32 +245,28 @@ export const useGraphState = (generateWithLLM) => {
     let preceedingSiblingNodes = [];
     let rawResponseBuffer = '';
     let fallbackNodeCount = 0;
+    let newNodeCount = 0;
 
     try {
       const fullPrompt = `Generate a structured learning graph that provides a step-by-step response to: ${prompt}.
-Format your response as a sequence of node definitions. Each node should be an individual, un-nested, json-parseable dictionary.
-Respond with repeated nodes, each formatted with JSON:
-'''json
-{
-  "label": "<generate a label to broadly characterize the user prompt>",
-  "type": "<label the type of data generate amongst: root|concept|example|detail>",
-  "description": "<generate a description of the interaction>",
-  "content": "<generate detail content that satisfies some part of the query>",
-}
-'''
-Separate each node with four (4) new lines (\\n).
 
-The first node should represent the user prompt like:
-'''json
+Create multiple interconnected learning nodes. Each node should be a separate JSON object.
+
+Format each node exactly like this:
 {
-  "label": "<generate a label of the user query here>",
-  "type": "root",
-  "description": "<generate a description of any recent interaction that might be helpful>",
-  "content": "<add the user prompt here>",
+  "label": "Brief descriptive title",
+  "type": "root|concept|example|detail",
+  "description": "One sentence summary of this node's purpose",
+  "content": "Detailed educational content for this specific aspect"
 }
-'''
-Make it educational and well-structured. Position nodes in a logical flow.
-Your response must be completely JSON parseable so never include excess characters or descriptions beyond your JSON-compatible response.`;
+
+Requirements:
+- First node must have type "root" and contain the main topic
+- Use "concept" for main ideas, "example" for illustrations, "detail" for specifics
+- Each node should be complete and self-contained
+- Separate each JSON object with exactly 4 newlines
+
+Generate 3-6 nodes total. Start now:`;
 
       // Pass the model config explicitly to generateWithLLM
       const response = await generateWithLLM(fullPrompt, true, modelConfig);
@@ -278,8 +277,6 @@ Your response must be completely JSON parseable so never include excess characte
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
-      let newNodeCount = 0;
-      let lastProcessedLength = 0;
 
       while (true) {
         // Check for abort signal
@@ -292,30 +289,12 @@ Your response must be completely JSON parseable so never include excess characte
         if (done) {
           console.log('Stream finished');
 
-          // Try to process any remaining content
-          if (rawResponseBuffer.length > lastProcessedLength) {
-            const remainingContent = rawResponseBuffer.substring(lastProcessedLength);
-            const [finalNode, _] = extractJsonFromLlmResponse(remainingContent);
-            if (finalNode) {
-              const validation = validateNodeJson(finalNode);
-              if (validation.valid) {
-                await processNewNode(finalNode, newNodeCount, currentBatch, prevWorldX, prevWorldY, preceedingSiblingNodes);
-                newNodeCount++;
-              } else {
-                console.warn('Invalid final node JSON:', validation.error);
-                // Create fallback node from remaining content
-                const fallbackNode = createFallbackNode(remainingContent, nodes.length + newNodeCount);
-                await processNewNode(fallbackNode, newNodeCount, currentBatch, prevWorldX, prevWorldY, preceedingSiblingNodes);
-                newNodeCount++;
-                fallbackNodeCount++;
-              }
-            } else if (remainingContent.trim().length > 20) {
-              // Create fallback node if we have substantial remaining content
-              const fallbackNode = createFallbackNode(remainingContent, nodes.length + newNodeCount);
-              await processNewNode(fallbackNode, newNodeCount, currentBatch, prevWorldX, prevWorldY, preceedingSiblingNodes);
-              newNodeCount++;
-              fallbackNodeCount++;
-            }
+          // Process any remaining buffered content
+          const finalResult = extractMultipleJsonFromResponse(rawResponseBuffer);
+
+          for (const nodeData of finalResult.nodes) {
+            await processNewNode(nodeData, newNodeCount, currentBatch, prevWorldX, prevWorldY, preceedingSiblingNodes);
+            newNodeCount++;
           }
 
           updateGenerationStatus({ isGenerating: false });
@@ -323,13 +302,11 @@ Your response must be completely JSON parseable so never include excess characte
           setCurrentStreamingNodeId(null);
           setCurrNodeDepth(prev => (prev + 1));
 
-          // Log generation summary
           console.log(`Generation complete: ${newNodeCount} nodes created${fallbackNodeCount > 0 ? ` (${fallbackNodeCount} fallback nodes)` : ''}`);
           break;
         }
 
         const chunkText = decoder.decode(value, { stream: true });
-
         let chunk = parseStreamResponse(chunkText);
 
         if (!chunk) continue;
@@ -342,29 +319,17 @@ Your response must be completely JSON parseable so never include excess characte
         rawResponseBuffer += chunk;
         setStreamingContent(rawResponseBuffer);
 
-        // Try to extract JSON from the accumulated buffer
+        // Use streaming parser to extract JSON
         const [parsedData, newRawResponseBuffer] = extractJsonFromLlmResponse(rawResponseBuffer);
 
         if (parsedData) {
           console.log('Successfully parsed node data:', parsedData);
 
-          // Validate the parsed node
-          const validation = validateNodeJson(parsedData);
-          if (!validation.valid) {
-            console.warn('Invalid node JSON:', validation.error, parsedData);
-            // Try to create a fallback node
-            const fallbackNode = createFallbackNode(JSON.stringify(parsedData), nodes.length + newNodeCount);
-            await processNewNode(fallbackNode, newNodeCount, currentBatch, prevWorldX, prevWorldY, preceedingSiblingNodes);
-            newNodeCount++;
-            fallbackNodeCount++;
-          } else {
-            await processNewNode(parsedData, newNodeCount, currentBatch, prevWorldX, prevWorldY, preceedingSiblingNodes);
-            newNodeCount++;
-          }
+          await processNewNode(parsedData, newNodeCount, currentBatch, prevWorldX, prevWorldY, preceedingSiblingNodes);
+          newNodeCount++;
 
-          // Update buffer and tracking
+          // Update buffer - the parser already removed the extracted content
           rawResponseBuffer = newRawResponseBuffer;
-          lastProcessedLength = 0;
           setStreamingContent('');
         }
       }
@@ -373,12 +338,20 @@ Your response must be completely JSON parseable so never include excess characte
 
       if (rawResponseBuffer) {
         console.error('Raw response buffer at error:', rawResponseBuffer.substring(0, 500));
-        debugJsonParsing(rawResponseBuffer);
 
-        // Try to create at least one fallback node from the failed response
-        if (rawResponseBuffer.trim().length > 20) {
+        // Try to extract any partial content using the enhanced parser
+        const finalResult = extractMultipleJsonFromResponse(rawResponseBuffer);
+
+        if (finalResult.nodes.length > 0) {
+          for (const nodeData of finalResult.nodes) {
+            await processNewNode(nodeData, newNodeCount, currentBatch, prevWorldX, prevWorldY, preceedingSiblingNodes);
+            newNodeCount++;
+          }
+        } else if (rawResponseBuffer.trim().length > 20) {
+          // Create fallback node from the failed response
           const fallbackNode = createFallbackNode(rawResponseBuffer, nodes.length);
           await processNewNode(fallbackNode, 0, currentBatch, prevWorldX, prevWorldY, preceedingSiblingNodes);
+          fallbackNodeCount++;
         }
       }
 
