@@ -122,6 +122,127 @@ export const buildContextString = (targetNodeId, allNodes, connections, options 
     return fullContext;
 };
 
+// Builds a summary-focused context string that emphasizes what's been covered
+// rather than providing full content that might be duplicated
+export const buildContextSummaryString = (targetNodeId, allNodes, connections, options = {}) => {
+    const {
+        maxContextLength = 2000, // Shorter for summaries
+    } = options;
+
+    const contextNodes = buildContextUpToNode(targetNodeId, allNodes, connections);
+
+    if (contextNodes.length === 0) return '';
+
+    // Group nodes by type for better organization
+    const nodesByType = {
+        root: contextNodes.filter(n => n.type === 'root'),
+        concept: contextNodes.filter(n => n.type === 'concept'),
+        example: contextNodes.filter(n => n.type === 'example'),
+        detail: contextNodes.filter(n => n.type === 'detail')
+    };
+
+    let contextParts = [];
+
+    // Add root topics (main subjects covered)
+    if (nodesByType.root.length > 0) {
+        const rootTopics = nodesByType.root.map(node =>
+            `"${node.label}" - ${node.description}`
+        ).join(', ');
+        contextParts.push(`Main Topics Covered: ${rootTopics}`);
+    }
+
+    // Add concept summaries (what has been explained)
+    if (nodesByType.concept.length > 0) {
+        const concepts = nodesByType.concept.map(node =>
+            `• ${node.label}: ${node.description}`
+        ).join('\n');
+        contextParts.push(`Concepts Explained:\n${concepts}`);
+    }
+
+    // Add examples and details as brief lists
+    if (nodesByType.example.length > 0) {
+        const examples = nodesByType.example.map(node => node.label).join(', ');
+        contextParts.push(`Examples Provided: ${examples}`);
+    }
+
+    if (nodesByType.detail.length > 0) {
+        const details = nodesByType.detail.map(node => node.label).join(', ');
+        contextParts.push(`Details Covered: ${details}`);
+    }
+
+    let fullContext = contextParts.join('\n\n');
+
+    // Truncate if too long
+    if (fullContext.length > maxContextLength) {
+        fullContext = fullContext.substring(0, maxContextLength - 20) + '...';
+    }
+
+    return fullContext;
+};
+
+// Enhanced function for selected nodes context
+export const buildSelectedNodesContext = (selectedNodeIds, allNodes, options = {}) => {
+    const {
+        maxLength = 1500,
+        focusOnRelationships = true
+    } = options;
+
+    if (!selectedNodeIds || selectedNodeIds.size === 0) return '';
+
+    const selectedNodes = allNodes.filter(node => selectedNodeIds.has(node.id));
+
+    if (selectedNodes.length === 0) return '';
+
+    // Create a concise summary of selected nodes
+    const summaries = selectedNodes.map(node => {
+        const typeEmoji = {
+            root: '🎯',
+            concept: '💡',
+            example: '📝',
+            detail: '🔍'
+        };
+
+        return `${typeEmoji[node.type] || '•'} ${node.label}: ${node.description}`;
+    }).join('\n');
+
+    // Look for common themes or relationships
+    let relationshipHint = '';
+    if (focusOnRelationships && selectedNodes.length > 1) {
+        const labels = selectedNodes.map(n => n.label.toLowerCase());
+
+        // Simple keyword analysis to suggest relationships
+        const commonWords = findCommonWords(labels);
+        if (commonWords.length > 0) {
+            relationshipHint = `\nThese nodes appear to be related through: ${commonWords.join(', ')}`;
+        }
+    }
+
+    const context = `Selected Nodes (${selectedNodes.length}):\n${summaries}${relationshipHint}`;
+
+    return context.length > maxLength ?
+        context.substring(0, maxLength - 20) + '...' :
+        context;
+};
+
+// Helper function to find common words in labels
+function findCommonWords(labels) {
+    const words = labels.flatMap(label =>
+        label.split(/\s+/)
+            .filter(word => word.length > 3)
+            .map(word => word.toLowerCase())
+    );
+
+    const wordCounts = {};
+    words.forEach(word => {
+        wordCounts[word] = (wordCounts[word] || 0) + 1;
+    });
+
+    return Object.entries(wordCounts)
+        .filter(([word, count]) => word && count > 1)
+        .map(([word]) => word)
+        .slice(0, 3); // Return top 3 common words
+};
+
 // Nothing after this point is currently implemented. TODO: get the following implemented.
 
 // const getTargetNode = (targetNodeId, allNodes) => {

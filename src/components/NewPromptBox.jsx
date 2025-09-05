@@ -1,7 +1,7 @@
 // Enhanced prompt input with selected nodes - DIRECT REPLACEMENT for NewPromptBox.jsx
 import { useState, useCallback, useEffect } from 'react';
 import { X, Send, Link, Sparkles, Eye, EyeOff } from 'lucide-react';
-import { buildContextUpToNode, buildContextString } from '../utils/contextUtils';
+import { buildContextUpToNode, buildContextSummaryString } from '../utils/contextUtils';
 
 const NewPromptBox = ({
   initialPromptText,
@@ -76,24 +76,74 @@ const NewPromptBox = ({
     if (!newPromptInput.trim()) return;
 
     let finalPrompt = newPromptInput;
+    let contextSummary = '';
 
     // Build context if enabled and we have a current node
     if (includeContext && currentNodeId !== null && nodes.length > 0) {
-      finalPrompt = buildContextString(currentNodeId, nodes, connections);
+      // Get context nodes
+      const contextNodes = buildContextUpToNode(currentNodeId, nodes, connections);
 
-      // Add connection from current node
-      setConnections(prevConnections => [...prevConnections, {
-        from: currentNodeId,
-        to: nodes.length
-      }]);
+      // Create a summary of what's already been covered (not full content)
+      const topicsCovered = contextNodes.map(node => `"${node.label}"`).join(', ');
+      const mainTopics = contextNodes
+        .filter(node => node.type === 'root' || node.type === 'concept')
+        .map(node => `- ${node.label}: ${node.description}`)
+        .join('\n');
+
+      contextSummary = `CONTEXT: We have already covered these topics: ${topicsCovered}
+
+Previous main concepts:
+${mainTopics}
+
+IMPORTANT: Do not recreate or duplicate the above topics. Instead, build NEW content that extends or relates to them.`;
+    }
+
+    // Handle selected nodes context separately and more carefully
+    if (includeSelectedNodes && selectedNodeIds.length > 0) {
+      const selectedNodes = nodes.filter(node => selectedNodeIds.has(node.id));
+      const selectedTopics = selectedNodes.map(node => `"${node.label}"`).join(', ');
+      const selectedSummaries = selectedNodes
+        .map(node => `- ${node.label}: ${node.description}`)
+        .join('\n');
+
+      const selectedContext = `SELECTED NODES CONTEXT: The user has specifically selected these ${selectedNodes.length} nodes for reference: ${selectedTopics}
+
+Selected concepts summary:
+${selectedSummaries}
+
+IMPORTANT: These are provided as BACKGROUND CONTEXT only. Do not recreate these topics. Generate NEW nodes that either:
+1. Explore deeper aspects of these topics
+2. Show practical applications
+3. Connect these concepts to new areas
+4. Provide related but distinct concepts`;
+
+      contextSummary = contextSummary ? `${contextSummary}\n\n${selectedContext}` : selectedContext;
+    }
+
+    // Create the final prompt with clear separation
+    if (contextSummary) {
+      finalPrompt = `${contextSummary}
+
+NEW REQUEST: ${newPromptInput}
+
+Generate 3-5 NEW learning nodes that address the user's request while building upon (not duplicating) the context provided above. Each node should cover NEW ground that hasn't been explored yet.`;
     }
 
     setIsTypingPrompt(false);
     const curNode = nodes.find(n => n.id === currentNodeId);
     await onGenerate(finalPrompt, curNode?.worldX, curNode?.worldY);
     setNewPromptInput('');
-  }, [newPromptInput, includeContext, currentNodeId, nodes, connections, setConnections, setIsTypingPrompt, onGenerate]);
-
+  }, [
+    newPromptInput,
+    includeContext,
+    includeSelectedNodes,
+    currentNodeId,
+    nodes,
+    connections,
+    selectedNodeIds,
+    setIsTypingPrompt,
+    onGenerate
+  ]);
 
   const handleKeyPress = useCallback((e) => {
     if (e.key === 'Enter' && !e.shiftKey) {

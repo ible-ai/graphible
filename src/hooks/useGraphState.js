@@ -248,7 +248,36 @@ export const useGraphState = (generateWithLLM) => {
     let newNodeCount = 0;
 
     try {
-      const fullPrompt = `Generate a structured learning graph that provides a step-by-step response to: ${prompt}.
+      // Check if this looks like a context-aware prompt (contains "CONTEXT:" or "SELECTED NODES")
+      const isContextAware = prompt.includes('CONTEXT:') || prompt.includes('SELECTED NODES');
+
+      const fullPrompt = isContextAware ?
+        // Context-aware prompt - be more explicit about generating NEW content
+        `${prompt}
+
+GENERATION INSTRUCTIONS:
+Create NEW learning nodes that address the user's request. Each node should be a separate JSON object.
+
+CRITICAL: Do not duplicate or recreate any concepts mentioned in the context above. Generate fresh, original content.
+
+Format each node exactly like this:
+{
+  "label": "NEW concept title (not mentioned in context)",
+  "type": "root|concept|example|detail",
+  "description": "One sentence summary of this NEW node's purpose",
+  "content": "Detailed educational content for this NEW specific aspect"
+}
+
+Requirements:
+- Generate 3-5 nodes with completely NEW content
+- Use "concept" for main ideas, "example" for illustrations, "detail" for specifics
+- Each node should cover ground NOT already covered in the context
+- Separate each JSON object with exactly 4 newlines
+
+Generate NEW nodes now:` :
+
+        // Regular prompt for fresh topics
+        `Generate a structured learning graph that provides a step-by-step response to: ${prompt}.
 
 Create multiple interconnected learning nodes. Each node should be a separate JSON object.
 
