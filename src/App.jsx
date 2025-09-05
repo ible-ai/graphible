@@ -355,9 +355,9 @@ const Graphible = () => {
     const currentNode = nodes[currentNodeId];
     if (currentNode && !showPromptCenter) {
       setNodeDetails(currentNode);
-      setCameraImmediate(-currentNode.worldX, -currentNode.worldY);
+      setCameraImmediate(-currentNode.worldX, -currentNode.worldY, camera.zoom);
     }
-  }, [currentNodeId, showPromptCenter, nodes, setCameraImmediate]);
+  }, [currentNodeId, showPromptCenter, nodes, setCameraImmediate, camera]);
 
   // Handle node manipulation mouse events
   useEffect(() => {
