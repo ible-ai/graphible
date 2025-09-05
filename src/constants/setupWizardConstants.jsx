@@ -143,7 +143,7 @@ export const OLLAMA_INSTRUCTIONS = [
         title: 'Start Ollama Server',
         description: 'Run Ollama with CORS enabled for web access',
         action: 'Copy command',
-        command: 'OLLAMA_ORIGINS=* ollama serve',
+        command: 'OLLAMA_ORIGINS="https://ible-ai.github.io,https://localhost:*,http://localhost:*,*" OLLAMA_HOST="0.0.0.0:11434" ollama serve',
         icon: 'terminal'
     },
     {
