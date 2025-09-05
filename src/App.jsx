@@ -361,60 +361,105 @@ const Graphible = () => {
 
   // Handle node manipulation mouse events
   useEffect(() => {
-    const handleMouseMove = (e) => {
-      if (isDraggingNode !== null) {
-        updateNodeDrag(e.clientX, e.clientY, camera);
+    const handleMouseDown = (e) => {
+      // Don't interfere with node manipulation
+      if (isDraggingNode != null || isResizingNode != null) return;
+
+      const clickedElement = e.target;
+      const isInteractiveClick =
+        clickedElement.closest('.node-component') ||
+        clickedElement.closest('.minimap-container') ||
+        clickedElement.closest('.details-panel') ||
+        clickedElement.closest('button') ||
+        clickedElement.closest('input') ||
+        clickedElement.closest('textarea') ||
+        clickedElement.closest('.modal') ||
+        clickedElement.closest('select') ||
+        clickedElement.closest('a');
+
+      if (isInteractiveClick) return;
+
+      if (selectionMode) {
+        // Start drag selection
+        startDragSelection(e.clientX, e.clientY, camera);
+      } else {
+        // Start camera dragging
+        setIsDragging(true);
+        setDragStart({ x: e.clientX, y: e.clientY });
+        document.body.style.cursor = 'grabbing';
+        document.body.style.userSelect = 'none';
       }
-      if (isResizingNode !== null) {
-        updateNodeResize(e.clientX, e.clientY);
-      }
-      if (isDragSelecting) {
-        updateDragSelection(e.clientX, e.clientY, camera);
-      }
+
+      e.preventDefault();
     };
 
-    const handleMouseUp = () => {
-      if (isDraggingNode !== null) {
-        endNodeDrag();
+    const handleMouseMove = (e) => {
+      // Handle drag selection (selection mode)
+      if (isDragSelecting) {
+        updateDragSelection(e.clientX, e.clientY, camera);
+        return;
       }
-      if (isResizingNode !== null) {
-        endNodeResize();
-      }
+
+      // Handle camera dragging (normal mode)
+      if (!isDragging) return;
+
+      const deltaX = e.clientX - dragStart.x;
+      const deltaY = e.clientY - dragStart.y;
+
+      // Apply camera movement
+      setCameraImmediate(
+        camera.x + deltaX / camera.zoom,
+        camera.y + deltaY / camera.zoom,
+        camera.zoom
+      );
+
+      // Update drag start for next frame
+      setDragStart({ x: e.clientX, y: e.clientY });
+      e.preventDefault();
+    };
+
+    const handleMouseUp = (e) => {
       if (isDragSelecting) {
         endDragSelection(nodes);
       }
+
+      if (isDragging) {
+        setIsDragging(false);
+        document.body.style.cursor = 'default';
+        document.body.style.userSelect = '';
+      }
+
+      e.preventDefault();
     };
 
-    if (isDraggingNode !== null || isResizingNode !== null || isDragSelecting) {
+    // Only add listeners when not in prompt center mode
+    if (!showPromptCenter) {
+      document.addEventListener('mousedown', handleMouseDown);
       document.addEventListener('mousemove', handleMouseMove);
       document.addEventListener('mouseup', handleMouseUp);
-
-      if (isDraggingNode !== null) {
-        document.body.style.cursor = 'grabbing';
-      } else if (isResizingNode !== null) {
-        document.body.style.cursor = 'se-resize';
-      }
-      document.body.style.userSelect = 'none';
     }
 
     return () => {
+      document.removeEventListener('mousedown', handleMouseDown);
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
       document.body.style.cursor = 'default';
       document.body.style.userSelect = '';
     };
   }, [
+    isDragging,
+    isDragSelecting,
+    camera,
+    setCameraImmediate,
+    dragStart,
+    selectionMode,
     isDraggingNode,
     isResizingNode,
-    isDragSelecting,
-    updateNodeDrag,
-    updateNodeResize,
+    startDragSelection,
     updateDragSelection,
-    endNodeDrag,
-    endNodeResize,
     endDragSelection,
-    camera,
-    nodes
+    nodes,
+    showPromptCenter
   ]);
 
   // Layout optimization that preserves selections
