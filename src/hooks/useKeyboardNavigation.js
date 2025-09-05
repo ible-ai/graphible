@@ -54,7 +54,7 @@ export const useKeyboardNavigation = ({
       if (targetNode) {
         setCurrentNodeId(targetNode.id);
         setNodeDetails(targetNode);
-        setCameraImmediate(-targetNode.worldX, -targetNode.worldY);
+        setCameraImmediate(-targetNode.worldX, -targetNode.worldY, camera.zoom);
         keysPressed.current.clear();
       }
     };
