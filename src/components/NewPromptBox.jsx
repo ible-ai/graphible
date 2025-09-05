@@ -57,7 +57,6 @@ const NewPromptBox = ({
 
       if (e.key.length === 1 && e.key.match(/^[a-z0-9 ]$/i)) {
         setIsTypingPrompt(true);
-        setNewPromptInput(e.key);
       }
     };
 
