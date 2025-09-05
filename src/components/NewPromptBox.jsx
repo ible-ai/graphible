@@ -158,7 +158,7 @@ Generate 3-5 NEW learning nodes that address the user's request while building u
   if (!isTypingPrompt) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-40 font-inter">
+    <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center font-inter z-200">
       <div className="w-full max-w-3xl mx-4">
         <div className="bg-white/90 backdrop-blur-md rounded-2xl border border-slate-200/50 shadow-xl overflow-hidden">
           {/* Header */}
