@@ -5,10 +5,5 @@ npm install
 # Step 2: Test the build locally
 npm run build
 
-# Step 3: Test the built app locally
-npm run preview
-
-# Step 4: If successful, push to GitHub
+# Step 3: If successful, add to current commit
 git add .
-git commit -m "Fix deployment issues"
-git push
