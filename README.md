@@ -4,7 +4,7 @@
 > **[OUR *ONLINE* DEMO IS LIVE](https://ible-ai.github.io/graphible)**
 
 > [!IMPORTANT]
-> **Also accessible from any browser via [https://graph.ible.ai](http://graph.ible.ai)**
+> **Also accessible from any browser via [graph.ible.ai](http://graph.ible.ai)**
 
 Transform any topic into an interactive, AI-powered learning graph. Explore concepts through visual node-based interfaces with real-time LLM integration.
 
