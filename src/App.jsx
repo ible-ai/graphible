@@ -119,7 +119,8 @@ const Graphible = () => {
     generateWithLLM,
     handleModelChange,
     loadSavedConfig,
-    hasTestedInitially
+    hasTestedInitially,
+    webllmLoadingProgress,
   } = useLLMConnection();
 
   const {
@@ -531,7 +532,8 @@ const Graphible = () => {
     if (llmConnected !== 'connected') {
       const isConnected = await testLLMConnection();
       if (!isConnected) {
-        const modelType = currentModel.type === 'local' ? 'local model (Ollama)' : 'external API';
+        const modelType = currentModel.type === 'local' ? 'local model (Ollama)' :
+          currentModel.type === 'webllm' ? 'browser model' : 'external API';
         const proceed = window.confirm(
           `Could not connect to ${modelType}. Would you like to try generating anyway? ` +
           `(You can configure your model settings using the dropdown in the top-left)`
@@ -717,6 +719,7 @@ const Graphible = () => {
         currentModel={currentModel}
         onModelChange={handleModelChange}
         onTestConnection={testLLMConnection}
+        webllmLoadingProgress={webllmLoadingProgress}
       />
 
       {!showPromptCenter && (
@@ -734,6 +737,7 @@ const Graphible = () => {
                   onModelChange={handleModelChange}
                   connectionStatus={llmConnected}
                   onTestConnection={testLLMConnection}
+                  webllmLoadingProgress={webllmLoadingProgress}
                 />
               </div>
               <button

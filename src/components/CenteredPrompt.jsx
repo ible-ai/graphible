@@ -14,7 +14,8 @@ const CenteredPrompt = ({
   currentModel,
   onModelChange,
   onTestConnection,
-  onShowSetupWizard
+  onShowSetupWizard,
+  webllmLoadingProgress
 }) => {
   const [inputPrompt, setInputPrompt] = useState(
     'I want to understand the transformer architecture.'
@@ -49,39 +50,7 @@ const CenteredPrompt = ({
     }
   }, [handleSubmit]);
 
-  const getModelDisplayInfo = () => {
-    if (!currentModel) return { name: 'No Model', icon: Brain, color: 'text-slate-400' };
-
-    if (currentModel.type === 'local') {
-      return {
-        name: `Local: ${currentModel.model}`,
-        icon: Server,
-        color: 'text-slate-600',
-        detail: currentModel.address
-      };
-    } else if (currentModel.type === 'external') {
-      const modelMap = {
-        'gemini-2.5-flash-lite': 'Gemini 2.5 Flash Lite',
-        'gemini-2.5-flash': 'Gemini 2.5 Flash',
-        'gemini-2.5-pro': 'Gemini 2.5 Pro'
-      };
-
-      return {
-        name: modelMap[currentModel.model] || currentModel.model,
-        icon: Globe,
-        color: 'text-indigo-600',
-        detail: 'Google AI'
-      };
-    }
-
-    return { name: 'Unknown Model', icon: Brain, color: 'text-slate-400' };
-  };
-
   if (!showPromptCenter) return null;
-
-  const modelInfo = getModelDisplayInfo();
-  const ModelIcon = modelInfo.icon;
-
   return (
     <div className="fixed inset-0 flex items-center justify-center z-20 bg-gradient-to-br from-slate-50 to-slate-100 font-inter">
       {/* Model Selector - positioned same as in main interface */}
@@ -91,6 +60,7 @@ const CenteredPrompt = ({
           onModelChange={onModelChange}
           connectionStatus={llmConnected}
           onTestConnection={onTestConnection}
+          webllmLoadingProgress={webllmLoadingProgress}
         />
       </div>
 

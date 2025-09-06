@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { GoogleGenAI } from '@google/genai';
 import { LLM_CONFIG } from '../constants/graphConstants';
+import { MLCEngine } from "@mlc-ai/web-llm";
 
 export const useLLMConnection = () => {
   const [llmConnected, setLlmConnected] = useState('pending');
@@ -14,6 +15,9 @@ export const useLLMConnection = () => {
   const [testingInProgress, setTestingInProgress] = useState(false);
   const [failureCount, setFailureCount] = useState(0);
   const [hasTestedInitially, setHasTestedInitially] = useState(false);
+  const [webllmEngine, setWebllmEngine] = useState(null);
+  const [webllmLoadingProgress, setWebllmLoadingProgress] = useState(null);
+
   const lastTestTime = useRef(0);
   const maxFailures = 3;
   const cooldownPeriod = 5000; // 5 seconds
@@ -61,6 +65,51 @@ export const useLLMConnection = () => {
     }
   };
 
+  const testWebLLMConnection = useCallback(async (config) => {
+    try {
+
+      // Check WebGPU support
+      if (!navigator.gpu) {
+        throw new Error('WebGPU not supported - please use Chrome/Edge 113+ or Firefox 141+');
+      }
+
+      // Test adapter availability
+      const adapter = await navigator.gpu.requestAdapter();
+      if (!adapter) {
+        throw new Error('WebGPU adapter not available');
+      }
+
+      // If we already have an engine with the same model, use it
+      if (webllmEngine && webllmEngine.modelId === config.model) {
+        return true;
+      }
+
+      // Initialize WebLLM engine with progress tracking
+      console.log('Initializing WebLLM engine with model:', config.model);
+
+      const initProgressCallback = (progress) => {
+        console.log('WebLLM loading progress:', progress);
+        setWebllmLoadingProgress(progress);
+      };
+
+      const engine = new MLCEngine({
+        initProgressCallback: initProgressCallback
+      });
+      await engine.reload(config.model);
+
+      setWebllmEngine(engine);
+      setWebllmLoadingProgress(null);
+      console.log('WebLLM engine initialized successfully');
+
+      return true;
+    } catch (error) {
+      console.error('WebLLM connection test failed:', error);
+      setWebllmLoadingProgress(null);
+      setWebllmEngine(null);
+      throw error;
+    }
+  }, [webllmEngine]);
+
   const testLLMConnection = useCallback(async (config = currentModel) => {
     const now = Date.now();
     if (testingInProgress || (now - lastTestTime.current < cooldownPeriod && failureCount >= maxFailures)) {
@@ -78,6 +127,8 @@ export const useLLMConnection = () => {
         isConnected = await testLocalConnection(config);
       } else if (config.type === 'external') {
         isConnected = await testExternalConnection(config);
+      } else if (config.type === 'webllm') {
+        isConnected = await testWebLLMConnection(config);
       }
 
       if (isConnected) {
@@ -99,7 +150,7 @@ export const useLLMConnection = () => {
       setTestingInProgress(false);
       return false;
     }
-  }, [currentModel, testingInProgress, failureCount, llmConnected]);
+  }, [currentModel, testingInProgress, failureCount, llmConnected, testWebLLMConnection]);
 
   const generateWithLLM = async (prompt, stream = true, config = null) => {
     const modelToUse = config || currentModel;
@@ -109,6 +160,8 @@ export const useLLMConnection = () => {
       return generateWithLocalLLM(prompt, stream, modelToUse);
     } else if (modelToUse.type === 'external') {
       return generateWithExternalLLM(prompt, stream, modelToUse);
+    } else if (modelToUse.type === 'webllm') {
+      return generateWithWebLLM(prompt, stream);
     }
     throw new Error('Unknown model type');
   };
@@ -223,6 +276,67 @@ export const useLLMConnection = () => {
     throw new Error('Unsupported external provider');
   };
 
+  const generateWithWebLLM = async (prompt, stream = true) => {
+
+    if (!webllmEngine) {
+      throw new Error('WebLLM engine not initialized. Please wait for model loading to complete.');
+    }
+
+    try {
+      if (stream) {
+
+        // WebLLM streaming using async generator
+        const asyncChunkGenerator = await webllmEngine.chat.completions.create({
+          messages: [{ role: "user", content: prompt }],
+          stream: true,
+          temperature: 0.7,
+          max_tokens: 2048,
+        });
+
+        const readableStream = new ReadableStream({
+          async start(controller) {
+            try {
+              for await (const chunk of asyncChunkGenerator) {
+                if (chunk.choices[0]?.delta?.content) {
+                  const text = chunk.choices[0].delta.content;
+                  const formattedChunk = JSON.stringify({ response: text });
+                  controller.enqueue(new TextEncoder().encode(formattedChunk + '\n'));
+                }
+              }
+              controller.close();
+            } catch (error) {
+              console.error('WebLLM streaming error:', error);
+              controller.error(error);
+            }
+          }
+        });
+
+        return {
+          ok: true,
+          body: readableStream,
+          status: 200
+        };
+      } else {
+        const response = await webllmEngine.chat.completions.create({
+          messages: [{ role: "user", content: prompt }],
+          temperature: 0.7,
+          max_tokens: 2048,
+        });
+
+        const text = response.choices[0]?.message?.content || '';
+
+        return {
+          ok: true,
+          json: async () => ({ response: text }),
+          status: 200
+        };
+      }
+    } catch (error) {
+      console.error('WebLLM generation error:', error);
+      throw error;
+    }
+  };
+
   const handleModelChange = useCallback((newConfig) => {
     console.log('handleModelChange called with:', newConfig);
     setCurrentModel(newConfig);
@@ -233,7 +347,13 @@ export const useLLMConnection = () => {
     if (newConfig.type === 'external' && newConfig.apiKey) {
       localStorage.setItem('graphible-google-api-key', newConfig.apiKey);
     }
-  }, []);
+
+    // Reset WebLLM engine if switching away from WebLLM
+    if (newConfig.type !== 'webllm' && webllmEngine) {
+      setWebllmEngine(null);
+      setWebllmLoadingProgress(null);
+    }
+  }, [webllmEngine]);
 
   // Load saved model config on initialization
   const loadSavedConfig = useCallback(() => {
@@ -262,6 +382,8 @@ export const useLLMConnection = () => {
     generateWithLLM,
     handleModelChange,
     loadSavedConfig,
-    hasTestedInitially
+    hasTestedInitially,
+    webllmEngine,
+    webllmLoadingProgress,
   };
 };

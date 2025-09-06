@@ -1,14 +1,16 @@
-import { useState, useRef, useEffect } from 'react';
-import { ChevronDown, Settings, Zap, Globe, Server } from 'lucide-react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { ChevronDown, Settings, Globe, Server, Brain, Download, CheckCircle, AlertCircle } from 'lucide-react';
+import { LLM_CONFIG } from '../constants/graphConstants';
 
 const ModelSelector = ({
     currentModel,
     onModelChange,
     connectionStatus,
-    onTestConnection
+    onTestConnection,
+    webllmLoadingProgress = null
 }) => {
     const [isOpen, setIsOpen] = useState(false);
-    const [activeTab, setActiveTab] = useState(currentModel.type || 'local');
+    const [activeTab, setActiveTab] = useState(currentModel.type || 'webllm');
     const dropdownRef = useRef(null);
 
     const [localConfig, setLocalConfig] = useState({
@@ -22,13 +24,17 @@ const ModelSelector = ({
         apiKey: currentModel.apiKey || ''
     });
 
+    const [webllmConfig, setWebllmConfig] = useState({
+        model: currentModel.model || 'Llama-3.2-3B-Instruct-q4f32_1-MLC'
+    });
+
     // Load saved API key on component mount
     useEffect(() => {
         const savedApiKey = localStorage.getItem('graphible-google-api-key');
         if (savedApiKey && !externalConfig.apiKey) {
             setExternalConfig(prev => ({ ...prev, apiKey: savedApiKey }));
         }
-    }, []);
+    }, [externalConfig.apiKey]);
 
     const googleModels = [
         { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash Lite', description: 'Fast and lightweight' },
@@ -49,9 +55,15 @@ const ModelSelector = ({
     }, []);
 
     const handleSave = () => {
-        const config = activeTab === 'local'
-            ? { type: 'local', ...localConfig }
-            : { type: 'external', ...externalConfig };
+        let config;
+
+        if (activeTab === 'local') {
+            config = { type: 'local', ...localConfig };
+        } else if (activeTab === 'external') {
+            config = { type: 'external', ...externalConfig };
+        } else if (activeTab === 'webllm') {
+            config = { type: 'webllm', ...webllmConfig };
+        }
 
         // Save Google API key to localStorage if it's an external config
         if (activeTab === 'external' && externalConfig.apiKey.trim()) {
@@ -73,18 +85,32 @@ const ModelSelector = ({
         }
     };
 
-    const isLocal = () => { return currentModel.type === 'local' };
-
     const getDisplayName = () => {
         if (currentModel.type === 'external') {
             const model = googleModels.find(m => m.id === currentModel.model);
-            if (model) return model.name;
-            // Fall back to local
-            setActiveTab(currentModel.type);
-
-            return currentModel.model;
+            return model ? model.name : currentModel.model;
+        } else if (currentModel.type === 'webllm') {
+            const model = LLM_CONFIG.WEBLLM[currentModel.model];
+            return model ? model.name : currentModel.model;
         }
         return `${currentModel.model || 'gemma3:4b'}`;
+    };
+
+    const getDisplayIcon = useCallback(() => {
+        if (currentModel.type === 'external') return Globe;
+        if (currentModel.type === 'webllm') return Brain;
+        return Server;
+    }, [currentModel.type]);
+
+    const DisplayIcon = getDisplayIcon();
+
+    const formatProgress = (progress) => {
+        if (!progress) return '';
+        if (progress.text) return progress.text;
+        if (progress.progress !== undefined) {
+            return `Loading: ${Math.round(progress.progress * 100)}%`;
+        }
+        return 'Initializing...';
     };
 
     return (
@@ -95,16 +121,14 @@ const ModelSelector = ({
                 className="flex items-center gap-3 px-4 py-2 bg-white/80 border border-slate-200 rounded-lg text-slate-700 hover:border-slate-300 hover:bg-white transition-all duration-300 shadow-sm"
                 style={{
                     boxShadow: isOpen ? '0 0 0 3px rgb(148 163 184 / 0.1)' : undefined,
-                    backgroundColor: isLocal()? 'black' : 'white',
-                    color: isLocal()? 'white' : 'black',
                 }}
             >
                 <div className="flex items-center gap-2">
-                    {activeTab === 'local' ? (
-                        <Server size={16} className="text-slate-600" />
-                    ) : (
-                        <Globe size={16} className="text-indigo-600" />
-                    )}
+                    <DisplayIcon size={16} className={
+                        currentModel.type === 'external' ? 'text-indigo-600' :
+                            currentModel.type === 'webllm' ? 'text-purple-600' :
+                                'text-slate-600'
+                    } />
                     <span className="text-sm font-medium">{getDisplayName()}</span>
                     <div className={`w-2 h-2 rounded-full ${getStatusColor().replace('text-', 'bg-').replace('400', '500')}`} />
                 </div>
@@ -114,6 +138,24 @@ const ModelSelector = ({
                 />
             </button>
 
+            {/* Progress indicator for WebLLM */}
+            {webllmLoadingProgress && currentModel.type === 'webllm' && (
+                <div className="absolute top-full left-0 right-0 mt-2 p-3 bg-purple-50 border border-purple-200 rounded-lg text-sm">
+                    <div className="flex items-center gap-2 text-purple-700">
+                        <Download size={14} className="animate-bounce" />
+                        <span>{formatProgress(webllmLoadingProgress)}</span>
+                    </div>
+                    {webllmLoadingProgress.progress !== undefined && (
+                        <div className="mt-2 w-full bg-purple-200 rounded-full h-2">
+                            <div
+                                className="bg-purple-600 h-2 rounded-full transition-all duration-200"
+                                style={{ width: `${Math.round(webllmLoadingProgress.progress * 100)}%` }}
+                            />
+                        </div>
+                    )}
+                </div>
+            )}
+
             {/* Dropdown */}
             {isOpen && (
                 <div
@@ -121,6 +163,22 @@ const ModelSelector = ({
                 >
                     {/* Tab Headers */}
                     <div className="flex border-b border-slate-200">
+                        <button
+                            onClick={() => setActiveTab('webllm')}
+                            className={`flex-1 px-3 py-3 text-sm font-medium transition-all duration-200 relative ${activeTab === 'webllm'
+                                ? 'text-purple-700 bg-purple-50'
+                                : 'text-slate-600 hover:text-slate-800 hover:bg-slate-50'
+                                }`}
+                        >
+                            <div className="flex items-center gap-2 justify-center">
+                                <Brain size={14} />
+                                Browser
+                            </div>
+                            {activeTab === 'webllm' && (
+                                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-700" />
+                            )}
+                        </button>
+
                         <button
                             onClick={() => setActiveTab('local')}
                             className={`flex-1 px-4 py-3 text-sm font-medium transition-all duration-200 relative ${activeTab === 'local'
@@ -156,7 +214,88 @@ const ModelSelector = ({
 
                     {/* Tab Content */}
                     <div className="p-4">
-                        {activeTab === 'local' ? (
+                        {activeTab === 'webllm' && (
+                            <div className="space-y-4">
+                                <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mb-4">
+                                    <div className="flex items-start gap-2">
+                                        <Brain className="text-purple-600 flex-shrink-0 mt-0.5" size={16} />
+                                        <div>
+                                            <h3 className="font-semibold text-purple-800 mb-1 text-sm">AI in Your Browser</h3>
+                                            <div className="text-purple-700 text-xs space-y-1">
+                                                <div className="flex items-center gap-1">
+                                                    <CheckCircle size={10} />
+                                                    <span>No installation required</span>
+                                                </div>
+                                                <div className="flex items-center gap-1">
+                                                    <CheckCircle size={10} />
+                                                    <span>Complete privacy - data stays local</span>
+                                                </div>
+                                                <div className="flex items-center gap-1">
+                                                    <CheckCircle size={10} />
+                                                    <span>Works offline after initial download</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                                        Select Model
+                                    </label>
+                                    <div className="space-y-2">
+                                        {Object.entries(LLM_CONFIG.WEBLLM).map(([modelId, modelInfo]) => (
+                                            <label
+                                                key={modelId}
+                                                className={`flex items-center p-3 border rounded cursor-pointer transition-all duration-200 ${webllmConfig.model === modelId
+                                                    ? 'border-purple-500 bg-purple-50'
+                                                    : 'border-slate-200 hover:border-purple-300 hover:bg-purple-25'
+                                                    }`}
+                                                onClick={() => setWebllmConfig(prev => ({ ...prev, model: modelId }))}
+                                            >
+                                                <div className="flex-1">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <div className="font-medium text-sm text-slate-800">{modelInfo.name}</div>
+                                                        {modelInfo.recommended && (
+                                                            <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full text-xs font-medium">
+                                                                Recommended
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <div className="text-xs text-slate-600 mb-2">{modelInfo.description}</div>
+                                                    <div className="flex items-center gap-3 text-xs text-slate-500">
+                                                        <span>Size: {modelInfo.size}</span>
+                                                        <span>Performance: {modelInfo.performance}</span>
+                                                    </div>
+                                                </div>
+                                                <div className={`w-4 h-4 border-2 rounded-full transition-all duration-200 ${webllmConfig.model === modelId
+                                                    ? 'border-purple-500 bg-purple-500'
+                                                    : 'border-slate-300'
+                                                    }`}>
+                                                    {webllmConfig.model === modelId && (
+                                                        <div className="w-2 h-2 bg-white rounded-full m-0.5" />
+                                                    )}
+                                                </div>
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                                    <div className="flex items-start gap-2">
+                                        <AlertCircle className="text-amber-600 flex-shrink-0 mt-0.5" size={14} />
+                                        <div className="text-amber-700 text-xs">
+                                            <div className="font-semibold mb-1">Requirements:</div>
+                                            <div>• Chrome/Edge 113+, Firefox 141+, or Safari 26+</div>
+                                            <div>• First download may take 1-3 minutes</div>
+                                            <div>• 8GB+ RAM recommended for larger models</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'local' && (
                             <div className="space-y-4">
                                 <div>
                                     <label className="block text-sm font-medium text-black-300 mb-2">
@@ -203,8 +342,33 @@ const ModelSelector = ({
                                     <div>3. Pull model: <code className="bg-gray-100 px-1 rounded">ollama pull gemma3:4b</code></div>
                                 </div>
                             </div>
-                        ) : (
+                        )}
+
+                        {activeTab === 'external' && (
                             <div className="space-y-4">
+                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                                    <div className="flex items-start gap-2">
+                                        <Globe className="text-blue-600 flex-shrink-0 mt-0.5" size={16} />
+                                        <div>
+                                            <h3 className="font-semibold text-blue-800 mb-1 text-sm">Cloud AI Models</h3>
+                                            <div className="text-blue-700 text-xs space-y-1">
+                                                <div className="flex items-center gap-1">
+                                                    <CheckCircle size={10} />
+                                                    <span>Instant setup</span>
+                                                </div>
+                                                <div className="flex items-center gap-1">
+                                                    <CheckCircle size={10} />
+                                                    <span>Maximum capability</span>
+                                                </div>
+                                                <div className="flex items-center gap-1">
+                                                    <AlertCircle size={10} />
+                                                    <span>Requires internet & API costs</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <div>
                                     <label className="block text-sm font-medium text-gray-300 mb-2">
                                         Provider
@@ -303,7 +467,8 @@ const ModelSelector = ({
                                 onClick={handleSave}
                                 disabled={
                                     (activeTab === 'external' && !externalConfig.apiKey.trim()) ||
-                                    (activeTab === 'local' && (!localConfig.address.trim() || !localConfig.model.trim()))
+                                    (activeTab === 'local' && (!localConfig.address.trim() || !localConfig.model.trim())) ||
+                                    (activeTab === 'webllm' && !webllmConfig.model)
                                 }
                                 className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded font-medium hover:from-blue-500 hover:to-purple-500 disabled:from-gray-600 disabled:to-gray-600 disabled:cursor-not-allowed transition-all duration-200 group relative overflow-hidden"
                                 onMouseEnter={(e) => {

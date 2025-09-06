@@ -117,6 +117,18 @@ export const LLM_CONFIG = {
     GENERATE_ENDPOINT: '/api/generate'
   },
 
+  // See https://mlc.ai/models.
+  // TODO: expand beyond outdated pre-compiled models.
+  WEBLLM: {
+    'Llama-3.2-3B-Instruct-q4f16_1-MLC': {
+      name: 'Llama 3.2 3B (4-bit)',
+      description: 'Balanced performance and size',
+      size: '2.2GB',
+      performance: 'Medium',
+      recommended: true
+    }
+  },
+
   // External API configurations
   EXTERNAL: {
     GOOGLE: {
