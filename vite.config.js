@@ -40,5 +40,11 @@ export default defineConfig({
       // Ensure crypto uses the Node.js version
       crypto: 'crypto'
     }
+  },
+  preview: {
+    https: {
+      key: './.env/localhost+2-key.pem',
+      cert: './.env/localhost+2.pem'
+    }
   }
 });
