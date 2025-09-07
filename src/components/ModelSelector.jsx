@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { ChevronDown, Settings, Globe, Server, Brain, Download, CheckCircle, AlertCircle } from 'lucide-react';
-import { LLM_CONFIG } from '../constants/graphConstants';
+import { ChevronDown, Settings, Globe, Server, Brain, CheckCircle, AlertCircle } from 'lucide-react';
+import { LLM_CONFIG, DEFAULT_MODEL_CONFIGS, WEBLLM_STATE } from '../constants/graphConstants';
 import WebLLMProgressTracker from '../components/WebLLMProgressTracker';
 
 const ModelSelector = ({
@@ -15,19 +15,23 @@ const ModelSelector = ({
     const [activeTab, setActiveTab] = useState(currentModel.type || 'webllm');
     const dropdownRef = useRef(null);
 
+    const shouldShowProgressTracker = (webllmState) => {
+        return ((webllmState == WEBLLM_STATE.RELOADING) || (webllmState == WEBLLM_STATE.DOWNLOADING));
+    };
+
     const [localConfig, setLocalConfig] = useState({
-        address: currentModel.address || 'http://localhost:11434',
-        model: currentModel.model || 'gemma3:4b'
+        address: currentModel.address || DEFAULT_MODEL_CONFIGS.LOCAL.address,
+        model: currentModel.model || DEFAULT_MODEL_CONFIGS.LOCAL.model
     });
 
     const [externalConfig, setExternalConfig] = useState({
-        provider: currentModel.provider || 'google',
-        model: currentModel.model || 'gemini-2.5-flash-lite',
+        provider: currentModel.provider || DEFAULT_MODEL_CONFIGS.EXTERNAL.provider,
+        model: currentModel.model || DEFAULT_MODEL_CONFIGS.EXTERNAL.model,
         apiKey: currentModel.apiKey || ''
     });
 
     const [webllmConfig, setWebllmConfig] = useState({
-        model: currentModel.model || 'Llama-3.2-3B-Instruct-q4f32_1-MLC'
+        model: currentModel.model || DEFAULT_MODEL_CONFIGS.WEBLLM.model
     });
 
     // Load saved API key on component mount
@@ -132,7 +136,7 @@ const ModelSelector = ({
             </button>
 
             {/* Progress indicator for WebLLM */}
-            {webllmLoadState && (<WebLLMProgressTracker webllmLoadState={webllmLoadState} progress={webllmLoadingProgress} modelName={currentModel.model}/>)}
+            {shouldShowProgressTracker(webllmLoadState) && webllmLoadingProgress && (<WebLLMProgressTracker webllmLoadState={webllmLoadState} progress={webllmLoadingProgress} modelName={currentModel.model}/>)}
 
             {/* Dropdown */}
             {isOpen && (

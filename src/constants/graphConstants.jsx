@@ -167,25 +167,25 @@ export const LLM_CONFIG = {
 };
 
 // Model configuration defaults
-const DEFAULT_MODEL_CONFIGS = {
-  local: {
+export const DEFAULT_MODEL_CONFIGS = {
+  LOCAL: {
     type: 'local',
     address: LLM_CONFIG.LOCAL.DEFAULT_BASE_URL,
     model: LLM_CONFIG.LOCAL.DEFAULT_MODEL
   },
-  external: {
+  EXTERNAL: {
     type: 'external',
     provider: 'google',
     model: 'gemini-2.5-flash-lite',
     apiKey: ''
   },
-  webllm: {
+  WEBLLM: {
     type: 'webllm',
     model: 'Llama-3.2-3B-Instruct-q4f16_1-MLC'
   }
 };
 
-export const DEFAULT_MODEL_CONFIG = DEFAULT_MODEL_CONFIGS.webllm;
+export const DEFAULT_MODEL_CONFIG = DEFAULT_MODEL_CONFIGS.WEBLLM;
 
 // API endpoints and configuration (kept for reference but using SDK now)
 export const API_INFO = {

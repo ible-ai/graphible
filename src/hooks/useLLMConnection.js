@@ -144,7 +144,7 @@ export const useLLMConnection = () => {
       } else if (config.type === 'external') {
         isConnected = await testExternalConnection(config);
       } else if (config.type === 'webllm') {
-        isConnected = await testWebLLMConnection(config);
+        isConnected = (webllmEngine != null);
       }
 
       if (isConnected) {
@@ -166,7 +166,7 @@ export const useLLMConnection = () => {
       setTestingInProgress(false);
       return false;
     }
-  }, [currentModel, testingInProgress, failureCount, llmConnected, testWebLLMConnection]);
+  }, [currentModel, testingInProgress, failureCount, llmConnected, webllmEngine]);
 
   const generateWithLLM = async (prompt, stream = true, config = null) => {
     const modelToUse = config || currentModel;
