@@ -76,7 +76,7 @@ export const useNodeSelection = () => {
 
   // Auto-select nodes from the most recent generation batch
   const autoSelectRecentBatch = useCallback((nodes, currentNodeId) => {
-    const curNode = nodes.find(n => n.id === currentNodeId);
+    const curNode = nodes.find(n => n && n.id === currentNodeId);
 
     if (!Array.isArray(nodes) || nodes.length === 0 || curNode === null) return;
 
@@ -89,7 +89,14 @@ export const useNodeSelection = () => {
 
     // Select all nodes from the most recent batch or from the existing set of nodes.
     const newlySelectedNodeIds = nodes
-    .filter(node => (((selectedNodeIdsRef.current.has(node.id)) || (node.batchId || 0) === recentBatchId)) && (node.id <= curNode.id)).map(node => node.id);
+      .filter(
+        node => node && node.id &&
+          (
+            (selectedNodeIdsRef.current.has(node.id)) ||
+            (node.batchId || 0) === recentBatchId
+          )
+          && (node?.id <= currentNodeId)
+      ).map(node => node.id);
     setSelectedNodeIds(new Set([...newlySelectedNodeIds]));
   }, [scheduleCleanup]);
 

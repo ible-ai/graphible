@@ -377,9 +377,13 @@ const Graphible = () => {
         clickedElement.closest('textarea') ||
         clickedElement.closest('.modal') ||
         clickedElement.closest('select') ||
-        clickedElement.closest('a');
+        clickedElement.closest('a') ||
+        clickedElement.closest('.node-controls') ||
+        clickedElement.closest('.resize-handle');
 
       if (isInteractiveClick) return;
+
+      if (e.shiftKey && clickedElement.closest('.node-component')) return;
 
       if (selectionMode) {
         // Start drag selection
@@ -396,6 +400,8 @@ const Graphible = () => {
     };
 
     const handleMouseMove = (e) => {
+      if (isDraggingNode !== null || isResizingNode !== null) return;
+
       // Handle drag selection (selection mode)
       if (isDragSelecting) {
         updateDragSelection(e.clientX, e.clientY, camera);
@@ -421,6 +427,8 @@ const Graphible = () => {
     };
 
     const handleMouseUp = (e) => {
+      if (isDraggingNode !== null || isResizingNode !== null) return;
+
       if (isDragSelecting) {
         endDragSelection(nodes);
       }

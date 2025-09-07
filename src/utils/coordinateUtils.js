@@ -135,7 +135,6 @@ export const estimateNewNodeDimensions = (content, description) => {
   const estimatedContentHeight = estimatedTextHeight(content);
   const estimatedDescriptionHeight = estimatedTextHeight(description, 30);
   const estimatedHeight = Math.max(NODE_SIZE.height, estimatedContentHeight + estimatedDescriptionHeight);
-  console.log("estimateNewNodeDimensions", estimatedContentHeight, estimatedDescriptionHeight, estimatedHeight);
 
   return { width: NODE_SIZE.width, height: estimatedHeight };
 };

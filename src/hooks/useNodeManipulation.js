@@ -1,55 +1,59 @@
-// Node manipulator
+// Node manipulation logic
 
-import { useState, useCallback, useRef } from 'react';
-import { screenToWorld } from '../utils/coordinateUtils';
-
+import { useState, useCallback, useRef, useEffect } from 'react';
+import { NODE_SIZE } from '../constants/graphConstants';
 
 export const useNodeManipulation = (nodes, setNodes, connections, setConnections) => {
-  const [deletedNodes, setDeletedNodes] = useState(new Map()); // Use Map for O(1) access
+  const [deletedNodes, setDeletedNodes] = useState(new Map());
   const [draggingNodeId, setDraggingNodeId] = useState(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const [isResizingNode, setIsResizingNode] = useState(null);
-  const [resizeStart, setResizeStart] = useState({ x: 0, y: 0, width: 0, height: 0 });
-  const dragOffsetRef = useRef({ x: 0, y: 0 });
+  const [isResizingNodeId, setIsResizingNodeId] = useState(null);
 
-  const startNodeDrag = useCallback((nodeId, clientX, clientY) => {
+  // Store initial drag/resize state
+  const manipulationState = useRef({
+    start: null,
+    initialNode: null,
+    camera: null,
+  });
+
+  const startNodeDrag = useCallback((nodeId, clientX, clientY, camera) => {
     const node = nodes.find(n => n.id === nodeId);
     if (!node) return;
 
-    // Let's try a different approach: store initial positions and calculate deltas
-    dragOffsetRef.current = {
-      initialMouseX: clientX,
-      initialMouseY: clientY,
-      initialNodeWorldX: node.worldX,
-      initialNodeWorldY: node.worldY
+    console.log('Starting node drag:', nodeId, 'at', clientX, clientY);
+
+    manipulationState.current = {
+      start: { x: clientX, y: clientY },
+      initialNode: {
+        width: NODE_SIZE.width,
+        height: NODE_SIZE.height,
+        worldX: node.worldX,
+        worldY: node.worldY,
+      },
+      camera: { ...camera }
     };
 
     setDraggingNodeId(nodeId);
-    setIsDragging(true);
+  }, [nodes]);
 
-    console.log('Drag start simple:', {
-      nodeId,
-      initialWorld: { x: node.worldX, y: node.worldY },
-      initialMouse: { x: clientX, y: clientY }
-    });
-  }, [nodes, setIsDragging, setDraggingNodeId]);
+  // Update node position during drag
+  const updateNodeDrag = useCallback((clientX, clientY) => {
+    if (draggingNodeId === null || !manipulationState.current.start) return;
 
-  const updateNodeDrag = useCallback((clientX, clientY, camera) => {
-    if (draggingNodeId === null || !dragOffsetRef.current) return;
+    const { start, initialNode, camera } = manipulationState.current;
 
-    // Calculate how far the mouse has moved in screen pixels
-    const deltaScreenX = clientX - dragOffsetRef.current.initialMouseX;
-    const deltaScreenY = clientY - dragOffsetRef.current.initialMouseY;
+    // Calculate mouse movement in screen space
+    const deltaScreenX = clientX - start.x;
+    const deltaScreenY = clientY - start.y;
 
-    // Convert this screen delta to world delta
-    // We need to account for zoom when converting screen movement to world movement
+    // Convert screen movement to world movement (accounting for zoom)
     const deltaWorldX = deltaScreenX / camera.zoom;
     const deltaWorldY = deltaScreenY / camera.zoom;
 
     // Apply the delta to the initial world position
-    const newWorldX = dragOffsetRef.current.initialNodeWorldX + deltaWorldX;
-    const newWorldY = dragOffsetRef.current.initialNodeWorldY + deltaWorldY;
+    const newWorldX = initialNode.worldX + deltaWorldX;
+    const newWorldY = initialNode.worldY + deltaWorldY;
 
+    // Update the node position
     setNodes(prevNodes =>
       prevNodes.map(node =>
         node.id === draggingNodeId
@@ -57,70 +61,72 @@ export const useNodeManipulation = (nodes, setNodes, connections, setConnections
           : node
       )
     );
-    setIsDragging(false);
-  }, [draggingNodeId, setNodes, setIsDragging]);
+  }, [draggingNodeId, setNodes]);
 
+  // End node drag
   const endNodeDrag = useCallback(() => {
-    setDraggingNodeId(null);
-    if (draggingNodeId !== null || !isDragging) {
-      console.log('Drag end');
-      dragOffsetRef.current = null;
+    if (draggingNodeId !== null) {
+      console.log('Ending node drag for:', draggingNodeId);
+      setDraggingNodeId(null);
+      manipulationState.current = { start: null, initialNode: null, camera: null };
     }
-  }, [draggingNodeId, isDragging]);
+  }, [draggingNodeId]);
 
   // Start resizing a node
   const startNodeResize = useCallback((nodeId, clientX, clientY) => {
     const node = nodes.find(n => n.id === nodeId);
     if (!node) return;
 
-    setIsResizingNode(nodeId);
-    setResizeStart({
-      x: clientX,
-      y: clientY,
-      width: node.width || 280,
-      height: node.height || 200
-    });
+    
+    manipulationState.current = {
+      start: { x: clientX, y: clientY },
+      initialNode: {
+        width: node.width || 280,
+        height: node.height || 200
+      }
+    };
+    console.log('Starting node resize:', nodeId, 'manipulationState', manipulationState.current, 'node', node);
 
-    console.log(`Starting resize for node ${nodeId}`);
+    setIsResizingNodeId(nodeId);
   }, [nodes]);
 
   // Update node size during resize
   const updateNodeResize = useCallback((clientX, clientY) => {
-    if (isResizingNode === null) return;
+    if (isResizingNodeId == null || !manipulationState.current.start) return;
 
-    const deltaX = clientX - resizeStart.x;
-    const deltaY = clientY - resizeStart.y;
+    const deltaX = clientX - manipulationState.current.start.x;
+    const deltaY = clientY - manipulationState.current.start.y;
 
-    // Set minimum dimensions
+    // Set constraints
     const minWidth = 200;
     const minHeight = 100;
     const maxWidth = 800;
     const maxHeight = 600;
 
-    const newWidth = Math.max(minWidth, Math.min(maxWidth, resizeStart.width + deltaX));
-    const newHeight = Math.max(minHeight, Math.min(maxHeight, resizeStart.height + deltaY));
+    const newWidth = Math.max(minWidth, Math.min(maxWidth, manipulationState.current.initialNode.width + deltaX));
+    const newHeight = Math.max(minHeight, Math.min(maxHeight, manipulationState.current.initialNode.height + deltaY));
 
     setNodes(prevNodes =>
       prevNodes.map(node =>
-        node.id === isResizingNode
+        node.id === isResizingNodeId
           ? { ...node, width: newWidth, height: newHeight }
           : node
       )
     );
-  }, [isResizingNode, resizeStart, setNodes]);
+  }, [isResizingNodeId, setNodes]);
 
   // End node resize
   const endNodeResize = useCallback(() => {
-    if (isResizingNode !== null) {
-      console.log(`Ending resize for node ${isResizingNode}`);
-      setIsResizingNode(null);
-      setResizeStart({ x: 0, y: 0, width: 0, height: 0 });
+    if (isResizingNodeId != null) {
+      console.log('Ending node resize for:', isResizingNodeId);
+      setIsResizingNodeId(null);
+      manipulationState.current = { start: null, initialNode: null };
     }
-  }, [isResizingNode]);
+  }, [isResizingNodeId]);
 
   // Delete a node (move to deletion store)
   const deleteNode = useCallback((nodeId) => {
-    const nodeToDelete = nodes.find(n => n.id === nodeId);
+    const nodeToDelete = nodes.find(n => n && n.id && n.id === nodeId);
     if (!nodeToDelete) {
       console.warn(`Attempted to delete non-existent node: ${nodeId}`);
       return;
@@ -166,8 +172,6 @@ export const useNodeManipulation = (nodes, setNodes, connections, setConnections
       const toExists = currentNodeIds.has(conn.to) || conn.to === nodeId;
       return fromExists && toExists;
     });
-
-    console.log(`Restoring ${validConnections.length} of ${deletedItem.connections.length} connections`);
 
     // Restore node and valid connections
     setNodes(prevNodes => [...prevNodes, deletedItem.node]);
@@ -221,95 +225,70 @@ export const useNodeManipulation = (nodes, setNodes, connections, setConnections
   // Remove connection between two nodes
   const removeConnection = useCallback((fromNodeId, toNodeId) => {
     console.log(`Removing connection: ${fromNodeId} -> ${toNodeId}`);
-    const initialLength = connections.length;
-
     setConnections(prev =>
       prev.filter(conn =>
         !(conn.from === fromNodeId && conn.to === toNodeId) &&
         !(conn.from === toNodeId && conn.to === fromNodeId)
       )
     );
+  }, [setConnections]);
 
-    // Log if any connections were actually removed
-    setTimeout(() => {
-      const newLength = connections.length;
-      if (newLength < initialLength) {
-        console.log(`Removed ${initialLength - newLength} connection(s)`);
-      } else {
-        console.log('No connections were removed (none found)');
+  // Global mouse event handlers
+  useEffect(() => {
+    const handleGlobalMouseMove = (e) => {
+      if (draggingNodeId !== null) {
+        updateNodeDrag(e.clientX, e.clientY);
+      } else if (isResizingNodeId !== null) {
+        updateNodeResize(e.clientX, e.clientY);
       }
-    }, 0);
-  }, [connections, setConnections]);
-
-  // Batch delete multiple nodes
-  const deleteMultipleNodes = useCallback((nodeIds) => {
-    if (!Array.isArray(nodeIds) || nodeIds.length === 0) return;
-
-    console.log(`Batch deleting ${nodeIds.length} nodes`);
-    nodeIds.forEach(nodeId => deleteNode(nodeId));
-  }, [deleteNode]);
-
-  // Batch restore multiple nodes
-  const restoreMultipleNodes = useCallback((nodeIds) => {
-    if (!Array.isArray(nodeIds) || nodeIds.length === 0) return;
-
-    console.log(`Batch restoring ${nodeIds.length} nodes`);
-    nodeIds.forEach(nodeId => restoreNode(nodeId));
-  }, [restoreNode]);
-
-  // Get deleted node by ID
-  const getDeletedNode = useCallback((nodeId) => {
-    return deletedNodes.get(nodeId) || null;
-  }, [deletedNodes]);
-
-  // Clear all deleted nodes permanently
-  const clearDeletedNodes = useCallback(() => {
-    console.log(`Permanently clearing ${deletedNodes.size} deleted nodes`);
-    setDeletedNodes(new Map());
-  }, [deletedNodes.size]);
-
-  // Get statistics about manipulations
-  const getManipulationStats = useCallback(() => {
-    return {
-      activeNodes: nodes.length,
-      deletedNodes: deletedNodes.size,
-      connections: connections.length,
-      isDragging: draggingNodeId !== null,
-      isResizing: isResizingNode !== null
     };
-  }, [nodes.length, deletedNodes.size, connections.length, draggingNodeId, isResizingNode]);
+
+    const handleGlobalMouseUp = () => {
+      if (draggingNodeId !== null) {
+        endNodeDrag();
+      } else if (isResizingNodeId !== null) {
+        endNodeResize();
+      }
+    };
+
+    if (draggingNodeId !== null || isResizingNodeId !== null) {
+      document.addEventListener('mousemove', handleGlobalMouseMove);
+      document.addEventListener('mouseup', handleGlobalMouseUp);
+      document.body.style.cursor = draggingNodeId !== null ? 'grabbing' : 'se-resize';
+      document.body.style.userSelect = 'none';
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleGlobalMouseMove);
+      document.removeEventListener('mouseup', handleGlobalMouseUp);
+      document.body.style.cursor = 'default';
+      document.body.style.userSelect = '';
+    };
+  }, [draggingNodeId, isResizingNodeId, endNodeDrag, endNodeResize, updateNodeDrag, updateNodeResize]);
 
   return {
     // Drag state
     draggingNodeId,
-    isResizingNode,
-
+    isResizingNodeId,
+    
     // Drag operations
     startNodeDrag,
     updateNodeDrag,
     endNodeDrag,
-
+    
     // Resize operations
     startNodeResize,
     updateNodeResize,
     endNodeResize,
-
+    
     // Node lifecycle
     deleteNode,
     restoreNode,
     permanentlyDeleteNode,
-    deleteMultipleNodes,
-    restoreMultipleNodes,
     deletedNodes,
-    getDeletedNode,
-    clearDeletedNodes,
 
     // Connection management
     addConnection,
     removeConnection,
-
-    // Utilities
-    getManipulationStats,
-    screenToWorld
   };
 };
