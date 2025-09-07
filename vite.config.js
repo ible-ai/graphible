@@ -22,6 +22,10 @@ export default defineConfig({
   server: {
     host: true,
     port: 3000,
+    https: {
+      key: './.env/localhost+2-key.pem',
+      cert: './.env/localhost+2.pem'
+    },
   },
   build: {
     outDir: 'dist',
@@ -39,6 +43,12 @@ export default defineConfig({
     alias: {
       // Ensure crypto uses the Node.js version
       crypto: 'crypto'
+    }
+  },
+  dev: {
+    https: {
+      key: './.env/localhost+2-key.pem',
+      cert: './.env/localhost+2.pem'
     }
   },
   preview: {
