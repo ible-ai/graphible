@@ -2,27 +2,20 @@
 
 import { CONNECTION_STATUS, MODEL_TYPES } from '../constants/setupWizardConstants';
 
-export const shouldAutoAdvance = (detectionResults) => {
-    // Only auto-advance if we have a clear success with models
-    return detectionResults?.local?.status === CONNECTION_STATUS.SUCCESS &&
-           detectionResults.local.models.length > 0;
-};
-
 // Detection utilities with abort signal support
 export const detectAvailableModels = async (abortSignal) => {
     const results = {
         local: { status: CONNECTION_STATUS.IDLE, models: [], error: null },
-        external: { status: CONNECTION_STATUS.IDLE, available: true }
+        webllm: { status: CONNECTION_STATUS.SUCCESS, supported: true },
+        external: { status: CONNECTION_STATUS.SUCCESS, available: true }
     };
 
-    // Test local Ollama connection with proper abort handling
+    // Test local Ollama connection
     try {
         if (abortSignal?.aborted) return results;
 
-        results.local.status = CONNECTION_STATUS.DETECTING;
-
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
 
         // Chain abort signals
         if (abortSignal) {
@@ -43,18 +36,15 @@ export const detectAvailableModels = async (abortSignal) => {
             results.local.models = data.models || [];
         } else {
             results.local.status = CONNECTION_STATUS.ERROR;
-            results.local.error = 'Ollama server not responding';
+            results.local.error = 'Not available';
         }
     } catch (error) {
         if (error.name === 'AbortError') {
-            console.log('Detection cancelled');
             results.local.status = CONNECTION_STATUS.IDLE;
             results.local.error = 'Detection cancelled';
         } else {
             results.local.status = CONNECTION_STATUS.ERROR;
-            results.local.error = error.name === 'TimeoutError' ?
-                'Connection timeout - is Ollama running?' :
-                'Could not connect to Ollama';
+            results.local.error = 'Not available';
         }
     }
 
@@ -71,9 +61,8 @@ export const testModelConnection = async (config, abortSignal) => {
 
         if (config.type === MODEL_TYPES.LOCAL) {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+            const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
-            // Chain abort signals
             if (abortSignal) {
                 abortSignal.addEventListener('abort', () => controller.abort());
             }
@@ -92,16 +81,12 @@ export const testModelConnection = async (config, abortSignal) => {
             clearTimeout(timeoutId);
 
             if (response.ok) {
-                const data = await response.json();
-                return {
-                    success: true,
-                    response: data.response?.trim() || 'Connected successfully'
-                };
+                return { success: true, message: 'Connected successfully' };
             } else {
                 return {
                     success: false,
-                    error: `Server error: ${response.status}`,
-                    suggestion: 'Check if the model is downloaded and Ollama is running'
+                    error: 'Connection failed',
+                    suggestion: 'Make sure Ollama is running and the model is downloaded'
                 };
             }
         } else if (config.type === MODEL_TYPES.EXTERNAL && config.provider === 'google') {
@@ -146,9 +131,46 @@ export const testModelConnection = async (config, abortSignal) => {
 
             return await testWithTimeout;
         }
-    } catch (error) {
-        console.log('Model test error (controlled):', error.message);
 
+        else if (config.type === MODEL_TYPES.WEBLLM) {
+            try {
+                // Check WebGPU support
+                if (!navigator.gpu) {
+                    return {
+                        success: false,
+                        error: 'WebGPU not supported',
+                        suggestion: 'Please use Chrome 113+, Firefox 141+, or Safari 26+'
+                    };
+                }
+
+                // Check adapter availability
+                const adapter = await navigator.gpu.requestAdapter();
+                if (!adapter) {
+                    return {
+                        success: false,
+                        error: 'WebGPU adapter not available',
+                        suggestion: 'Please ensure your browser supports WebGPU'
+                    };
+                }
+
+                return { success: true, message: 'Browser AI ready' };
+            } catch (error) {
+                console.log('webLLM test failed:', error);
+                return {
+                    success: false,
+                    error: 'Browser compatibility issue',
+                    suggestion: 'Please update your browser or try a different browser'
+                };
+            }
+        }
+
+        return {
+            success: false,
+            error: 'Unsupported configuration',
+            suggestion: 'Please check your setup'
+        };
+
+    } catch (error) {
         if (error.name === 'AbortError' || error.message === 'Test cancelled') {
             return {
                 success: false,
@@ -174,25 +196,19 @@ export const testModelConnection = async (config, abortSignal) => {
             return {
                 success: false,
                 error: 'Connection timeout',
-                suggestion: 'Check your connection and try again'
+                suggestion: 'Please check your internet connection'
             };
         } else {
             return {
                 success: false,
-                error: error.message || 'Connection failed',
+                error: 'Setup failed',
                 suggestion: 'Please check your configuration and try again'
             };
         }
     }
-
-    return {
-        success: false,
-        error: 'Unsupported configuration',
-        suggestion: 'Please check your model configuration'
-    };
 };
 
-// Validation utilities (unchanged)
+// Validation utilities
 export const validateApiKey = (key, provider = 'google') => {
     if (!key || typeof key !== 'string') {
         return { valid: false, error: 'API key is required' };
@@ -201,46 +217,31 @@ export const validateApiKey = (key, provider = 'google') => {
     const trimmed = key.trim();
 
     if (provider === 'google') {
-        if (trimmed.length < 20) {
+        if (trimmed.length < 10) {
             return { valid: false, error: 'API key appears too short' };
-        }
-
-        if (!/^[A-Za-z0-9_-]+$/.test(trimmed)) {
-            return { valid: false, error: 'API key contains invalid characters' };
         }
     }
 
     return { valid: true, key: trimmed };
 };
 
-export const validateLocalConfig = (config) => {
-    if (!config.address || typeof config.address !== 'string') {
-        return { valid: false, error: 'Server address is required' };
-    }
-
-    if (!config.model || typeof config.model !== 'string') {
-        return { valid: false, error: 'Model name is required' };
-    }
-
-    try {
-        new URL(config.address);
-    } catch {
-        return { valid: false, error: 'Invalid server address format' };
-    }
-
-    return { valid: true };
-};
-
-// Storage utilities (unchanged)
 export const saveSetupConfig = (config) => {
     try {
+        // Mark setup as complete
         localStorage.setItem('graphible-setup-complete', 'true');
-        localStorage.setItem('graphible-model-config', JSON.stringify(config));
+        localStorage.setItem('graphible-setup-timestamp', Date.now().toString());
 
-        // Save API key separately if it's an external config
+        // Save the model configuration
+        const configToSave = { ...config };
+
+        // For external configs, save API key separately for security
         if (config.type === MODEL_TYPES.EXTERNAL && config.apiKey) {
             localStorage.setItem(`graphible-${config.provider}-api-key`, config.apiKey);
+            // Don't save API key in main config
+            delete configToSave.apiKey;
         }
+
+        localStorage.setItem('graphible-model-config', JSON.stringify(configToSave));
 
         return true;
     } catch (error) {
@@ -252,13 +253,20 @@ export const saveSetupConfig = (config) => {
 export const loadSetupConfig = () => {
     try {
         const isComplete = localStorage.getItem('graphible-setup-complete') === 'true';
-        const config = localStorage.getItem('graphible-model-config');
+        const configStr = localStorage.getItem('graphible-model-config');
 
-        if (isComplete && config) {
-            return {
-                isComplete: true,
-                config: JSON.parse(config)
-            };
+        if (isComplete && configStr) {
+            const config = JSON.parse(configStr);
+
+            // For external configs, load API key separately
+            if (config.type === MODEL_TYPES.EXTERNAL && config.provider) {
+                const apiKey = localStorage.getItem(`graphible-${config.provider}-api-key`);
+                if (apiKey) {
+                    config.apiKey = apiKey;
+                }
+            }
+
+            return { isComplete: true, config };
         }
     } catch (error) {
         console.error('Failed to load setup config:', error);
@@ -270,6 +278,7 @@ export const loadSetupConfig = () => {
 export const clearSetupConfig = () => {
     try {
         localStorage.removeItem('graphible-setup-complete');
+        localStorage.removeItem('graphible-setup-timestamp');
         localStorage.removeItem('graphible-model-config');
         localStorage.removeItem('graphible-google-api-key');
         return true;
@@ -279,32 +288,52 @@ export const clearSetupConfig = () => {
     }
 };
 
-// Animation and UI utilities (unchanged)
+// Animation and UI utilities
 export const getStepProgress = (currentStep, steps) => {
     const stepIndex = steps.indexOf(currentStep);
     return stepIndex >= 0 ? ((stepIndex + 1) / steps.length) * 100 : 0;
 };
 
-export const formatLatency = (ms) => {
-    if (ms < 1000) return `${Math.round(ms)}ms`;
-    return `${(ms / 1000).toFixed(1)}s`;
+export const checkBrowserCompatibility = () => {
+    const results = {
+        webgpu: false,
+        modern: false,
+        recommended: false
+    };
+
+    // Check for WebGPU support
+    results.webgpu = !!navigator.gpu;
+
+    // Check for modern browser features
+    results.modern = !!(navigator.gpu && window.WebAssembly && window.Worker);
+
+    // Check for recommended browsers
+    const userAgent = navigator.userAgent;
+    const isChrome = /Chrome\/(\d+)/.test(userAgent);
+    const isFirefox = /Firefox\/(\d+)/.test(userAgent);
+    const isSafari = /Safari\//.test(userAgent) && !/Chrome/.test(userAgent);
+
+    if (isChrome) {
+        const chromeVersion = parseInt(userAgent.match(/Chrome\/(\d+)/)[1]);
+        results.recommended = chromeVersion >= 113;
+    } else if (isFirefox) {
+        const firefoxVersion = parseInt(userAgent.match(/Firefox\/(\d+)/)[1]);
+        results.recommended = firefoxVersion >= 141;
+    } else if (isSafari) {
+        // Safari support is more complex to detect, assume modern versions work
+        results.recommended = true;
+    }
+
+    return results;
 };
 
-export const formatModelSize = (bytes) => {
-    if (!bytes) return 'Unknown size';
-
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(1024));
-    return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${sizes[i]}`;
-};
-
-// Clipboard utilities (unchanged)
+// Clipboard utility
 export const copyToClipboard = async (text) => {
     try {
         await navigator.clipboard.writeText(text);
         return { success: true };
     } catch (error) {
-        console.log('copyToClipboard', error);
+        console.log('copyToClipboard failed:', error);
         try {
             const textArea = document.createElement('textarea');
             textArea.value = text;
@@ -318,50 +347,8 @@ export const copyToClipboard = async (text) => {
 
             return { success: successful };
         } catch (fallbackError) {
-            console.log('copyToClipboard', fallbackError);
+            console.log('copyToClipboard fallback failed:', fallbackError);
             return { success: false, error: 'Could not copy to clipboard' };
         }
-    }
-};
-
-// Step navigation utilities (unchanged)
-export const getNextStep = (currentStep, detectionResults) => {
-    switch (currentStep) {
-        case 'welcome':
-            return 'detection';
-        case 'detection':
-            if (detectionResults?.local?.status === CONNECTION_STATUS.SUCCESS && detectionResults.local.models.length > 0) {
-                return 'success';
-            }
-            return 'model_choice';
-        case 'model_choice':
-            return null;
-        case 'local_setup':
-            return 'testing';
-        case 'api_setup':
-            return 'testing';
-        case 'testing':
-            return 'success';
-        default:
-            return null;
-    }
-};
-
-export const getPreviousStep = (currentStep) => {
-    switch (currentStep) {
-        case 'detection':
-            return 'welcome';
-        case 'model_choice':
-            return 'detection';
-        case 'local_setup':
-        case 'api_setup':
-        case 'demo_mode':
-            return 'model_choice';
-        case 'testing':
-            return null;
-        case 'success':
-            return null;
-        default:
-            return 'welcome';
     }
 };
