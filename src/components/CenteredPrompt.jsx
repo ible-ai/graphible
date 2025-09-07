@@ -1,7 +1,7 @@
 // Initial prompt interface
 
 import { useEffect, useState, useCallback } from 'react';
-import { Brain, FolderOpen, Globe, Zap, Server, Settings } from 'lucide-react';
+import { Brain, FolderOpen, Zap, Settings } from 'lucide-react';
 import ModelSelector from './ModelSelector';
 
 const CenteredPrompt = ({
@@ -15,7 +15,8 @@ const CenteredPrompt = ({
   onModelChange,
   onTestConnection,
   onShowSetupWizard,
-  webllmLoadingProgress
+  webllmLoadingProgress,
+  webllmLoadState,
 }) => {
   const [inputPrompt, setInputPrompt] = useState(
     'I want to understand the transformer architecture.'
@@ -61,6 +62,7 @@ const CenteredPrompt = ({
           connectionStatus={llmConnected}
           onTestConnection={onTestConnection}
           webllmLoadingProgress={webllmLoadingProgress}
+          webllmLoadState={webllmLoadState}
         />
       </div>
 

@@ -167,7 +167,7 @@ export const LLM_CONFIG = {
 };
 
 // Model configuration defaults
-export const DEFAULT_MODEL_CONFIGS = {
+const DEFAULT_MODEL_CONFIGS = {
   local: {
     type: 'local',
     address: LLM_CONFIG.LOCAL.DEFAULT_BASE_URL,
@@ -178,8 +178,14 @@ export const DEFAULT_MODEL_CONFIGS = {
     provider: 'google',
     model: 'gemini-2.5-flash-lite',
     apiKey: ''
+  },
+  webllm: {
+    type: 'webllm',
+    model: 'Llama-3.2-3B-Instruct-q4f16_1-MLC'
   }
 };
+
+export const DEFAULT_MODEL_CONFIG = DEFAULT_MODEL_CONFIGS.webllm;
 
 // API endpoints and configuration (kept for reference but using SDK now)
 export const API_INFO = {
@@ -198,4 +204,11 @@ export const ERROR_MESSAGES = {
   MODEL_NOT_FOUND: 'The specified model is not available or accessible.',
   RATE_LIMIT_EXCEEDED: 'API rate limit exceeded. Please try again later.',
   NETWORK_ERROR: 'Network error occurred. Please check your connection.'
+};
+
+export const WEBLLM_STATE = {
+  NULL: '',
+  DOWNLOADING: 'downloading',
+  RELOADING: 'reloading',
+  DONE: 'done',
 };

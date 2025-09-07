@@ -121,6 +121,7 @@ const Graphible = () => {
     loadSavedConfig,
     hasTestedInitially,
     webllmLoadingProgress,
+    webllmLoadState,
   } = useLLMConnection();
 
   const {
@@ -720,7 +721,8 @@ const Graphible = () => {
         onModelChange={handleModelChange}
         onTestConnection={testLLMConnection}
         webllmLoadingProgress={webllmLoadingProgress}
-      />
+        webllmLoadState={webllmLoadState}
+        />
 
       {!showPromptCenter && (
         <>
@@ -738,6 +740,7 @@ const Graphible = () => {
                   connectionStatus={llmConnected}
                   onTestConnection={testLLMConnection}
                   webllmLoadingProgress={webllmLoadingProgress}
+                  webllmLoadState={webllmLoadState}
                 />
               </div>
               <button

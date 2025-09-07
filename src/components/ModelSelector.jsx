@@ -1,13 +1,15 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { ChevronDown, Settings, Globe, Server, Brain, Download, CheckCircle, AlertCircle } from 'lucide-react';
 import { LLM_CONFIG } from '../constants/graphConstants';
+import WebLLMProgressTracker from '../components/WebLLMProgressTracker';
 
 const ModelSelector = ({
     currentModel,
     onModelChange,
     connectionStatus,
     onTestConnection,
-    webllmLoadingProgress = null
+    webllmLoadingProgress,
+    webllmLoadState,
 }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [activeTab, setActiveTab] = useState(currentModel.type || 'webllm');
@@ -104,15 +106,6 @@ const ModelSelector = ({
 
     const DisplayIcon = getDisplayIcon();
 
-    const formatProgress = (progress) => {
-        if (!progress) return '';
-        if (progress.text) return progress.text;
-        if (progress.progress !== undefined) {
-            return `Loading: ${Math.round(progress.progress * 100)}%`;
-        }
-        return 'Initializing...';
-    };
-
     return (
         <div className="relative font-inter" ref={dropdownRef}>
             {/* Main Button */}
@@ -139,22 +132,7 @@ const ModelSelector = ({
             </button>
 
             {/* Progress indicator for WebLLM */}
-            {webllmLoadingProgress && currentModel.type === 'webllm' && (
-                <div className="absolute top-full left-0 right-0 mt-2 p-3 bg-purple-50 border border-purple-200 rounded-lg text-sm">
-                    <div className="flex items-center gap-2 text-purple-700">
-                        <Download size={14} className="animate-bounce" />
-                        <span>{formatProgress(webllmLoadingProgress)}</span>
-                    </div>
-                    {webllmLoadingProgress.progress !== undefined && (
-                        <div className="mt-2 w-full bg-purple-200 rounded-full h-2">
-                            <div
-                                className="bg-purple-600 h-2 rounded-full transition-all duration-200"
-                                style={{ width: `${Math.round(webllmLoadingProgress.progress * 100)}%` }}
-                            />
-                        </div>
-                    )}
-                </div>
-            )}
+            {webllmLoadState && (<WebLLMProgressTracker webllmLoadState={webllmLoadState} progress={webllmLoadingProgress} modelName={currentModel.model}/>)}
 
             {/* Dropdown */}
             {isOpen && (

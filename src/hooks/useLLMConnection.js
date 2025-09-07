@@ -1,27 +1,25 @@
 // LLM connection status management
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { GoogleGenAI } from '@google/genai';
-import { LLM_CONFIG } from '../constants/graphConstants';
+import { DEFAULT_MODEL_CONFIG, WEBLLM_STATE } from '../constants/graphConstants';
 import { MLCEngine } from "@mlc-ai/web-llm";
 
 export const useLLMConnection = () => {
   const [llmConnected, setLlmConnected] = useState('pending');
-  const [currentModel, setCurrentModel] = useState({
-    type: 'local',
-    address: 'http://localhost:11434',
-    model: LLM_CONFIG.MODEL
-  });
+  const [currentModel, setCurrentModel] = useState(DEFAULT_MODEL_CONFIG);
   const [testingInProgress, setTestingInProgress] = useState(false);
   const [failureCount, setFailureCount] = useState(0);
   const [hasTestedInitially, setHasTestedInitially] = useState(false);
   const [webllmEngine, setWebllmEngine] = useState(null);
   const [webllmLoadingProgress, setWebllmLoadingProgress] = useState(null);
+  const [webllmShouldDownload, setWebllmShouldDownload] = useState(false);
+  const [webllmLoadState, setWebllmLoadState] = useState(WEBLLM_STATE.NULL);
 
   const lastTestTime = useRef(0);
   const maxFailures = 3;
   const cooldownPeriod = 5000; // 5 seconds
-
+  
   const testLocalConnection = async (config) => {
     try {
       const response = await fetch(`${config.address}/api/tags`, {
@@ -40,8 +38,6 @@ export const useLLMConnection = () => {
       // Test Google AI API connection using the official SDK
       if (config.provider === 'google') {
         const ai = new GoogleGenAI({ apiKey: `${config.apiKey}` });
-        console.log(ai);
-        console.log(ai.apiKey);
 
 
         // Simple test request using the correct API structure
@@ -66,6 +62,7 @@ export const useLLMConnection = () => {
   };
 
   const testWebLLMConnection = useCallback(async (config) => {
+    const cachedProgressParser = new RegExp("([0-9]+)/([0-9]+)");
     try {
 
       // Check WebGPU support
@@ -85,22 +82,29 @@ export const useLLMConnection = () => {
       }
 
       // Initialize WebLLM engine with progress tracking
-      console.log('Initializing WebLLM engine with model:', config.model);
-
       const initProgressCallback = (progress) => {
-        console.log('WebLLM loading progress:', progress);
+        if (progress && progress.progress == 0 && progress.text) {
+          const match = progress.text.match(cachedProgressParser);
+          if (match) {
+            const current = parseInt(match[1]);
+            const total = parseInt(match[2]);
+            progress.progress = current / total;
+          }
+          setWebllmLoadState(WEBLLM_STATE.RELOADING);
+        } else {
+          setWebllmLoadState(WEBLLM_STATE.DOWNLOADING);
+        }
         setWebllmLoadingProgress(progress);
       };
 
       const engine = new MLCEngine({
         initProgressCallback: initProgressCallback
       });
+      
       await engine.reload(config.model);
-
+      
       setWebllmEngine(engine);
       setWebllmLoadingProgress(null);
-      console.log('WebLLM engine initialized successfully');
-
       return true;
     } catch (error) {
       console.error('WebLLM connection test failed:', error);
@@ -109,6 +113,18 @@ export const useLLMConnection = () => {
       throw error;
     }
   }, [webllmEngine]);
+  
+  useEffect(() => {
+    if (currentModel.type === 'webllm' && !webllmEngine) {
+      setWebllmShouldDownload(true);
+    }
+    const startDownload = async () => {
+      await testWebLLMConnection(currentModel);
+      setWebllmLoadState(WEBLLM_STATE.DONE);
+    }
+    if (webllmShouldDownload) return;
+    startDownload();
+  }, [currentModel, testWebLLMConnection, webllmEngine, webllmShouldDownload, setWebllmLoadState]);
 
   const testLLMConnection = useCallback(async (config = currentModel) => {
     const now = Date.now();
@@ -357,23 +373,19 @@ export const useLLMConnection = () => {
 
   // Load saved model config on initialization
   const loadSavedConfig = useCallback(() => {
+    let config = currentModel;
     try {
       const saved = localStorage.getItem('graphible-model-config');
       if (saved) {
-        const config = JSON.parse(saved);
+        config = JSON.parse(saved);
         setCurrentModel(config);
-        return config;
       }
     } catch (error) {
       console.error('Failed to load saved model config:', error);
     }
-    // Return the default local config
-    return {
-      type: 'local',
-      address: 'http://localhost:11434',
-      model: LLM_CONFIG.MODEL
-    };
-  }, []);
+    // Return the default config
+    return config;
+  }, [currentModel]);
 
   return {
     llmConnected,
@@ -383,7 +395,7 @@ export const useLLMConnection = () => {
     handleModelChange,
     loadSavedConfig,
     hasTestedInitially,
-    webllmEngine,
     webllmLoadingProgress,
+    webllmLoadState,
   };
 };
