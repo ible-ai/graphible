@@ -20,18 +20,18 @@ const ModelSelector = ({
     };
 
     const [localConfig, setLocalConfig] = useState({
-        address: currentModel.address || DEFAULT_MODEL_CONFIGS.LOCAL.address,
-        model: currentModel.model || DEFAULT_MODEL_CONFIGS.LOCAL.model
+        address: DEFAULT_MODEL_CONFIGS.LOCAL.address,
+        model: DEFAULT_MODEL_CONFIGS.LOCAL.model
     });
 
     const [externalConfig, setExternalConfig] = useState({
-        provider: currentModel.provider || DEFAULT_MODEL_CONFIGS.EXTERNAL.provider,
-        model: currentModel.model || DEFAULT_MODEL_CONFIGS.EXTERNAL.model,
+        provider: DEFAULT_MODEL_CONFIGS.EXTERNAL.provider,
+        model: DEFAULT_MODEL_CONFIGS.EXTERNAL.model,
         apiKey: currentModel.apiKey || ''
     });
 
     const [webllmConfig, setWebllmConfig] = useState({
-        model: currentModel.model || DEFAULT_MODEL_CONFIGS.WEBLLM.model
+        model: DEFAULT_MODEL_CONFIGS.WEBLLM.model
     });
 
     // Load saved API key on component mount
