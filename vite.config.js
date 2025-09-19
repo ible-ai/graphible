@@ -18,7 +18,7 @@ export default defineConfig({
       protocolImports: true,
     }),
   ],
-  base: '/graphible/',
+  base: './',
   server: {
     host: true,
     port: 3000,
