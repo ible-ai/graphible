@@ -27,7 +27,7 @@ export const WelcomeStep = ({ onNext }) => (
         </h1>
 
         <p className="text-slate-600 mb-8 leading-relaxed">
-            Graphible helps you explore ideas by creating visual, interactive knowledge maps from AI conversations. Let's get you set up in under a minute.
+            graph.ible helps you explore ideas by creating visual, interactive knowledge maps from AI conversations. Let's get you set up in under a minute.
         </p>
 
         <button
