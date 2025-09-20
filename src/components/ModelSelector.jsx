@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { ChevronDown, Settings, Globe, Server, Brain, CheckCircle, AlertCircle } from 'lucide-react';
+import { ChevronDown, Settings, Globe, Server, Compass, CheckCircle, AlertCircle } from 'lucide-react';
 import { LLM_CONFIG, DEFAULT_MODEL_CONFIGS, WEBLLM_STATE } from '../constants/graphConstants';
 import WebLLMProgressTracker from '../components/WebLLMProgressTracker';
 
@@ -104,7 +104,7 @@ const ModelSelector = ({
 
     const getDisplayIcon = useCallback(() => {
         if (currentModel.type === 'external') return Globe;
-        if (currentModel.type === 'webllm') return Brain;
+        if (currentModel.type === 'webllm') return Compass;
         return Server;
     }, [currentModel.type]);
 
@@ -153,7 +153,7 @@ const ModelSelector = ({
                                 }`}
                         >
                             <div className="flex items-center gap-2 justify-center">
-                                <Brain size={14} />
+                                <Compass size={14} />
                                 Browser
                             </div>
                             {activeTab === 'webllm' && (
@@ -200,7 +200,7 @@ const ModelSelector = ({
                             <div className="space-y-4">
                                 <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mb-4">
                                     <div className="flex items-start gap-2">
-                                        <Brain className="text-purple-600 flex-shrink-0 mt-0.5" size={16} />
+                                        <Compass className="text-purple-600 flex-shrink-0 mt-0.5" size={16} />
                                         <div>
                                             <h3 className="font-semibold text-purple-800 mb-1 text-sm">AI in Your Browser</h3>
                                             <div className="text-purple-700 text-xs space-y-1">

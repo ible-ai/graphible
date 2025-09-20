@@ -7,19 +7,22 @@ import { MLCEngine } from "@mlc-ai/web-llm";
 
 export const useLLMConnection = () => {
   const [llmConnected, setLlmConnected] = useState('pending');
-  const [currentModel, setCurrentModel] = useState(DEFAULT_MODEL_CONFIG);
+  const [currentModel, setCurrentModel] = useState({ type: 'demo' });
   const [testingInProgress, setTestingInProgress] = useState(false);
   const [failureCount, setFailureCount] = useState(0);
   const [hasTestedInitially, setHasTestedInitially] = useState(false);
   const [webllmEngine, setWebllmEngine] = useState(null);
   const [webllmLoadingProgress, setWebllmLoadingProgress] = useState(null);
-  const [webllmShouldDownload, setWebllmShouldDownload] = useState(false);
   const [webllmLoadState, setWebllmLoadState] = useState(WEBLLM_STATE.NULL);
+
+  // NEW: Consent tracking
+  const [hasUserConsent, setHasUserConsent] = useState(false);
+  const [consentRequested, setConsentRequested] = useState(false);
 
   const lastTestTime = useRef(0);
   const maxFailures = 3;
-  const cooldownPeriod = 5000; // 5 seconds
-  
+  const cooldownPeriod = 5000;
+
   const testLocalConnection = async (config) => {
     try {
       const response = await fetch(`${config.address}/api/tags`, {
@@ -35,25 +38,18 @@ export const useLLMConnection = () => {
 
   const testExternalConnection = async (config) => {
     try {
-      // Test Google AI API connection using the official SDK
       if (config.provider === 'google') {
         const ai = new GoogleGenAI({ apiKey: `${config.apiKey}` });
-
-
-        // Simple test request using the correct API structure
         const response = await ai.models.generateContent({
           model: config.model,
           contents: "test"
         });
         console.log("External response", response);
-
-        // If we get here without error, connection is successful
         return true;
       }
       return false;
     } catch (error) {
       console.error('External API connection test failed:', error);
-      // Check for specific error types
       if (error.message?.includes('API_KEY_INVALID') || error.message?.includes('401')) {
         throw new Error('Invalid API key');
       }
@@ -61,10 +57,16 @@ export const useLLMConnection = () => {
     }
   };
 
-  const testWebLLMConnection = useCallback(async (config) => {
+  // Consent-aware WebLLM initialization
+  const initializeWebLLMWithConsent = useCallback(async (config) => {
+    // Check if user has given consent
+    if (!hasUserConsent) {
+      console.log('WebLLM initialization blocked - no user consent');
+      return false;
+    }
+
     const cachedProgressParser = new RegExp("([0-9]+)/([0-9]+)");
     try {
-
       // Check WebGPU support
       if (!navigator.gpu) {
         throw new Error('WebGPU not supported - please use Chrome/Edge 113+ or Firefox 141+');
@@ -100,31 +102,94 @@ export const useLLMConnection = () => {
       const engine = new MLCEngine({
         initProgressCallback: initProgressCallback
       });
-      
+
       await engine.reload(config.model);
-      
+
       setWebllmEngine(engine);
       setWebllmLoadingProgress(null);
+      setWebllmLoadState(WEBLLM_STATE.DONE);
       return true;
     } catch (error) {
       console.error('WebLLM connection test failed:', error);
       setWebllmLoadingProgress(null);
       setWebllmEngine(null);
+      setWebllmLoadState(WEBLLM_STATE.NULL);
       throw error;
     }
-  }, [webllmEngine]);
-  
+  }, [webllmEngine, hasUserConsent]);
+
+  // Request consent for WebLLM download
+  const requestWebLLMConsent = useCallback(async () => {
+    if (consentRequested) return hasUserConsent;
+
+    setConsentRequested(true);
+
+    // Show consent dialog (this would be handled by the setup wizard or a dedicated component)
+    const userConsented = await new Promise((resolve) => {
+      // This would typically be handled by a modal component
+      // For now, using a confirm dialog
+      const consent = window.confirm(
+        'This will download a 2GB AI model to your browser for private, offline use. ' +
+        'The model will be stored locally and never shared. Continue?'
+      );
+      resolve(consent);
+    });
+
+    setHasUserConsent(userConsented);
+
+    // Store consent decision
+    if (userConsented) {
+      localStorage.setItem('graphible-webllm-consent', 'granted');
+    } else {
+      localStorage.setItem('graphible-webllm-consent', 'denied');
+    }
+
+    return userConsented;
+  }, [consentRequested, hasUserConsent]);
+
+  // Load saved consent on initialization
   useEffect(() => {
-    if (currentModel.type === 'webllm' && !webllmEngine) {
-      setWebllmShouldDownload(true);
+    const savedConsent = localStorage.getItem('graphible-webllm-consent');
+    if (savedConsent === 'granted') {
+      setHasUserConsent(true);
+    } else if (savedConsent === 'denied') {
+      setHasUserConsent(false);
     }
-    const startDownload = async () => {
-      await testWebLLMConnection(currentModel);
-      setWebllmLoadState(WEBLLM_STATE.DONE);
+    setConsentRequested(savedConsent !== null);
+  }, []);
+
+  const testWebLLMConnection = useCallback(async (config) => {
+    try {
+      // Check WebGPU support first (no consent needed for capability check)
+      if (!navigator.gpu) {
+        throw new Error('WebGPU not supported - please use Chrome/Edge 113+ or Firefox 141+');
+      }
+
+      const adapter = await navigator.gpu.requestAdapter();
+      if (!adapter) {
+        throw new Error('WebGPU adapter not available');
+      }
+
+      // If we already have an engine, we're good
+      if (webllmEngine && webllmEngine.modelId === config.model) {
+        return true;
+      }
+
+      // For actual initialization, we need consent
+      if (!hasUserConsent) {
+        const consentGranted = await requestWebLLMConsent();
+        if (!consentGranted) {
+          throw new Error('User declined model download');
+        }
+      }
+
+      // Now initialize with consent
+      return await initializeWebLLMWithConsent(config);
+    } catch (error) {
+      console.error('WebLLM connection test failed:', error);
+      throw error;
     }
-    if (webllmShouldDownload) return;
-    startDownload();
-  }, [currentModel, testWebLLMConnection, webllmEngine, webllmShouldDownload, setWebllmLoadState]);
+  }, [webllmEngine, hasUserConsent, requestWebLLMConsent, initializeWebLLMWithConsent]);
 
   const testLLMConnection = useCallback(async (config = currentModel) => {
     const now = Date.now();
@@ -144,12 +209,15 @@ export const useLLMConnection = () => {
       } else if (config.type === 'external') {
         isConnected = await testExternalConnection(config);
       } else if (config.type === 'webllm') {
-        isConnected = (webllmEngine != null);
+        isConnected = await testWebLLMConnection(config);
+      } else if (config.type === 'demo') {
+        // Demo mode is always "connected"
+        isConnected = true;
       }
 
       if (isConnected) {
         setLlmConnected('connected');
-        setFailureCount(0); // Reset failure count on success
+        setFailureCount(0);
       } else {
         setLlmConnected('disconnected');
         setFailureCount(prev => prev + 1);
@@ -166,11 +234,16 @@ export const useLLMConnection = () => {
       setTestingInProgress(false);
       return false;
     }
-  }, [currentModel, testingInProgress, failureCount, llmConnected, webllmEngine]);
+  }, [currentModel, testingInProgress, failureCount, llmConnected, testWebLLMConnection]);
 
   const generateWithLLM = async (prompt, stream = true, config = null) => {
     const modelToUse = config || currentModel;
     console.log('generateWithLLM called with config:', modelToUse);
+
+    // Demo mode - return mock response
+    if (modelToUse.type === 'demo') {
+      return generateDemoResponse(prompt, stream);
+    }
 
     if (modelToUse.type === 'local') {
       return generateWithLocalLLM(prompt, stream, modelToUse);
@@ -180,6 +253,40 @@ export const useLLMConnection = () => {
       return generateWithWebLLM(prompt, stream);
     }
     throw new Error('Unknown model type');
+  };
+
+  // Demo mode response generator
+  const generateDemoResponse = async (prompt, stream = true) => {
+    const demoResponses = [
+      {
+        label: "Demo Node",
+        type: "concept",
+        description: "This is a demonstration node showing how Graphible works",
+        content: "This is demo content. Connect a real AI model to generate actual responses to your prompts."
+      }
+    ];
+
+    if (stream) {
+      const readableStream = new ReadableStream({
+        start(controller) {
+          const response = JSON.stringify(demoResponses[0]);
+          controller.enqueue(new TextEncoder().encode(JSON.stringify({ response })));
+          controller.close();
+        }
+      });
+
+      return {
+        ok: true,
+        body: readableStream,
+        status: 200
+      };
+    } else {
+      return {
+        ok: true,
+        json: async () => ({ response: JSON.stringify(demoResponses[0]) }),
+        status: 200
+      };
+    }
   };
 
   const generateWithLocalLLM = async (prompt, stream = true, config = currentModel) => {
@@ -212,7 +319,6 @@ export const useLLMConnection = () => {
       const ai = new GoogleGenAI({ apiKey: `${config.apiKey}` });
 
       if (stream) {
-        // Use streaming generation with the correct API structure
         console.log('Starting Google AI streaming generation...');
         const response = await ai.models.generateContentStream({
           model: config.model,
@@ -234,13 +340,11 @@ export const useLLMConnection = () => {
           return text;
         };
 
-        // Create a ReadableStream to match the expected interface
         const readableStream = new ReadableStream({
           async start(controller) {
             try {
               for await (const chunk of response) {
                 if (chunk) {
-                  // Format the response to match expected structure
                   const text = processChunk(chunk);
                   const formattedChunk = JSON.stringify({ response: text });
                   controller.enqueue(new TextEncoder().encode(formattedChunk + '\n'));
@@ -254,14 +358,12 @@ export const useLLMConnection = () => {
           }
         });
 
-        // Return response object with the stream
         return {
           ok: true,
           body: readableStream,
           status: 200
         };
       } else {
-        // Non-streaming generation
         console.log('Starting External AI non-streaming generation...');
         const response = await ai.models.generateContent({
           model: config.model,
@@ -273,7 +375,6 @@ export const useLLMConnection = () => {
         });
 
         if (response === null) {
-
           return {
             ok: false,
             json: async () => ({ response: '' }),
@@ -281,7 +382,6 @@ export const useLLMConnection = () => {
           };
         }
 
-        // Create a response that matches the expected format
         return {
           ok: true,
           json: async () => ({ response: response.text }),
@@ -293,15 +393,12 @@ export const useLLMConnection = () => {
   };
 
   const generateWithWebLLM = async (prompt, stream = true) => {
-
     if (!webllmEngine) {
       throw new Error('WebLLM engine not initialized. Please wait for model loading to complete.');
     }
 
     try {
       if (stream) {
-
-        // WebLLM streaming using async generator
         const asyncChunkGenerator = await webllmEngine.chat.completions.create({
           messages: [{ role: "user", content: prompt }],
           stream: true,
@@ -356,10 +453,11 @@ export const useLLMConnection = () => {
   const handleModelChange = useCallback((newConfig) => {
     console.log('handleModelChange called with:', newConfig);
     setCurrentModel(newConfig);
+
     // Save to localStorage for persistence
     localStorage.setItem('graphible-model-config', JSON.stringify(newConfig));
 
-    // Also save API key separately for external models
+    // Save API key separately for external models
     if (newConfig.type === 'external' && newConfig.apiKey) {
       localStorage.setItem('graphible-google-api-key', newConfig.apiKey);
     }
@@ -368,12 +466,13 @@ export const useLLMConnection = () => {
     if (newConfig.type !== 'webllm' && webllmEngine) {
       setWebllmEngine(null);
       setWebllmLoadingProgress(null);
+      setWebllmLoadState(WEBLLM_STATE.NULL);
     }
   }, [webllmEngine]);
 
   // Load saved model config on initialization
   const loadSavedConfig = useCallback(() => {
-    let config = currentModel;
+    let config = { type: 'demo' }; // DEFAULT TO DEMO MODE
     try {
       const saved = localStorage.getItem('graphible-model-config');
       if (saved) {
@@ -383,9 +482,8 @@ export const useLLMConnection = () => {
     } catch (error) {
       console.error('Failed to load saved model config:', error);
     }
-    // Return the default config
     return config;
-  }, [currentModel]);
+  }, []);
 
   return {
     llmConnected,
@@ -397,5 +495,7 @@ export const useLLMConnection = () => {
     hasTestedInitially,
     webllmLoadingProgress,
     webllmLoadState,
+    hasUserConsent,
+    requestWebLLMConsent,
   };
 };

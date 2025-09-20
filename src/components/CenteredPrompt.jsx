@@ -1,7 +1,7 @@
 // Initial prompt interface
 
 import { useEffect, useState, useCallback } from 'react';
-import { Brain, FolderOpen, Zap, Settings } from 'lucide-react';
+import { Waypoints, FolderOpen, Zap, Settings } from 'lucide-react';
 import ModelSelector from './ModelSelector';
 
 const CenteredPrompt = ({
@@ -69,7 +69,7 @@ const CenteredPrompt = ({
       <div className="text-center max-w-2xl mx-4">
         <div className="mb-8">
           <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-slate-200 to-slate-300 rounded-2xl shadow-sm flex items-center justify-center">
-            <Brain className="text-slate-600" size={40} />
+            <Waypoints className="text-slate-600" size={40} />
           </div>
           <h1 className="text-5xl font-medium text-slate-800 mb-4 tracking-tight">graph.ible</h1>
           <p className="text-slate-600 text-lg">Follow what makes you curious.</p>

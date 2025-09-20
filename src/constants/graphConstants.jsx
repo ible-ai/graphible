@@ -168,6 +168,11 @@ export const LLM_CONFIG = {
 
 // Model configuration defaults
 export const DEFAULT_MODEL_CONFIGS = {
+  DEMO: {
+    type: 'demo',
+    name: 'Demo Mode',
+    description: 'Try Graphible with sample content'
+  },
   LOCAL: {
     type: 'local',
     address: LLM_CONFIG.LOCAL.DEFAULT_BASE_URL,
@@ -185,7 +190,8 @@ export const DEFAULT_MODEL_CONFIGS = {
   }
 };
 
-export const DEFAULT_MODEL_CONFIG = DEFAULT_MODEL_CONFIGS.WEBLLM;
+// CHANGED: Default to demo mode instead of WebLLM
+export const DEFAULT_MODEL_CONFIG = DEFAULT_MODEL_CONFIGS.DEMO;
 
 // API endpoints and configuration (kept for reference but using SDK now)
 export const API_INFO = {
@@ -203,7 +209,11 @@ export const ERROR_MESSAGES = {
   INVALID_API_KEY: 'Invalid API key. Please check your credentials.',
   MODEL_NOT_FOUND: 'The specified model is not available or accessible.',
   RATE_LIMIT_EXCEEDED: 'API rate limit exceeded. Please try again later.',
-  NETWORK_ERROR: 'Network error occurred. Please check your connection.'
+  NETWORK_ERROR: 'Network error occurred. Please check your connection.',
+  // Consent-related errors
+  USER_DECLINED_DOWNLOAD: 'Model download was declined by user.',
+  CONSENT_REQUIRED: 'User consent is required before downloading AI models.',
+  MODEL_DOWNLOAD_BLOCKED: 'Model download blocked - consent not granted.'
 };
 
 export const WEBLLM_STATE = {
@@ -211,4 +221,19 @@ export const WEBLLM_STATE = {
   DOWNLOADING: 'downloading',
   RELOADING: 'reloading',
   DONE: 'done',
+};
+
+// NEW: Consent management constants
+export const CONSENT_TYPES = {
+  WEBLLM_DOWNLOAD: 'webllm-download',
+  DATA_COLLECTION: 'data-collection',
+  ANALYTICS: 'analytics'
+};
+
+export const CONSENT_STATUS = {
+  NOT_REQUESTED: 'not-requested',
+  PENDING: 'pending',
+  GRANTED: 'granted',
+  DENIED: 'denied',
+  EXPIRED: 'expired'
 };

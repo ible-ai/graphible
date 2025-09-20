@@ -3,14 +3,16 @@
 export const SETUP_STEPS = {
     WELCOME: 'welcome',
     CHOICE: 'choice',
+    CONSENT: 'consent', // NEW: Added consent step
     SETUP: 'setup',
     TESTING: 'testing',
     SUCCESS: 'success',
 };
 
 export const SETUP_STEPS_TITLES = {
-    [SETUP_STEPS.WELCOME]: 'Welcome to graph.ible',
+    [SETUP_STEPS.WELCOME]: 'Welcome to Graphible',
     [SETUP_STEPS.CHOICE]: 'How would you like to get started?',
+    [SETUP_STEPS.CONSENT]: 'Review & Consent',
     [SETUP_STEPS.SETUP]: 'Quick Setup',
     [SETUP_STEPS.TESTING]: 'Testing...',
     [SETUP_STEPS.SUCCESS]: 'Get ready to explore!'
@@ -95,14 +97,19 @@ export const DEMO_GRAPH_DATA = {
 
 export const SETUP_MESSAGES = {
     WELCOME: {
-        title: "Welcome to graph.ible",
+        title: "Welcome to Graphible",
         subtitle: "Turn conversations into knowledge graphs",
-        description: "graph.ible helps you explore ideas by creating visual, interactive knowledge maps from AI conversations."
+        description: "Graphible helps you explore ideas by creating visual, interactive knowledge maps from AI conversations."
     },
     CHOICE: {
         title: "Choose your AI source",
         subtitle: "Pick the option that works best for you",
         description: "We support multiple ways to run AI - from completely private browser-based models to powerful cloud services."
+    },
+    CONSENT: {
+        title: "Review & Consent",
+        subtitle: "Please review the information and give your consent",
+        description: "We respect your privacy and need your permission before downloading or processing data."
     },
     SETUP: {
         title: "Quick Setup",
@@ -129,7 +136,6 @@ export const WEBLLM_MODELS = {
         recommended: true
     }
 };
-
 
 export const GOOGLE_AI_MODELS = [
     {
@@ -160,6 +166,48 @@ export const PRIVACY_NOTICE = {
         "No data is sent to our servers",
         "You can clear your data anytime in settings"
     ]
+};
+
+// NEW: Consent-related constants
+export const CONSENT_CATEGORIES = {
+    MODEL_DOWNLOAD: 'model-download',
+    DATA_PROCESSING: 'data-processing',
+    EXTERNAL_SERVICES: 'external-services',
+    ANALYTICS: 'analytics'
+};
+
+export const DOWNLOAD_SIZE_THRESHOLDS = {
+    SMALL: 10 * 1024 * 1024,    // 10MB
+    MEDIUM: 100 * 1024 * 1024,  // 100MB
+    LARGE: 500 * 1024 * 1024,   // 500MB
+    EXTRA_LARGE: 1024 * 1024 * 1024 // 1GB
+};
+
+export const CONSENT_REQUIREMENTS = {
+    [MODEL_TYPES.WEBLLM]: {
+        required: true,
+        category: CONSENT_CATEGORIES.MODEL_DOWNLOAD,
+        downloadSize: '~2.2GB',
+        reason: 'Large AI model download required for browser-based AI'
+    },
+    [MODEL_TYPES.EXTERNAL]: {
+        required: true,
+        category: CONSENT_CATEGORIES.EXTERNAL_SERVICES,
+        downloadSize: 'None',
+        reason: 'Data will be sent to external AI service providers'
+    },
+    [MODEL_TYPES.LOCAL]: {
+        required: true,
+        category: CONSENT_CATEGORIES.DATA_PROCESSING,
+        downloadSize: 'Varies',
+        reason: 'Local processing setup and potential model downloads'
+    },
+    [MODEL_TYPES.DEMO]: {
+        required: false,
+        category: null,
+        downloadSize: 'None',
+        reason: 'Demo mode uses no external services or downloads'
+    }
 };
 
 export const TROUBLESHOOTING_TIPS = {

@@ -1,12 +1,17 @@
-// Setup step components
+// Enhanced setup step components with consent management
 
 import {
-    Brain,
+    Compass,
     Server,
     Globe,
     CheckCircle,
     Loader,
     Play,
+    Shield,
+    Download,
+    AlertTriangle,
+    Lock,
+    HardDrive,
 } from 'lucide-react';
 
 import {
@@ -15,11 +20,10 @@ import {
     CONNECTION_STATUS
 } from '../../constants/setupWizardConstants';
 
-
 export const WelcomeStep = ({ onNext }) => (
     <div className="text-center max-w-md">
         <div className="w-16 h-16 mx-auto mb-6 bg-blue-100 rounded-2xl flex items-center justify-center">
-            <Brain className="text-blue-600" size={32} />
+            <Compass className="text-blue-600" size={32} />
         </div>
 
         <h1 className="text-2xl font-semibold text-slate-800 mb-3">
@@ -50,46 +54,46 @@ export const ChoiceStep = ({ detectionResults, onSelect, selectedOption }) => {
             </div>
 
             <div className="space-y-3">
-                {/* Browser option - prominently featured */}
+                {/* Demo option - prominently featured */}
                 <button
-                    onClick={() => onSelect('browser')}
-                    className="w-full p-6 border-2 border-blue-200 bg-blue-50 rounded-xl text-left hover:border-blue-300 hover:bg-blue-100 transition-all group"
+                    onClick={() => onSelect('demo')}
+                    className="w-full p-6 border-2 border-amber-200 bg-amber-50 rounded-xl text-left hover:border-amber-300 hover:bg-amber-100 transition-all group"
                 >
                     <div className="flex items-start gap-4">
-                        <div className="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
-                            <Brain className="text-white" size={24} />
+                        <div className="w-12 h-12 bg-amber-500 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
+                            <Play className="text-white" size={24} />
                         </div>
                         <div className="flex-1">
                             <div className="flex items-center gap-2 mb-2">
-                                <h4 className="font-semibold text-slate-800">AI in your browser</h4>
-                                <span className="px-2 py-1 bg-blue-500 text-white rounded-full text-xs font-medium">
-                                    Recommended
+                                <h4 className="font-semibold text-slate-800">Try the demo</h4>
+                                <span className="px-2 py-1 bg-amber-500 text-white rounded-full text-xs font-medium">
+                                    No setup
                                 </span>
                             </div>
                             <p className="text-slate-600 text-sm mb-3">
-                                Private AI that runs directly in your browser. No servers, no data sharing.
+                                Explore with pre-loaded content first. No downloads or setup required.
                             </p>
                             <div className="flex items-center gap-4 text-xs text-slate-500">
-                                <span>✓ Completely private</span>
-                                <span>✓ Works offline</span>
-                                <span>✓ No setup needed</span>
+                                <span>✓ Instant start</span>
+                                <span>✓ No downloads</span>
+                                <span>✓ See how it works</span>
                             </div>
                         </div>
                     </div>
                 </button>
 
-                {/* Demo option */}
+                {/* Browser option */}
                 <button
-                    onClick={() => onSelect('demo')}
+                    onClick={() => onSelect('browser')}
                     className="w-full p-4 border border-slate-200 rounded-xl text-left hover:border-slate-300 hover:bg-slate-50 transition-all"
                 >
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
-                            <Play className="text-amber-600" size={20} />
+                        <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                            <Compass className="text-blue-600" size={20} />
                         </div>
                         <div>
-                            <h4 className="font-medium text-slate-800">Try the demo</h4>
-                            <p className="text-slate-600 text-sm">Explore with pre-loaded content first</p>
+                            <h4 className="font-medium text-slate-800">AI in your browser</h4>
+                            <p className="text-slate-600 text-sm">Private AI that runs in your browser (2GB download)</p>
                         </div>
                     </div>
                 </button>
@@ -143,20 +147,136 @@ export const ChoiceStep = ({ detectionResults, onSelect, selectedOption }) => {
     );
 };
 
-export const SetupStep = ({ option, apiKey, onApiKeyChange, onSetup, detectionResults }) => {
+// NEW: Consent Step Component
+export const ConsentStep = ({ option, consentData, onConsentDecision }) => {
+    const getOptionDetails = () => {
+        switch (option) {
+            case 'browser':
+                return {
+                    title: 'In-Browser AI Setup',
+                    icon: <Compass className="text-blue-600" size={32} />,
+                    iconBg: 'bg-blue-100'
+                };
+            case 'cloud':
+                return {
+                    title: 'Cloud AI Setup',
+                    icon: <Globe className="text-purple-600" size={32} />,
+                    iconBg: 'bg-purple-100'
+                };
+            case 'local':
+                return {
+                    title: 'Local AI Setup',
+                    icon: <Server className="text-slate-600" size={32} />,
+                    iconBg: 'bg-slate-100'
+                };
+            default:
+                return {
+                    title: 'AI Setup',
+                    icon: <Compass className="text-blue-600" size={16} />,
+                    iconBg: 'bg-blue-100'
+                };
+        }
+    };
+
+    const details = getOptionDetails();
+
+    return (
+        <div className="max-w-2xl">
+            <div className="text-center mb-6">
+                <div className={`w-16 h-16 mx-auto mb-4 ${details.iconBg} rounded-2xl flex items-center justify-center`}>
+                    {details.icon}
+                </div>
+                <h3 className="text-xl font-semibold text-slate-800 mb-2">{details.title}</h3>
+            </div>
+
+            <div className="space-y-6">
+                {/* Download Information */}
+                {consentData.downloadSize && consentData.downloadSize !== 'None' && (
+                    <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
+                        <div className="flex items-start gap-3">
+                            <Download className="text-blue-600 flex-shrink-0 mt-0.5" size={20} />
+                            <div>
+                                <h4 className="font-semibold text-blue-800 mb-2">One-time Download Required</h4>
+                                <div className="text-blue-700 text-sm space-y-1">
+                                    <div><strong>Size:</strong> {consentData.downloadSize}</div>
+                                    <div><strong>Storage:</strong> {consentData.storageLocation}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Privacy Information */}
+                <div className="bg-green-50 rounded-xl p-4 border border-green-200">
+                    <div className="flex items-start gap-3">
+                        <Shield className="text-green-600 flex-shrink-0 mt-0.5" size={20} />
+                        <div>
+                            <h4 className="font-semibold text-green-800 mb-2">Privacy & Security</h4>
+                            <div className="text-green-700 text-sm space-y-1">
+                                {consentData.privacyInfo?.dataStaysLocal && (
+                                    <div className="flex items-center gap-2">
+                                        <Lock size={12} />
+                                        <span>Your data stays on your device</span>
+                                    </div>
+                                )}
+                                {consentData.privacyInfo?.offlineCapable && (
+                                    <div className="flex items-center gap-2">
+                                        <HardDrive size={12} />
+                                        <span>Works completely offline after initial download</span>
+                                    </div>
+                                )}
+                                {!consentData.privacyInfo?.dataStaysLocal && (
+                                    <div className="flex items-center gap-2">
+                                        <AlertTriangle size={12} />
+                                        <span>Data will be sent to external servers</span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Consent Actions */}
+                <div className="bg-white border-2 border-slate-200 rounded-xl p-6">
+                    <div className="flex gap-3">
+                        <button
+                            onClick={() => onConsentDecision(true)}
+                            className="flex-1 px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors font-medium flex items-center justify-center gap-2"
+                        >
+                            <CheckCircle size={18} />
+                            Proceed
+                        </button>
+                        <button
+                            onClick={() => onConsentDecision(false)}
+                            className="flex-1 px-6 py-3 bg-slate-100 text-slate-700 rounded-xl hover:bg-slate-200 transition-colors font-medium"
+                        >
+                            Go Back
+                        </button>
+                    </div>
+
+                    <div className="text-xs text-slate-500 text-center mt-3">
+                        You'll download your own copy of open source model weights. This is not an executable.
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export const SetupStep = ({ option, apiKey, onApiKeyChange, onSetup, detectionResults, consentData }) => {
     if (option === 'browser') {
         return (
             <div className="text-center max-w-md">
                 <div className="w-16 h-16 mx-auto mb-6 bg-blue-100 rounded-2xl flex items-center justify-center">
-                    <Brain className="text-blue-600" size={32} />
+                    <Compass className="text-blue-600" size={32} />
                 </div>
 
                 <h3 className="text-xl font-semibold text-slate-800 mb-3">
-                    Ready to use Browser AI
+                    Ready to Download In-Browser AI
                 </h3>
 
                 <p className="text-slate-600 mb-6">
-                    Your browser AI is now configured. The model will download automatically when you first use it.
+                    Thank you for your consent. The AI model will now download automatically when you continue.
                 </p>
 
                 <div className="bg-blue-50 rounded-xl p-4 mb-6 text-left">
@@ -168,11 +288,18 @@ export const SetupStep = ({ option, apiKey, onApiKeyChange, onSetup, detectionRe
                     </div>
                 </div>
 
+                {consentData.hasConsented && (
+                    <div className="bg-green-50 rounded-xl p-3 mb-6 flex items-center gap-2">
+                        <CheckCircle className="text-green-600" size={16} />
+                        <span className="text-green-700 text-sm">Downloaded at {new Date(consentData.consentTimestamp).toLocaleTimeString()}</span>
+                    </div>
+                )}
+
                 <button
                     onClick={onSetup}
                     className="px-8 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-medium"
                 >
-                    Download & Setup
+                    Start Download & Setup
                 </button>
             </div>
         );
@@ -208,6 +335,13 @@ export const SetupStep = ({ option, apiKey, onApiKeyChange, onSetup, detectionRe
                         <div>Get one free at <span className="text-purple-600">aistudio.google.com</span></div>
                     </div>
 
+                    {consentData.hasConsented && (
+                        <div className="bg-green-50 rounded-xl p-3 flex items-center gap-2">
+                            <CheckCircle className="text-green-600" size={16} />
+                            <span className="text-green-700 text-sm">Consent granted</span>
+                        </div>
+                    )}
+
                     <button
                         onClick={onSetup}
                         disabled={!apiKey.trim()}
@@ -228,7 +362,7 @@ export const SetupStep = ({ option, apiKey, onApiKeyChange, onSetup, detectionRe
                 </div>
 
                 <h3 className="text-xl font-semibold text-slate-800 mb-3">
-                    Connect to local Ollama
+                    Connect to Local Ollama
                 </h3>
 
                 <p className="text-slate-600 mb-6">
@@ -243,6 +377,13 @@ export const SetupStep = ({ option, apiKey, onApiKeyChange, onSetup, detectionRe
                     </div>
                 </div>
 
+                {consentData.hasConsented && (
+                    <div className="bg-green-50 rounded-xl p-3 mb-6 flex items-center gap-2">
+                        <CheckCircle className="text-green-600" size={16} />
+                        <span className="text-green-700 text-sm">Consent granted</span>
+                    </div>
+                )}
+
                 <button
                     onClick={onSetup}
                     className="px-8 py-3 bg-slate-600 text-white rounded-xl hover:bg-slate-700 transition-colors font-medium"
@@ -255,7 +396,6 @@ export const SetupStep = ({ option, apiKey, onApiKeyChange, onSetup, detectionRe
 
     return null;
 };
-
 
 export const TestingStep = ({ config, isTesting, testResults }) => (
     <div className="text-center max-w-md">
@@ -271,21 +411,21 @@ export const TestingStep = ({ config, isTesting, testResults }) => (
 
         <h3 className="text-xl font-semibold text-slate-800 mb-3">
             {isTesting ? 'Setting up your AI...' :
-             testResults?.success ? 'Setup complete!' : 'Setup failed'}
+                testResults?.success ? 'Setup complete!' : 'Setup failed'}
         </h3>
 
         <p className="text-slate-600 mb-6">
             {isTesting ? 'This may take a few moments' :
-             testResults?.success ? 'Your AI is ready to use' :
-             'Something went wrong during setup'}
+                testResults?.success ? 'Your AI is ready to use' :
+                    'Something went wrong during setup'}
         </p>
 
         {config && (
             <div className="bg-slate-50 rounded-xl p-4 text-sm">
                 <div className="text-slate-700">
                     <div className="font-medium mb-2">Configuration:</div>
-                    <div>Type: {config.type === 'webllm' ? 'Browser AI' :
-                                config.type === 'external' ? 'Cloud AI' : 'Local AI'}</div>
+                    <div>Type: {config.type === 'webllm' ? 'In-Browser AI' :
+                        config.type === 'external' ? 'Cloud AI' : 'Local AI'}</div>
                     <div>Model: {config.model}</div>
                 </div>
             </div>
