@@ -2,8 +2,10 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { GoogleGenAI } from '@google/genai';
-import { DEFAULT_MODEL_CONFIG, WEBLLM_STATE } from '../constants/graphConstants';
-import { MLCEngine } from "@mlc-ai/web-llm";
+import { WEBLLM_STATE } from '../constants/graphConstants';
+import { BrowserLLMEngine } from './useBrowserLLMEngine';
+
+
 
 export const useLLMConnection = () => {
   const [llmConnected, setLlmConnected] = useState('pending');
@@ -14,8 +16,6 @@ export const useLLMConnection = () => {
   const [webllmEngine, setWebllmEngine] = useState(null);
   const [webllmLoadingProgress, setWebllmLoadingProgress] = useState(null);
   const [webllmLoadState, setWebllmLoadState] = useState(WEBLLM_STATE.NULL);
-
-  // NEW: Consent tracking
   const [hasUserConsent, setHasUserConsent] = useState(false);
   const [consentRequested, setConsentRequested] = useState(false);
 
@@ -31,7 +31,7 @@ export const useLLMConnection = () => {
       });
       return response.ok;
     } catch (error) {
-      console.error('Local LLM connection test failed:', error);
+      console.error('Local LLM connection (@', config.address, ') test failed:', error);
       return false;
     }
   };
@@ -57,7 +57,6 @@ export const useLLMConnection = () => {
     }
   };
 
-  // Consent-aware WebLLM initialization
   const initializeWebLLMWithConsent = useCallback(async (config) => {
     // Check if user has given consent
     if (!hasUserConsent) {
@@ -65,7 +64,6 @@ export const useLLMConnection = () => {
       return false;
     }
 
-    const cachedProgressParser = new RegExp("([0-9]+)/([0-9]+)");
     try {
       // Check WebGPU support
       if (!navigator.gpu) {
@@ -84,26 +82,9 @@ export const useLLMConnection = () => {
       }
 
       // Initialize WebLLM engine with progress tracking
-      const initProgressCallback = (progress) => {
-        if (progress && progress.progress == 0 && progress.text) {
-          const match = progress.text.match(cachedProgressParser);
-          if (match) {
-            const current = parseInt(match[1]);
-            const total = parseInt(match[2]);
-            progress.progress = current / total;
-          }
-          setWebllmLoadState(WEBLLM_STATE.RELOADING);
-        } else {
-          setWebllmLoadState(WEBLLM_STATE.DOWNLOADING);
-        }
-        setWebllmLoadingProgress(progress);
-      };
-
-      const engine = new MLCEngine({
-        initProgressCallback: initProgressCallback
-      });
-
-      await engine.reload(config.model);
+      const engine = new BrowserLLMEngine({ config, setWebllmLoadState, setWebllmLoadingProgress });
+      await engine.load();
+      console.log('Successfully loaded BrowserLLMEngine.');
 
       setWebllmEngine(engine);
       setWebllmLoadingProgress(null);
@@ -399,30 +380,7 @@ export const useLLMConnection = () => {
 
     try {
       if (stream) {
-        const asyncChunkGenerator = await webllmEngine.chat.completions.create({
-          messages: [{ role: "user", content: prompt }],
-          stream: true,
-          temperature: 0.7,
-          max_tokens: 2048,
-        });
-
-        const readableStream = new ReadableStream({
-          async start(controller) {
-            try {
-              for await (const chunk of asyncChunkGenerator) {
-                if (chunk.choices[0]?.delta?.content) {
-                  const text = chunk.choices[0].delta.content;
-                  const formattedChunk = JSON.stringify({ response: text });
-                  controller.enqueue(new TextEncoder().encode(formattedChunk + '\n'));
-                }
-              }
-              controller.close();
-            } catch (error) {
-              console.error('WebLLM streaming error:', error);
-              controller.error(error);
-            }
-          }
-        });
+        const readableStream = await webllmEngine.stream(prompt);
 
         return {
           ok: true,
@@ -430,17 +388,11 @@ export const useLLMConnection = () => {
           status: 200
         };
       } else {
-        const response = await webllmEngine.chat.completions.create({
-          messages: [{ role: "user", content: prompt }],
-          temperature: 0.7,
-          max_tokens: 2048,
-        });
-
-        const text = response.choices[0]?.message?.content || '';
+        const response = await webllmEngine.generate(prompt);
 
         return {
           ok: true,
-          json: async () => ({ response: text }),
+          json: async () => ({ response: response }),
           status: 200
         };
       }

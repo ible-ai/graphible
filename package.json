@@ -27,6 +27,8 @@
   },
   "dependencies": {
     "@google/genai": "^1.15.0",
+    "@huggingface/transformers": "^3.7.3",
+    "@mediapipe/tasks-genai": "^0.10.25",
     "@mlc-ai/web-llm": "^0.2.79",
     "d3-force": "^3.0.0",
     "lucide-react": "^0.536.0",

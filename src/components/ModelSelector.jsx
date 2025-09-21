@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { ChevronDown, Settings, Globe, Server, Compass, CheckCircle, AlertCircle } from 'lucide-react';
-import { LLM_CONFIG, DEFAULT_MODEL_CONFIGS, WEBLLM_STATE } from '../constants/graphConstants';
+import { LLM_CONFIG, DEFAULT_MODEL_CONFIGS, WEBLLM_STATE, DEFAULT_MODEL_CONFIG } from '../constants/graphConstants';
 import WebLLMProgressTracker from '../components/WebLLMProgressTracker';
 
 const ModelSelector = ({
@@ -99,7 +99,7 @@ const ModelSelector = ({
             const model = LLM_CONFIG.WEBLLM[currentModel.model];
             return model ? model.name : currentModel.model;
         }
-        return `${currentModel.model || 'gemma3:4b'}`;
+        return `${currentModel.model || 'No model detected'}`;
     };
 
     const getDisplayIcon = useCallback(() => {
@@ -306,7 +306,7 @@ const ModelSelector = ({
                                         type="text"
                                         value={localConfig.model}
                                         onChange={(e) => setLocalConfig(prev => ({ ...prev, model: e.target.value }))}
-                                        placeholder="gemma3:4b"
+                                        placeholder={DEFAULT_MODEL_CONFIG.model}
                                         className="w-full px-3 py-2 bg-white-800 border border-gray-600 rounded text-black placeholder-gray-400 focus:border-blue-500 focus:outline-none transition-all duration-200"
                                         onFocus={(e) => {
                                             e.target.style.boxShadow = '0 0 15px rgba(59, 130, 246, 0.2)';

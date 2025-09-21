@@ -117,15 +117,35 @@ export const LLM_CONFIG = {
     GENERATE_ENDPOINT: '/api/generate'
   },
 
-  // See https://mlc.ai/models.
-  // TODO: expand beyond outdated pre-compiled models.
+  // See https://mlc.ai/models and
+  // https://huggingface.co/models?pipeline_tag=text-generation&library=transformers.js
   WEBLLM: {
-    'Llama-3.2-3B-Instruct-q4f16_1-MLC': {
+    "onnx-community/Qwen3-0.6B-ONNX": {
+      name: 'Qwen3 0.6B (4-bit)',
+      description: 'Small, fast, and mighty.',
+      size: '0.6 GB',
+      performance: 'Low-Medium',
+      recommended: false
+    },
+    "onnx-community/Qwen3-1.7B-ONNX": {
+      name: 'Qwen3 1.7B (4-bit)',
+      description: 'Well-balanced.',
+      size: '1.4GB',
+      performance: 'Medium',
+      recommended: true
+    }, 'Llama-3.2-3B-Instruct-q4f16_1-MLC': {
       name: 'Llama 3.2 3B (4-bit)',
       description: 'Balanced performance and size',
       size: '2.2GB',
       performance: 'Medium',
-      recommended: true
+      recommended: false
+    },
+    "onnx-community/Qwen3-4B-ONNX": {
+      name: 'Qwen3 4B (4-bit)',
+      description: 'Makes computer hot. Nice.',
+      size: '4GB',
+      performance: 'Medium-High',
+      recommended: false
     }
   },
 
@@ -171,7 +191,8 @@ export const DEFAULT_MODEL_CONFIGS = {
   DEMO: {
     type: 'demo',
     name: 'Demo Mode',
-    description: 'Try Graphible with sample content'
+    description: 'Try Graphible with sample content',
+    model: "demo"
   },
   LOCAL: {
     type: 'local',
@@ -186,11 +207,11 @@ export const DEFAULT_MODEL_CONFIGS = {
   },
   WEBLLM: {
     type: 'webllm',
-    model: 'Llama-3.2-3B-Instruct-q4f16_1-MLC'
+    model: 'onnx-community/Qwen3-0.6B-ONNX'
   }
 };
 
-// CHANGED: Default to demo mode instead of WebLLM
+// Default to demo mode instead of WebLLM
 export const DEFAULT_MODEL_CONFIG = DEFAULT_MODEL_CONFIGS.DEMO;
 
 // API endpoints and configuration (kept for reference but using SDK now)
@@ -223,7 +244,6 @@ export const WEBLLM_STATE = {
   DONE: 'done',
 };
 
-// NEW: Consent management constants
 export const CONSENT_TYPES = {
   WEBLLM_DOWNLOAD: 'webllm-download',
   DATA_COLLECTION: 'data-collection',
@@ -237,3 +257,15 @@ export const CONSENT_STATUS = {
   DENIED: 'denied',
   EXPIRED: 'expired'
 };
+
+export const BROWSER_LLM_PROVIDERS = {
+  MLC_AI__WEB_LLM: "@mlc-ai/web-llm",
+  TRANSFORMERS_JS: "@huggingface/transformers"
+};
+
+export const BROWSER_LLM_TO_PROVIDER = new Map([
+  ["Llama-3.2-3B-Instruct-q4f16_1-MLC", `${BROWSER_LLM_PROVIDERS.MLC_AI__WEB_LLM}`],
+  ["onnx-community/Qwen3-4B-ONNX", `${BROWSER_LLM_PROVIDERS.TRANSFORMERS_JS}`],
+  ["onnx-community/Qwen3-1.7B-ONNX", `${BROWSER_LLM_PROVIDERS.TRANSFORMERS_JS}`],
+  ["onnx-community/Qwen3-0.6B-ONNX", `${BROWSER_LLM_PROVIDERS.TRANSFORMERS_JS}`]
+]);
