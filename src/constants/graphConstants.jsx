@@ -124,28 +124,32 @@ export const LLM_CONFIG = {
       name: 'Qwen3 0.6B (4-bit)',
       description: 'Small, fast, and mighty.',
       size: '0.6 GB',
+      dtype: 'fp16',
       performance: 'Low-Medium',
-      recommended: false
+      recommended: true
     },
     "onnx-community/Qwen3-1.7B-ONNX": {
       name: 'Qwen3 1.7B (4-bit)',
       description: 'Well-balanced.',
       size: '1.4GB',
+      dtype: 'q4f16',
       performance: 'Medium',
-      recommended: true
+      recommended: false
     }, 'Llama-3.2-3B-Instruct-q4f16_1-MLC': {
       name: 'Llama 3.2 3B (4-bit)',
       description: 'Balanced performance and size',
       size: '2.2GB',
+      dtype: 'q4f16',
       performance: 'Medium',
       recommended: false
-    },
-    "onnx-community/Qwen3-4B-ONNX": {
-      name: 'Qwen3 4B (4-bit)',
-      description: 'Makes computer hot. Nice.',
-      size: '4GB',
-      performance: 'Medium-High',
-      recommended: false
+      // },
+      // "onnx-community/Qwen3-4B-ONNX": {
+      //   name: 'Qwen3 4B (4-bit)',
+      //   description: 'Makes computer hot. Nice.',
+      //   size: '4GB',
+      //   dtype: 'q4f16',
+      //   performance: 'Medium-High',
+      //   recommended: false
     }
   },
 
@@ -207,7 +211,8 @@ export const DEFAULT_MODEL_CONFIGS = {
   },
   WEBLLM: {
     type: 'webllm',
-    model: 'onnx-community/Qwen3-0.6B-ONNX'
+    model: 'onnx-community/Qwen3-0.6B-ONNX',
+    dtype: 'fp16'
   }
 };
 
@@ -265,7 +270,7 @@ export const BROWSER_LLM_PROVIDERS = {
 
 export const BROWSER_LLM_TO_PROVIDER = new Map([
   ["Llama-3.2-3B-Instruct-q4f16_1-MLC", `${BROWSER_LLM_PROVIDERS.MLC_AI__WEB_LLM}`],
-  ["onnx-community/Qwen3-4B-ONNX", `${BROWSER_LLM_PROVIDERS.TRANSFORMERS_JS}`],
+  // ["onnx-community/Qwen3-4B-ONNX", `${BROWSER_LLM_PROVIDERS.TRANSFORMERS_JS}`],
   ["onnx-community/Qwen3-1.7B-ONNX", `${BROWSER_LLM_PROVIDERS.TRANSFORMERS_JS}`],
   ["onnx-community/Qwen3-0.6B-ONNX", `${BROWSER_LLM_PROVIDERS.TRANSFORMERS_JS}`]
 ]);

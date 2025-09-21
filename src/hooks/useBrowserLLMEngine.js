@@ -44,8 +44,7 @@ export class BrowserLLMEngine {
             this.transformersJsPipeline = pipeline(
                 "text-generation",
                 config.model,
-                // { dtype: "q4f16", device: "webgpu" },
-                { dtype: "fp16", device: "webgpu" },
+                { dtype: config.dtype || 'fp16', device: "webgpu" },
             );
             this.mlcEngine = null;
         }
