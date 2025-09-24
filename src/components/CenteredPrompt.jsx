@@ -25,10 +25,17 @@ const CenteredPrompt = ({
   // Global typing listener
   useEffect(() => {
     const handleGlobalKeyDown = (e) => {
+      // Don't interfere if user is typing in any input, textarea, or select element
+      if (e.target.tagName === 'INPUT' ||
+          e.target.tagName === 'TEXTAREA' ||
+          e.target.tagName === 'SELECT' ||
+          e.target.isContentEditable) {
+        return;
+      }
 
       // Handle single character input to start new prompt
       if (e.key.length === 1 && e.key.match(/^[a-z0-9 ]$/i)) {
-        setInputPrompt(e.target.value);
+        setInputPrompt(e.key);
       }
     };
 

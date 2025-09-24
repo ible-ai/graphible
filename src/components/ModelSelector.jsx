@@ -287,6 +287,7 @@ const ModelSelector = ({
                                         type="text"
                                         value={localConfig.address}
                                         onChange={(e) => setLocalConfig(prev => ({ ...prev, address: e.target.value }))}
+                                        onKeyDown={(e) => e.stopPropagation()}
                                         placeholder="http://localhost:11434"
                                         className="w-full px-3 py-2 bg-white-800 border border-gray-600 rounded text-black placeholder-gray-400 focus:border-blue-500 focus:outline-none transition-all duration-200 group"
                                         onFocus={(e) => {
@@ -306,6 +307,7 @@ const ModelSelector = ({
                                         type="text"
                                         value={localConfig.model}
                                         onChange={(e) => setLocalConfig(prev => ({ ...prev, model: e.target.value }))}
+                                        onKeyDown={(e) => e.stopPropagation()}
                                         placeholder={DEFAULT_MODEL_CONFIG.model}
                                         className="w-full px-3 py-2 bg-white-800 border border-gray-600 rounded text-black placeholder-gray-400 focus:border-blue-500 focus:outline-none transition-all duration-200"
                                         onFocus={(e) => {
@@ -433,6 +435,7 @@ const ModelSelector = ({
                                         type="password"
                                         value={externalConfig.apiKey}
                                         onChange={(e) => setExternalConfig(prev => ({ ...prev, apiKey: e.target.value }))}
+                                        onKeyDown={(e) => e.stopPropagation()}
                                         placeholder="Enter your Google AI API key"
                                         className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 placeholder-slate-500 focus:border-indigo-500 focus:outline-none transition-all duration-200"
                                     />
