@@ -176,7 +176,7 @@ export const useGraphState = (generateWithLLM) => {
     }
   };
 
-  const processNewNode = async (parsedData, nodeCount, currentBatch, prevWorldX, prevWorldY, preceedingSiblingNodes) => {
+  const processNewNode = async (parsedData, nodeCount, currentBatch, prevWorldX, prevWorldY, preceedingSiblingNodes, sourceNodeId = null) => {
     const uniqueNodeId = nodes.length + nodeCount;
     const previousNodeId = uniqueNodeId > 0 ? uniqueNodeId - 1 : null;
     const nodeDepth = currNodeDepth;
@@ -202,7 +202,15 @@ export const useGraphState = (generateWithLLM) => {
     setCurrentStreamingNodeId(uniqueNodeId);
     setGenerationStatus(prev => ({ ...prev, currentNodeId: uniqueNodeId }));
 
-    if (nodeCount > 0) {
+    // Create connections: first node connects to sourceNodeId, subsequent nodes connect to previous
+    if (nodeCount === 0 && sourceNodeId !== null) {
+      // First node of a new subgraph - connect to the source node
+      setConnections(prevConnections => [...prevConnections, {
+        from: sourceNodeId,
+        to: uniqueNodeId
+      }]);
+    } else if (nodeCount > 0) {
+      // Subsequent nodes connect to the previous node in the sequence
       setConnections(prevConnections => [...prevConnections, {
         from: uniqueNodeId - 1,
         to: uniqueNodeId
@@ -218,7 +226,7 @@ export const useGraphState = (generateWithLLM) => {
     });
   }, []);
 
-  const generateGraphWithLLM = async (prompt, prevWorldX = null, prevWorldY = null, modelConfig) => {
+  const generateGraphWithLLM = async (prompt, prevWorldX = null, prevWorldY = null, modelConfig, sourceNodeId = null) => {
     console.log('generateGraphWithLLM starting with prompt:', prompt);
     console.log('Using model config:', modelConfig);
 
@@ -322,7 +330,7 @@ Generate 3-6 nodes total. Start now:`;
           const finalResult = extractMultipleJsonFromResponse(rawResponseBuffer);
 
           for (const nodeData of finalResult.nodes) {
-            await processNewNode(nodeData, newNodeCount, currentBatch, prevWorldX, prevWorldY, preceedingSiblingNodes);
+            await processNewNode(nodeData, newNodeCount, currentBatch, prevWorldX, prevWorldY, preceedingSiblingNodes, sourceNodeId);
             newNodeCount++;
           }
 
@@ -354,7 +362,7 @@ Generate 3-6 nodes total. Start now:`;
         if (parsedData) {
           console.log('Successfully parsed node data:', parsedData);
 
-          await processNewNode(parsedData, newNodeCount, currentBatch, prevWorldX, prevWorldY, preceedingSiblingNodes);
+          await processNewNode(parsedData, newNodeCount, currentBatch, prevWorldX, prevWorldY, preceedingSiblingNodes, sourceNodeId);
           newNodeCount++;
 
           // Update buffer - the parser already removed the extracted content
@@ -373,13 +381,13 @@ Generate 3-6 nodes total. Start now:`;
 
         if (finalResult.nodes.length > 0) {
           for (const nodeData of finalResult.nodes) {
-            await processNewNode(nodeData, newNodeCount, currentBatch, prevWorldX, prevWorldY, preceedingSiblingNodes);
+            await processNewNode(nodeData, newNodeCount, currentBatch, prevWorldX, prevWorldY, preceedingSiblingNodes, sourceNodeId);
             newNodeCount++;
           }
         } else if (rawResponseBuffer.trim().length > 20) {
           // Create fallback node from the failed response
           const fallbackNode = createFallbackNode(rawResponseBuffer, nodes.length);
-          await processNewNode(fallbackNode, 0, currentBatch, prevWorldX, prevWorldY, preceedingSiblingNodes);
+          await processNewNode(fallbackNode, 0, currentBatch, prevWorldX, prevWorldY, preceedingSiblingNodes, sourceNodeId);
           fallbackNodeCount++;
         }
       }

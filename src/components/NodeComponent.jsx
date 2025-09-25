@@ -15,7 +15,7 @@ const NodeComponent = memo(({
   generationStatus,
   uiPersonality,
   isSelected = false,
-  selectionMode = false,
+  contextMode = 'smart',
   onStartDrag,
   onStartResize,
   onDelete,
@@ -70,7 +70,7 @@ const NodeComponent = memo(({
     if (isSelected) {
       baseStyles.borderColor = '#3B82F6';
       baseStyles.backgroundColor = 'rgba(59, 130, 246, 0.1)';
-      baseStyles.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.3), 0 0 20px rgba(59, 130, 246, 0.4), 0 8px 32px rgba(59, 130, 246, 0.2)';
+      baseStyles.boxShadow = '0 0 0 4px rgba(59, 130, 246, 0.5), 0 0 30px rgba(59, 130, 246, 0.6), 0 12px 40px rgba(59, 130, 246, 0.3)';
       baseStyles.transform = `scale(${isCurrent ? 1.05 : 1.0})`;
     }
 
@@ -84,7 +84,7 @@ const NodeComponent = memo(({
         borderColor: isSelected ? '#3B82F6' : colorScheme.rootBorder,
         color: colorScheme.rootText,
         boxShadow: isSelected
-          ? '0 0 0 3px rgba(59, 130, 246, 0.3), 0 0 20px rgba(59, 130, 246, 0.4), 0 8px 32px rgba(59, 130, 246, 0.2)'
+          ? '0 0 0 4px rgba(59, 130, 246, 0.5), 0 0 30px rgba(59, 130, 246, 0.6), 0 12px 40px rgba(59, 130, 246, 0.3)'
           : (isCurrent
             ? `0 8px 32px ${colorScheme.rootBorder}40, 0 0 0 2px ${colorScheme.rootBorder}50`
             : `0 4px 16px ${colorScheme.rootBorder}25`),
@@ -98,7 +98,7 @@ const NodeComponent = memo(({
         borderColor: isSelected ? '#3B82F6' : (isCurrent ? colorScheme.primary : colorScheme.border),
         color: colorScheme.text,
         boxShadow: isSelected
-          ? '0 0 0 3px rgba(59, 130, 246, 0.3), 0 0 20px rgba(59, 130, 246, 0.4), 0 8px 32px rgba(59, 130, 246, 0.2)'
+          ? '0 0 0 4px rgba(59, 130, 246, 0.5), 0 0 30px rgba(59, 130, 246, 0.6), 0 12px 40px rgba(59, 130, 246, 0.3)'
           : (isCurrent
             ? `0 12px 24px rgba(0, 0, 0, 0.08), 0 0 0 2px ${colorScheme.primary}33`
             : '0 4px 12px rgba(0, 0, 0, 0.04), 0 2px 4px rgba(0, 0, 0, 0.06)'),
@@ -111,7 +111,7 @@ const NodeComponent = memo(({
   const handleMouseDown = useCallback((e) => {
     e.stopPropagation();
 
-    if (selectionMode) {
+    if (contextMode === 'manual') {
       onToggleSelection?.(node.id);
       return;
     }
@@ -124,9 +124,9 @@ const NodeComponent = memo(({
 
     // Regular click - focus the node
     if (isClickable) {
-      onClick(node);
+      onClick(node, e);
     }
-  }, [selectionMode, onToggleSelection, onStartDrag, camera, isClickable, onClick, node]);
+  }, [contextMode, onToggleSelection, onStartDrag, camera, isClickable, onClick, node]);
 
   const handleDragHandleMouseDown = useCallback((e) => {
     e.stopPropagation();
@@ -146,7 +146,7 @@ const NodeComponent = memo(({
   return (
     <div
       id={`node-${node.id}`}
-      className={`node-component font-inter ${selectionMode ? 'cursor-pointer' :
+      className={`node-component font-inter ${contextMode === 'manual' ? 'cursor-pointer' :
         (isClickable ? 'cursor-pointer' : 'cursor-wait')
         }`}
       style={nodeStyles}
@@ -166,8 +166,8 @@ const NodeComponent = memo(({
         </div>
       )}
 
-      {/* Selection mode overlay */}
-      {selectionMode && (
+      {/* Manual mode overlay */}
+      {contextMode === 'manual' && (
         <div className="absolute inset-0 bg-blue-500 bg-opacity-10 rounded-2xl border-2 border-dashed border-blue-400 opacity-70 pointer-events-none" />
       )}
 
@@ -202,7 +202,7 @@ const NodeComponent = memo(({
       </div>
 
       {/* Control buttons */}
-      {(showControls || isSelected) && !selectionMode && (
+      {(showControls || isSelected) && contextMode !== 'manual' && (
         <div className="absolute top-2 right-2 flex gap-1 bg-white/95 rounded-lg p-1 shadow-lg border border-slate-200">
           <button
             onClick={(e) => {
@@ -218,7 +218,7 @@ const NodeComponent = memo(({
       )}
 
       {/* Resize handle */}
-      {!selectionMode && (showControls || isSelected) && (
+      {contextMode !== 'manual' && (showControls || isSelected) && (
         <div
           className="absolute bottom-1 right-1 w-5 h-5 cursor-se-resize bg-slate-300/80 rounded-tl-lg hover:bg-slate-400/80 transition-colors border border-slate-400/50 flex items-center justify-center"
           onMouseDown={handleResizeMouseDown}
@@ -236,8 +236,8 @@ const NodeComponent = memo(({
         ></div>
       )}
 
-      {/* Drag instruction hint for non-selection mode */}
-      {!selectionMode && showControls && (
+      {/* Drag instruction hint for non-manual mode */}
+      {contextMode !== 'manual' && showControls && (
         <div className="absolute -bottom-6 left-0 text-xs text-slate-500 bg-white/90 px-2 py-1 rounded shadow-sm whitespace-nowrap">
           Shift + click to drag
         </div>
@@ -256,7 +256,7 @@ const NodeComponent = memo(({
     prevProps.isCurrent === nextProps.isCurrent &&
     prevProps.isStreaming === nextProps.isStreaming &&
     prevProps.isSelected === nextProps.isSelected &&
-    prevProps.selectionMode === nextProps.selectionMode &&
+    prevProps.contextMode === nextProps.contextMode &&
     prevProps.showPromptCenter === nextProps.showPromptCenter
   );
 });

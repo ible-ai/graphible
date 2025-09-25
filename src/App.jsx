@@ -160,13 +160,14 @@ const Graphible = () => {
 
   const {
     selectedNodeIds,
-    selectionMode,
+    contextMode,
     isDragSelecting,
-    toggleSelectionMode,
+    toggleContextMode,
+    handleNodeSelection,
+    updateSmartContext,
     toggleNodeSelection,
     isNodeSelected,
     clearSelections,
-    autoSelectRecentBatch,
     startDragSelection,
     updateDragSelection,
     endDragSelection,
@@ -314,12 +315,12 @@ const Graphible = () => {
     setShowSetupWizard(true);
   }, []);
 
-  // Auto-select most recent batch when generation completes
+  // Update smart context when current node changes
   useEffect(() => {
     if (nodes.length > 0 && currentNodeId !== null) {
-      autoSelectRecentBatch(nodes, currentNodeId);
+      updateSmartContext(nodes, currentNodeId, connections);
     }
-  }, [nodes, currentNodeId, autoSelectRecentBatch]);
+  }, [nodes, currentNodeId, connections, updateSmartContext]);
 
   // Use UI personality color scheme, fall back to preferences, then default
   const currentScheme = colorSchemes[uiPersonality.colorScheme || preferences.colorScheme || 'default'];
@@ -385,7 +386,7 @@ const Graphible = () => {
 
       if (e.shiftKey && clickedElement.closest('.node-component')) return;
 
-      if (selectionMode) {
+      if (contextMode === 'manual') {
         // Start drag selection
         startDragSelection(e.clientX, e.clientY, camera);
       } else {
@@ -462,7 +463,7 @@ const Graphible = () => {
     camera,
     setCameraImmediate,
     dragStart,
-    selectionMode,
+    contextMode,
     isDraggingNode,
     isResizingNode,
     startDragSelection,
@@ -489,16 +490,19 @@ const Graphible = () => {
   }, [nodes, selectedNodeIds, toggleNodeSelection, applyLayoutOptimization]);
 
   // Event handlers
-  const handleNodeClick = useCallback((node) => {
-    if (selectionMode) {
-      toggleNodeSelection(node.id);
-      return;
-    }
+  const handleNodeClick = useCallback((node, event) => {
+    const modifierKey = event?.ctrlKey || event?.metaKey;
 
-    setCurrentNodeId(node.id);
-    setNodeDetails(node);
-    setCameraImmediate(-node.worldX, -node.worldY, camera.zoom);
-  }, [camera.zoom, toggleNodeSelection, setCurrentNodeId, setNodeDetails, setCameraImmediate, selectionMode]);
+    // Handle context selection based on mode
+    handleNodeSelection(node.id, nodes, connections, modifierKey);
+
+    // Always update current node (except in manual mode with modifier key)
+    if (!(contextMode === 'manual' && modifierKey)) {
+      setCurrentNodeId(node.id);
+      setNodeDetails(node);
+      setCameraImmediate(-node.worldX, -node.worldY, camera.zoom);
+    }
+  }, [camera.zoom, handleNodeSelection, nodes, connections, contextMode, setCurrentNodeId, setNodeDetails, setCameraImmediate]);
 
   const handleFeedback = (nodeId, isPositive) => {
     setShowFeedbackModal({ nodeId, isPositive });
@@ -555,11 +559,11 @@ const Graphible = () => {
     clearSelections();
     setShowPromptCenter(false);
 
-    await generateGraphWithLLM(prompt, null, null, currentModel);
+    await generateGraphWithLLM(prompt, null, null, currentModel, null);
   };
 
   const enhancedGenerateWithLLM = async (prompt, prevWorldX, prevWorldY) => {
-    return generateGraphWithLLM(prompt, prevWorldX, prevWorldY, currentModel);
+    return generateGraphWithLLM(prompt, prevWorldX, prevWorldY, currentModel, currentNodeId);
   };
 
   // Background drag handling
@@ -581,7 +585,7 @@ const Graphible = () => {
 
       if (isInteractiveClick) return;
 
-      if (selectionMode) {
+      if (contextMode === 'manual') {
         // Use the fixed coordinate system for drag selection
         startDragSelection(e.clientX, e.clientY, camera);
       } else {
@@ -642,7 +646,7 @@ const Graphible = () => {
     camera,
     setCameraImmediate,
     dragStart,
-    selectionMode,
+    contextMode,
     isDraggingNode,
     isResizingNode,
     isDragSelecting,
@@ -766,9 +770,9 @@ const Graphible = () => {
                 <div className="flex bg-white border border-slate-200 rounded-lg p-1">
                   <button
                     onClick={() => {
-                      if (selectionMode) toggleSelectionMode();
+                      if (contextMode !== 'smart') toggleContextMode();
                     }}
-                    className={`flex items-center gap-2 px-3 py-1 rounded-md text-sm transition-all duration-200 ${!selectionMode
+                    className={`flex items-center gap-2 px-3 py-1 rounded-md text-sm transition-all duration-200 ${contextMode === 'smart'
                       ? 'bg-slate-100 text-slate-800'
                       : 'text-slate-600 hover:text-slate-800'
                       }`}
@@ -778,17 +782,19 @@ const Graphible = () => {
                     Normal
                   </button>
                   <button
-                    onClick={toggleSelectionMode}
-                    className={`flex items-center gap-2 px-3 py-1 rounded-md text-sm transition-all duration-200 ${selectionMode
-                      ? 'bg-blue-100 text-blue-300 opacity-80'
-                      : 'text-slate-600 hover:text-slate-800'
-                      }`}
-                    title="Selection mode"
+                    onClick={toggleContextMode}
+                    className="flex items-center gap-2 px-3 py-1 rounded-md text-sm transition-all duration-200 bg-indigo-100 text-indigo-800"
+                    title={`Context: ${contextMode === 'smart' ? 'Smart (auto path)' :
+                      contextMode === 'manual' ? 'Manual (Ctrl+click)' :
+                      contextMode === 'branch' ? 'Branch (click subtree)' :
+                      'Batch (click generation)'}`}
                   >
-                    <Target size={14} />
-                    Select
+                    {contextMode === 'smart' && <><Circle size={14} />Smart</>}
+                    {contextMode === 'manual' && <><MousePointer size={14} />Manual</>}
+                    {contextMode === 'branch' && <><Link size={14} />Branch</>}
+                    {contextMode === 'batch' && <><Target size={14} />Batch</>}
                     {selectedCount > 0 && (
-                      <span className="bg-blue-500 text-white px-1.5 py-0.5 rounded-full text-xs">
+                      <span className="bg-indigo-600 text-white px-1.5 py-0.5 rounded-full text-xs">
                         {selectedCount}
                       </span>
                     )}
@@ -970,7 +976,7 @@ const Graphible = () => {
                     isCurrent={node.id === currentNodeId}
                     isStreaming={currentStreamingNodeId === node.id}
                     isSelected={isNodeSelected(node.id)}
-                    selectionMode={selectionMode}
+                    contextMode={contextMode}
                     onClick={handleNodeClick}
                     onFeedback={handleFeedback}
                     colorScheme={currentScheme}

@@ -1,11 +1,9 @@
-// Hook for handling node selection for context inclusion with drag selection
-
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { screenToWorld } from '../utils/coordinateUtils';
 
 export const useNodeSelection = () => {
   const [selectedNodeIds, setSelectedNodeIds] = useState(new Set());
-  const [selectionMode, setSelectionMode] = useState(false);
+  const [contextMode, setContextMode] = useState('smart'); // 'smart', 'manual', 'branch', 'batch'
   const [isDragSelecting, setIsDragSelecting] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [dragEnd, setDragEnd] = useState({ x: 0, y: 0 });
@@ -61,58 +59,86 @@ export const useNodeSelection = () => {
     };
   }, []);
 
-  // Toggle selection mode on/off
-  const toggleSelectionMode = useCallback(() => {
-    setSelectionMode(prev => {
-      const newMode = !prev;
-      if (!newMode) {
-        // Clear selections when exiting selection mode
+  // Toggle between context modes
+  const toggleContextMode = useCallback(() => {
+    const modes = ['smart', 'manual', 'branch', 'batch'];
+    setContextMode(prev => {
+      const currentIndex = modes.indexOf(prev);
+      const nextIndex = (currentIndex + 1) % modes.length;
+      const newMode = modes[nextIndex];
+
+      // Clear manual selections when switching away from manual mode
+      if (prev === 'manual' && newMode !== 'manual') {
         setSelectedNodeIds(new Set());
-        setIsDragSelecting(false);
       }
+
       return newMode;
     });
   }, []);
 
-  // Auto-select nodes from the most recent generation batch
-  const autoSelectRecentBatch = useCallback((nodes, currentNodeId) => {
-    const curNode = nodes.find(n => n && n.id === currentNodeId);
+  // Smart context selection - automatically includes relevant context
+  const updateSmartContext = useCallback((nodes, currentNodeId, connections) => {
+    if (contextMode !== 'smart' || !currentNodeId) return;
 
-    if (!Array.isArray(nodes) || nodes.length === 0 || curNode === null) return;
+    // Build path from root to current node
+    const buildPathToNode = (nodeId) => {
+      const path = [];
+      let current = nodes.find(n => n.id === nodeId);
 
-    const validNodeIds = nodes.map(n => n.id);
-    scheduleCleanup(validNodeIds);
+      while (current) {
+        path.unshift(current.id);
+        const parentConnection = connections.find(c => c.to === current.id);
+        current = parentConnection ? nodes.find(n => n.id === parentConnection.from) : null;
+      }
 
-    // Find the most recent batch ID
-    const maxBatchId = Math.max(...nodes.map(n => n.batchId || 0));
-    const recentBatchId = curNode?.batchId ? curNode.batchId : maxBatchId;
+      return path;
+    };
 
-    // Select all nodes from the most recent batch or from the existing set of nodes.
-    const newlySelectedNodeIds = nodes
-      .filter(
-        node => node && node.id &&
-          (
-            (selectedNodeIdsRef.current.has(node.id)) ||
-            (node.batchId || 0) === recentBatchId
-          )
-          && (node?.id <= currentNodeId)
-      ).map(node => node.id);
-    setSelectedNodeIds(new Set([...newlySelectedNodeIds]));
-  }, [scheduleCleanup]);
+    const contextPath = buildPathToNode(currentNodeId);
+    setSelectedNodeIds(new Set(contextPath));
+  }, [contextMode]);
+
+  // Select entire branch/subtree from a node
+  const selectBranch = useCallback((rootNodeId, nodes, connections) => {
+    const findChildrenRecursive = (nodeId) => {
+      const children = connections
+        .filter(c => c.from === nodeId)
+        .map(c => c.to);
+
+      const allDescendants = [nodeId];
+      children.forEach(childId => {
+        allDescendants.push(...findChildrenRecursive(childId));
+      });
+
+      return allDescendants;
+    };
+
+    const branchNodeIds = findChildrenRecursive(rootNodeId);
+    setSelectedNodeIds(new Set(branchNodeIds));
+  }, []);
+
+  // Select all nodes from a specific batch
+  const selectBatch = useCallback((batchId, nodes) => {
+    const batchNodeIds = nodes
+      .filter(node => (node.batchId || 0) === batchId)
+      .map(node => node.id);
+
+    setSelectedNodeIds(new Set(batchNodeIds));
+  }, []);
 
   // Fixed coordinate conversion using the new coordinate system
   const clientToWorldCoords = useCallback((clientX, clientY, camera) => {
     return screenToWorld(clientX, clientY, camera);
   }, []);
 
-  // Start drag selection
+  // Start drag selection (only in manual mode)
   const startDragSelection = useCallback((clientX, clientY, camera) => {
-    if (!selectionMode) return;
+    if (contextMode !== 'manual') return;
     setIsDragSelecting(true);
     const coords = clientToWorldCoords(clientX, clientY, camera);
     setDragStart(coords);
     setDragEnd(coords);
-  }, [selectionMode, clientToWorldCoords]);
+  }, [contextMode, clientToWorldCoords]);
 
   // Update drag selection
   const updateDragSelection = useCallback((clientX, clientY, camera) => {
@@ -160,10 +186,45 @@ export const useNodeSelection = () => {
     });
   }, [isDragSelecting, dragStart, dragEnd, scheduleCleanup]);
 
-  // Toggle selection of a specific node
-  const toggleNodeSelection = useCallback((nodeId) => {
-    if (!selectionMode) return;
+  // Smart node selection based on context mode and modifier keys
+  const handleNodeSelection = useCallback((nodeId, nodes, connections, modifierKey = false) => {
+    if (contextMode === 'smart') {
+      // In smart mode, just update the smart context
+      return;
+    }
 
+    if (contextMode === 'manual') {
+      if (modifierKey) {
+        // Ctrl/Cmd+click: toggle individual node
+        setSelectedNodeIds(prev => {
+          const newSet = new Set(prev);
+          if (newSet.has(nodeId)) {
+            newSet.delete(nodeId);
+          } else {
+            newSet.add(nodeId);
+          }
+          return newSet;
+        });
+      }
+      return;
+    }
+
+    if (contextMode === 'branch') {
+      selectBranch(nodeId, nodes, connections);
+      return;
+    }
+
+    if (contextMode === 'batch') {
+      const node = nodes.find(n => n.id === nodeId);
+      if (node) {
+        selectBatch(node.batchId || 0, nodes);
+      }
+      return;
+    }
+  }, [contextMode, selectBranch, selectBatch]);
+
+  // Legacy method for backwards compatibility
+  const toggleNodeSelection = useCallback((nodeId) => {
     setSelectedNodeIds(prev => {
       const newSet = new Set(prev);
       if (newSet.has(nodeId)) {
@@ -173,7 +234,7 @@ export const useNodeSelection = () => {
       }
       return newSet;
     });
-  }, [selectionMode]);
+  }, []);
 
   // Check if a node is selected
   const isNodeSelected = useCallback((nodeId) => {
@@ -238,14 +299,20 @@ export const useNodeSelection = () => {
   return {
     // State
     selectedNodeIds,
-    selectionMode,
+    contextMode,
     isDragSelecting,
     selectedCount: selectedNodeIds.size,
 
     // Mode management
-    toggleSelectionMode,
+    toggleContextMode,
 
-    // Selection management
+    // Smart selection methods
+    handleNodeSelection,
+    updateSmartContext,
+    selectBranch,
+    selectBatch,
+
+    // Legacy selection management
     toggleNodeSelection,
     isNodeSelected,
     clearSelections,
@@ -254,10 +321,9 @@ export const useNodeSelection = () => {
     selectAllNodes,
 
     // Batch operations
-    autoSelectRecentBatch,
     getSelectedNodeObjects,
 
-    // Drag selection
+    // Drag selection (manual mode only)
     startDragSelection,
     updateDragSelection,
     endDragSelection,
