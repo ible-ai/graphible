@@ -159,6 +159,51 @@ const Minimap = ({
     }
   }, [isPanning, handleMouseMove, handleMouseUp]);
 
+  // Hierarchical label visibility based on cluster importance and zoom level
+  const getClusterLabelVisibility = useCallback((cluster, minimapZoom) => {
+    const nodeCount = cluster.nodes.length;
+
+    // Define zoom thresholds for different cluster sizes
+    const zoomThresholds = {
+      veryLarge: 0.3,  // 10+ nodes: visible even when zoomed way out
+      large: 0.6,      // 5-9 nodes: visible at medium zoom out
+      medium: 1.0,     // 3-4 nodes: visible at normal zoom
+      small: 1.5,      // 2 nodes: only visible when zoomed in
+      single: 2.0      // 1 node: only visible when very zoomed in
+    };
+
+    let threshold;
+    if (nodeCount >= 10) threshold = zoomThresholds.veryLarge;
+    else if (nodeCount >= 5) threshold = zoomThresholds.large;
+    else if (nodeCount >= 3) threshold = zoomThresholds.medium;
+    else if (nodeCount >= 2) threshold = zoomThresholds.small;
+    else threshold = zoomThresholds.single;
+
+    const isVisible = minimapZoom >= threshold;
+
+    // Calculate opacity with smooth fade transitions
+    const fadeZone = 0.2; // 20% fade zone around threshold
+    const fadeStart = threshold - fadeZone;
+    const opacity = isVisible ?
+      Math.min(1, Math.max(0, (minimapZoom - fadeStart) / fadeZone)) : 0;
+
+    return { isVisible, opacity };
+  }, []);
+
+  // Sort clusters by importance and apply density limits
+  const getVisibleClusters = useCallback((clusters, minimapZoom) => {
+    // Sort by importance (node count + position stability)
+    const sortedClusters = [...clusters].sort((a, b) => {
+      const aImportance = a.nodes.length + (a.nodes.some(n => n.type === 'root') ? 5 : 0);
+      const bImportance = b.nodes.length + (b.nodes.some(n => n.type === 'root') ? 5 : 0);
+      return bImportance - aImportance;
+    });
+
+    // Apply density limits based on zoom level
+    const maxClusters = Math.max(3, Math.floor(minimapZoom * 15)); // 3-15 clusters max
+    return sortedClusters.slice(0, maxClusters);
+  }, []);
+
   if (nodes.length === 0) return null;
 
   // Determine if we should show clusters as merged nodes (when zoomed out)
@@ -291,7 +336,7 @@ const Minimap = ({
           onMouseDown={handleMouseDown}
         >
           {/* Cluster gaussian glows - only show when not using merged clusters */}
-          {showClusters && !shouldShowMergedClusters && clusters.map((cluster, index) => {
+          {showClusters && !shouldShowMergedClusters && getVisibleClusters(clusters, minimapZoom).map((cluster, index) => {
             // Get cluster color
             const clusterColor = getClusterColor(cluster.type, index);
 
@@ -337,11 +382,18 @@ const Minimap = ({
                   </g>
                 ))}
 
-                {/* Cluster label - positioned above the centroid with visual weight based on size */}
+                {/* Cluster label - positioned above the centroid with hierarchical visibility */}
                 {minimapExpanded && (() => {
                   const nodeCount = cluster.nodes.length;
+                  const visibility = getClusterLabelVisibility(cluster, minimapZoom);
+
+                  if (!visibility.isVisible || visibility.opacity < 0.01) return null;
+
                   const fontWeight = Math.min(900, 400 + (nodeCount - 1) * 100); // 400-900 font weight
                   const fontSize = Math.max(64, 72 + (nodeCount - 1) * 8) * textScaleFactor; // Slightly larger for bigger clusters
+
+                  // Adaptive text length based on zoom - show more detail when zoomed in
+                  const maxTextLength = Math.round(15 + (minimapZoom * 15));
 
                   return (
                     <text
@@ -353,10 +405,12 @@ const Minimap = ({
                       className="cluster-label pointer-events-none"
                       style={{
                         fontWeight,
-                        textShadow: `${3 * textScaleFactor}px ${3 * textScaleFactor}px ${6 * textScaleFactor}px rgba(255,255,255,0.9)`
+                        opacity: visibility.opacity,
+                        textShadow: `${3 * textScaleFactor}px ${3 * textScaleFactor}px ${6 * textScaleFactor}px rgba(255,255,255,0.9)`,
+                        transition: 'opacity 0.3s ease-out'
                       }}
                     >
-                      {truncateAtWordBoundary(cluster.label, 30)}
+                      {truncateAtWordBoundary(cluster.label, maxTextLength)}
                     </text>
                   );
                 })()}
@@ -389,7 +443,7 @@ const Minimap = ({
           {/* Minimap nodes - show either individual nodes or merged clusters */}
           {shouldShowMergedClusters ? (
             // Show merged cluster nodes with gaussian distribution
-            clusters.map((cluster, index) => {
+            getVisibleClusters(clusters, minimapZoom).map((cluster, index) => {
               const isCurrentCluster = cluster.nodes.some(node => node.id === currentNodeId);
               const clusterColor = getClusterColor(cluster.type, index);
 
@@ -467,11 +521,18 @@ const Minimap = ({
                     }}
                   />
 
-                  {/* Cluster label - clean and focused with visual weight */}
+                  {/* Cluster label - clean and focused with hierarchical visibility */}
                   {minimapExpanded && (() => {
                     const nodeCount = cluster.nodes.length;
+                    const visibility = getClusterLabelVisibility(cluster, minimapZoom);
+
+                    if (!visibility.isVisible || visibility.opacity < 0.01) return null;
+
                     const fontWeight = Math.min(900, 400 + (nodeCount - 1) * 100);
                     const fontSize = Math.max(110, 128 + (nodeCount - 1) * 12) * textScaleFactor;
+
+                    // Adaptive text length - more detail when zoomed in, less when zoomed out
+                    const maxTextLength = Math.round(10 + (minimapZoom * 20));
 
                     return (
                       <text
@@ -483,11 +544,13 @@ const Minimap = ({
                         className="pointer-events-none select-none"
                         style={{
                           fontWeight,
+                          opacity: visibility.opacity,
                           textShadow: `${3 * textScaleFactor}px ${3 * textScaleFactor}px ${6 * textScaleFactor}px rgba(255,255,255,0.9)`,
-                          letterSpacing: `${2 * textScaleFactor}px`
+                          letterSpacing: `${2 * textScaleFactor}px`,
+                          transition: 'opacity 0.3s ease-out'
                         }}
                       >
-                        {truncateAtWordBoundary(cluster.label, 25)}
+                        {truncateAtWordBoundary(cluster.label, maxTextLength)}
                       </text>
                     );
                   })()}
