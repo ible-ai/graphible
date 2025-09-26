@@ -159,50 +159,182 @@ const Minimap = ({
     }
   }, [isPanning, handleMouseMove, handleMouseUp]);
 
-  // Hierarchical label visibility based on cluster importance and zoom level
-  const getClusterLabelVisibility = useCallback((cluster, minimapZoom) => {
+  // Enhanced hierarchical label visibility with aggregate priority
+  const getClusterLabelVisibility = useCallback((cluster, minimapZoom, clusterRank) => {
     const nodeCount = cluster.nodes.length;
+    const hasRootNode = cluster.nodes.some(n => n.type === 'root');
+    const isTopTier = clusterRank < 3; // Top 3 most important clusters
 
-    // Define zoom thresholds for different cluster sizes
+    // Calculate aggregate importance score
+    const aggregateImportance = nodeCount + (hasRootNode ? 10 : 0) + (isTopTier ? 5 : 0);
+
+    // Define zoom thresholds with special handling for aggregates
     const zoomThresholds = {
-      veryLarge: 0.3,  // 10+ nodes: visible even when zoomed way out
-      large: 0.6,      // 5-9 nodes: visible at medium zoom out
-      medium: 1.0,     // 3-4 nodes: visible at normal zoom
-      small: 1.5,      // 2 nodes: only visible when zoomed in
-      single: 2.0      // 1 node: only visible when very zoomed in
+      // High-level aggregates should always be visible
+      topAggregate: 0.1,   // Top tier clusters: always visible
+      aggregate: 0.3,      // Important aggregates: visible when slightly zoomed out
+      veryLarge: 0.5,      // Large clusters: visible at medium zoom out
+      large: 0.8,          // Medium clusters: visible at closer to normal zoom
+      medium: 1.2,         // Small clusters: visible at normal zoom
+      small: 1.8,          // Very small clusters: only when zoomed in
+      single: 2.5          // Single nodes: only when very zoomed in
     };
 
     let threshold;
-    if (nodeCount >= 10) threshold = zoomThresholds.veryLarge;
-    else if (nodeCount >= 5) threshold = zoomThresholds.large;
-    else if (nodeCount >= 3) threshold = zoomThresholds.medium;
-    else if (nodeCount >= 2) threshold = zoomThresholds.small;
-    else threshold = zoomThresholds.single;
+    if (isTopTier && aggregateImportance >= 8) {
+      // Top tier clusters with high importance - always show
+      threshold = zoomThresholds.topAggregate;
+    } else if (aggregateImportance >= 12 || nodeCount >= 8) {
+      // High importance aggregates
+      threshold = zoomThresholds.aggregate;
+    } else if (nodeCount >= 6) {
+      threshold = zoomThresholds.veryLarge;
+    } else if (nodeCount >= 4) {
+      threshold = zoomThresholds.large;
+    } else if (nodeCount >= 2) {
+      threshold = zoomThresholds.medium;
+    } else if (nodeCount === 1) {
+      threshold = zoomThresholds.single;
+    } else {
+      threshold = zoomThresholds.small;
+    }
 
     const isVisible = minimapZoom >= threshold;
 
     // Calculate opacity with smooth fade transitions
-    const fadeZone = 0.2; // 20% fade zone around threshold
+    const fadeZone = 0.25; // Slightly larger fade zone for smoother transitions
     const fadeStart = threshold - fadeZone;
     const opacity = isVisible ?
-      Math.min(1, Math.max(0, (minimapZoom - fadeStart) / fadeZone)) : 0;
+      Math.min(1, Math.max(0.1, (minimapZoom - fadeStart) / fadeZone)) : 0;
 
-    return { isVisible, opacity };
+    return { isVisible, opacity, importance: aggregateImportance };
   }, []);
 
-  // Sort clusters by importance and apply density limits
-  const getVisibleClusters = useCallback((clusters, minimapZoom) => {
-    // Sort by importance (node count + position stability)
-    const sortedClusters = [...clusters].sort((a, b) => {
-      const aImportance = a.nodes.length + (a.nodes.some(n => n.type === 'root') ? 5 : 0);
-      const bImportance = b.nodes.length + (b.nodes.some(n => n.type === 'root') ? 5 : 0);
-      return bImportance - aImportance;
+  // Calculate cluster visibility in viewport
+  const calculateClusterViewportRelevance = useCallback((cluster, viewport) => {
+    let visibleNodes = 0;
+    let totalWeight = 0;
+
+    for (const node of cluster.nodes) {
+      const isInViewport =
+        node.worldX >= viewport.minX && node.worldX <= viewport.maxX &&
+        node.worldY >= viewport.minY && node.worldY <= viewport.maxY;
+
+      if (isInViewport) {
+        visibleNodes++;
+        // Weight root nodes higher
+        totalWeight += node.type === 'root' ? 3 : 1;
+      }
+    }
+
+    const visibilityRatio = visibleNodes / cluster.nodes.length;
+    const centroidInViewport =
+      cluster.centroid.x >= viewport.minX && cluster.centroid.x <= viewport.maxX &&
+      cluster.centroid.y >= viewport.minY && cluster.centroid.y <= viewport.maxY;
+
+    return {
+      visibleNodes,
+      visibilityRatio,
+      totalWeight,
+      centroidInViewport,
+      relevanceScore: (visibilityRatio * 100) + totalWeight + (centroidInViewport ? 20 : 0)
+    };
+  }, []);
+
+  // Smart label positioning that avoids overlaps
+  const calculateSmartLabelPositions = useCallback((visibleClusters, viewport, textScaleFactor) => {
+    const labelPadding = 50 * textScaleFactor;
+    const labelSpacing = 80 * textScaleFactor; // Minimum distance between labels
+    const positions = [];
+
+    for (let i = 0; i < visibleClusters.length; i++) {
+      const cluster = visibleClusters[i];
+      let labelX = cluster.centroid.x;
+      let labelY = cluster.centroid.y - (100 * textScaleFactor);
+
+      // Start with ideal position, clamped to viewport
+      labelX = Math.max(viewport.minX + labelPadding,
+               Math.min(labelX, viewport.maxX - labelPadding));
+      labelY = Math.max(viewport.minY + labelPadding,
+               Math.min(labelY, viewport.maxY - labelPadding));
+
+      // Check for collisions with existing labels
+      let hasCollision = true;
+      let attempts = 0;
+      const maxAttempts = 12;
+
+      while (hasCollision && attempts < maxAttempts) {
+        hasCollision = false;
+
+        // Check distance to all previously positioned labels
+        for (const existingPos of positions) {
+          const distance = Math.sqrt(
+            Math.pow(labelX - existingPos.x, 2) +
+            Math.pow(labelY - existingPos.y, 2)
+          );
+
+          if (distance < labelSpacing) {
+            hasCollision = true;
+            break;
+          }
+        }
+
+        if (hasCollision) {
+          // Try different positions in a spiral pattern
+          const angle = (attempts * Math.PI * 2) / 8; // 8 directions
+          const radius = labelSpacing * (1 + Math.floor(attempts / 8));
+
+          labelX = cluster.centroid.x + Math.cos(angle) * radius;
+          labelY = cluster.centroid.y + Math.sin(angle) * radius;
+
+          // Re-clamp to viewport after spiral positioning
+          labelX = Math.max(viewport.minX + labelPadding,
+                   Math.min(labelX, viewport.maxX - labelPadding));
+          labelY = Math.max(viewport.minY + labelPadding,
+                   Math.min(labelY, viewport.maxY - labelPadding));
+        }
+
+        attempts++;
+      }
+
+      positions.push({ x: labelX, y: labelY, cluster });
+    }
+
+    return positions;
+  }, []);
+
+  // Sort clusters by viewport relevance and importance
+  const getVisibleClusters = useCallback((clusters, minimapZoom, viewport) => {
+    if (clusters.length === 0) return [];
+
+    // Calculate viewport relevance for each cluster
+    const clustersWithRelevance = clusters.map(cluster => {
+      const viewportRelevance = calculateClusterViewportRelevance(cluster, viewport);
+      const hasRootNode = cluster.nodes.some(n => n.type === 'root');
+
+      // Combine viewport relevance with global importance
+      const globalImportance = cluster.nodes.length + (hasRootNode ? 10 : 0);
+      const combinedScore = (viewportRelevance.relevanceScore * 2) + globalImportance;
+
+      return {
+        ...cluster,
+        viewportRelevance,
+        combinedScore
+      };
     });
 
-    // Apply density limits based on zoom level
-    const maxClusters = Math.max(3, Math.floor(minimapZoom * 15)); // 3-15 clusters max
+    // Sort by combined relevance score (viewport visibility + importance)
+    const sortedClusters = clustersWithRelevance.sort((a, b) =>
+      b.combinedScore - a.combinedScore
+    );
+
+    // More conservative limits to prevent overcrowding
+    const baseLimit = Math.max(2, Math.min(3, sortedClusters.length));
+    const zoomBonus = Math.floor(minimapZoom * 4);
+    const maxClusters = Math.min(sortedClusters.length, baseLimit + zoomBonus);
+
     return sortedClusters.slice(0, maxClusters);
-  }, []);
+  }, [calculateClusterViewportRelevance]);
 
   if (nodes.length === 0) return null;
 
@@ -336,7 +468,11 @@ const Minimap = ({
           onMouseDown={handleMouseDown}
         >
           {/* Cluster gaussian glows - only show when not using merged clusters */}
-          {showClusters && !shouldShowMergedClusters && getVisibleClusters(clusters, minimapZoom).map((cluster, index) => {
+          {showClusters && !shouldShowMergedClusters && (() => {
+            const visibleClusters = getVisibleClusters(clusters, minimapZoom, zoomedBounds);
+            const smartPositions = minimapExpanded ? calculateSmartLabelPositions(visibleClusters, zoomedBounds, textScaleFactor) : [];
+
+            return visibleClusters.map((cluster, index) => {
             // Get cluster color
             const clusterColor = getClusterColor(cluster.type, index);
 
@@ -382,23 +518,29 @@ const Minimap = ({
                   </g>
                 ))}
 
-                {/* Cluster label - positioned above the centroid with hierarchical visibility */}
+                {/* Cluster label - positioned with smart collision avoidance */}
                 {minimapExpanded && (() => {
                   const nodeCount = cluster.nodes.length;
-                  const visibility = getClusterLabelVisibility(cluster, minimapZoom);
+                  const clusterRank = index; // Use map index as rank
+                  const visibility = getClusterLabelVisibility(cluster, minimapZoom, clusterRank);
 
                   if (!visibility.isVisible || visibility.opacity < 0.01) return null;
 
-                  const fontWeight = Math.min(900, 400 + (nodeCount - 1) * 100); // 400-900 font weight
-                  const fontSize = Math.max(64, 72 + (nodeCount - 1) * 8) * textScaleFactor; // Slightly larger for bigger clusters
+                  const fontWeight = Math.min(900, 400 + (nodeCount - 1) * 100);
+                  const fontSize = Math.max(64, 72 + (nodeCount - 1) * 8) * textScaleFactor;
 
-                  // Adaptive text length based on zoom - show more detail when zoomed in
+                  // Adaptive text length based on zoom
                   const maxTextLength = Math.round(15 + (minimapZoom * 15));
+
+                  // Use smart positioning that avoids overlaps
+                  const smartPosition = smartPositions.find(pos => pos.cluster.id === cluster.id);
+                  const labelX = smartPosition ? smartPosition.x : cluster.centroid.x;
+                  const labelY = smartPosition ? smartPosition.y : cluster.centroid.y - (100 * textScaleFactor);
 
                   return (
                     <text
-                      x={cluster.centroid.x}
-                      y={cluster.centroid.y - (100 * textScaleFactor)}
+                      x={labelX}
+                      y={labelY}
                       fontSize={fontSize}
                       fill="rgb(51, 65, 85)"
                       textAnchor="middle"
@@ -416,7 +558,8 @@ const Minimap = ({
                 })()}
               </g>
             );
-          })}
+            });
+          })()}
 
           {/* Minimap connections */}
           {connections.map((conn, index) => {
@@ -443,7 +586,11 @@ const Minimap = ({
           {/* Minimap nodes - show either individual nodes or merged clusters */}
           {shouldShowMergedClusters ? (
             // Show merged cluster nodes with gaussian distribution
-            getVisibleClusters(clusters, minimapZoom).map((cluster, index) => {
+            (() => {
+              const visibleClusters = getVisibleClusters(clusters, minimapZoom, zoomedBounds);
+              const smartPositions = minimapExpanded ? calculateSmartLabelPositions(visibleClusters, zoomedBounds, textScaleFactor) : [];
+
+              return visibleClusters.map((cluster, index) => {
               const isCurrentCluster = cluster.nodes.some(node => node.id === currentNodeId);
               const clusterColor = getClusterColor(cluster.type, index);
 
@@ -521,23 +668,29 @@ const Minimap = ({
                     }}
                   />
 
-                  {/* Cluster label - clean and focused with hierarchical visibility */}
+                  {/* Cluster label - positioned with smart collision avoidance */}
                   {minimapExpanded && (() => {
                     const nodeCount = cluster.nodes.length;
-                    const visibility = getClusterLabelVisibility(cluster, minimapZoom);
+                    const clusterRank = index; // Use map index as rank
+                    const visibility = getClusterLabelVisibility(cluster, minimapZoom, clusterRank);
 
                     if (!visibility.isVisible || visibility.opacity < 0.01) return null;
 
                     const fontWeight = Math.min(900, 400 + (nodeCount - 1) * 100);
                     const fontSize = Math.max(110, 128 + (nodeCount - 1) * 12) * textScaleFactor;
 
-                    // Adaptive text length - more detail when zoomed in, less when zoomed out
+                    // Adaptive text length - more detail when zoomed in
                     const maxTextLength = Math.round(10 + (minimapZoom * 20));
+
+                    // Use smart positioning that avoids overlaps
+                    const smartPosition = smartPositions.find(pos => pos.cluster.id === cluster.id);
+                    const labelX = smartPosition ? smartPosition.x : cluster.centroid.x;
+                    const labelY = smartPosition ? smartPosition.y : cluster.centroid.y + (15 * textScaleFactor);
 
                     return (
                       <text
-                        x={cluster.centroid.x}
-                        y={cluster.centroid.y + (15 * textScaleFactor)}
+                        x={labelX}
+                        y={labelY}
                         fontSize={fontSize}
                         fill="rgb(51, 65, 85)"
                         textAnchor="middle"
@@ -556,7 +709,8 @@ const Minimap = ({
                   })()}
                 </g>
               );
-            })
+              });
+            })()
           ) : (
             // Show individual nodes
             // Create heat map effect with subtle node glows
