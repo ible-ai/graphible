@@ -40,13 +40,13 @@ const NewPromptBox = ({
     }
   }, [includeContext, currentNodeId, nodes, connections]);
 
-  const styleEffect = useCallback((node) => {
-    return contextNodeIds.has(node.id) ? 'bg-blue-500' : 'bg-gray-300';
+  const styleEffect = useCallback((nodeId) => {
+    return contextNodeIds.has(nodeId) ? 'bg-blue-500' : 'bg-gray-300';
   }, [contextNodeIds]);
 
-  useCallback(() => {
+  useEffect(() => {
     setSelectedNodes(nodes.filter(node => selectedNodeIds.has(node.id)));
-  }, [nodes, selectedNodeIds, setSelectedNodes]);
+  }, [nodes, selectedNodeIds]);
 
 
   // Global typing listener
@@ -99,7 +99,7 @@ IMPORTANT: Do not recreate or duplicate the above topics. Instead, build NEW con
     }
 
     // Handle selected nodes context separately and more carefully
-    if (includeSelectedNodes && selectedNodeIds.length > 0) {
+    if (includeSelectedNodes && selectedNodeIds.size > 0) {
       const selectedNodes = nodes.filter(node => selectedNodeIds.has(node.id));
       const selectedTopics = selectedNodes.map(node => `"${node.label}"`).join(', ');
       const selectedSummaries = selectedNodes
@@ -168,9 +168,9 @@ Generate 3-5 NEW learning nodes that address the user's request while building u
                 <Sparkles className="text-indigo-600" size={16} />
               </div>
               <h3 className="text-slate-800 text-lg font-medium">Continue Exploring</h3>
-              {selectedNodeIds.length > 0 && (
+              {selectedNodeIds.size > 0 && (
                 <div className="text-sm text-blue-600 bg-blue-50 px-2 py-1 rounded-lg">
-                  {selectedNodeIds.length} node{selectedNodeIds.length !== 1 ? 's' : ''} selected
+                  {selectedNodeIds.size} node{selectedNodeIds.size !== 1 ? 's' : ''} selected
                 </div>
               )}
             </div>
@@ -205,13 +205,13 @@ Generate 3-5 NEW learning nodes that address the user's request while building u
               )}
 
               {/* Selected nodes context */}
-              {includeSelectedNodes && selectedNodeIds.length > 0 && (
+              {includeSelectedNodes && selectedNodeIds.size > 0 && (
                 <div className="p-3 bg-blue-50/50 rounded-xl border border-blue-200/30">
                   <div className="flex items-start justify-between gap-3 mb-2">
                     <div className="flex items-center gap-2">
                       <Sparkles className="text-blue-500" size={16} />
                       <p className="text-sm font-medium text-blue-800">
-                        Including {selectedNodeIds.length} selected node{selectedNodeIds.length !== 1 ? 's' : ''} as context
+                        Including {selectedNodeIds.size} selected node{selectedNodeIds.size !== 1 ? 's' : ''} as context
                       </p>
                     </div>
                     <button
@@ -292,56 +292,8 @@ Generate 3-5 NEW learning nodes that address the user's request while building u
               />
             </div>
 
-            {/* Options */}
-            <div className="flex items-center justify-between mb-6 text-sm">
-              <div className="space-y-2">
-                <label className="flex items-center text-slate-600 cursor-pointer group">
-                  <div className="relative">
-                    <input
-                      type="checkbox"
-                      checked={includeContext}
-                      onChange={(e) => setIncludeContext(e.target.checked)}
-                      className="sr-only"
-                    />
-                    <div className={`w-4 h-4 rounded border-2 transition-all duration-200 ${includeContext
-                      ? 'bg-indigo-500 border-indigo-500'
-                      : 'border-slate-300 group-hover:border-slate-400'
-                      }`}>
-                      {includeContext && (
-                        <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
-                      )}
-                    </div>
-                  </div>
-                  <span className="ml-3">Include previous context</span>
-                </label>
-
-                {selectedNodeIds.length > 0 && (
-                  <label className="flex items-center text-slate-600 cursor-pointer group">
-                    <div className="relative">
-                      <input
-                        type="checkbox"
-                        checked={includeSelectedNodes}
-                        onChange={(e) => setIncludeSelectedNodes(e.target.checked)}
-                        className="sr-only"
-                      />
-                      <div className={`w-4 h-4 rounded border-2 transition-all duration-200 ${includeSelectedNodes
-                        ? 'bg-blue-500 border-blue-500'
-                        : 'border-slate-300 group-hover:border-slate-400'
-                        }`}>
-                        {includeSelectedNodes && (
-                          <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                          </svg>
-                        )}
-                      </div>
-                    </div>
-                    <span className="ml-3">Include selected nodes ({selectedNodeIds.length})</span>
-                  </label>
-                )}
-              </div>
-
+            {/* Keyboard shortcuts hint */}
+            <div className="flex justify-end mb-6">
               <div className="text-xs text-slate-500">
                 Press Enter to continue • ESC to cancel
               </div>

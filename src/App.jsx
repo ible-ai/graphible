@@ -161,17 +161,12 @@ const Graphible = () => {
   const {
     selectedNodeIds,
     contextMode,
-    isDragSelecting,
     toggleContextMode,
     handleNodeSelection,
-    updateSmartContext,
+    updateAutoContext,
     toggleNodeSelection,
     isNodeSelected,
     clearSelections,
-    startDragSelection,
-    updateDragSelection,
-    endDragSelection,
-    getSelectionBox,
     selectedCount
   } = useNodeSelection();
 
@@ -315,12 +310,12 @@ const Graphible = () => {
     setShowSetupWizard(true);
   }, []);
 
-  // Update smart context when current node changes
+  // Update auto context when current node changes
   useEffect(() => {
     if (nodes.length > 0 && currentNodeId !== null) {
-      updateSmartContext(nodes, currentNodeId, connections);
+      updateAutoContext(nodes, currentNodeId, connections);
     }
-  }, [nodes, currentNodeId, connections, updateSmartContext]);
+  }, [nodes, currentNodeId, connections, updateAutoContext]);
 
   // Use UI personality color scheme, fall back to preferences, then default
   const currentScheme = colorSchemes[uiPersonality.colorScheme || preferences.colorScheme || 'default'];
@@ -386,16 +381,11 @@ const Graphible = () => {
 
       if (e.shiftKey && clickedElement.closest('.node-component')) return;
 
-      if (contextMode === 'manual') {
-        // Start drag selection
-        startDragSelection(e.clientX, e.clientY, camera);
-      } else {
-        // Start camera dragging
-        setIsDragging(true);
-        setDragStart({ x: e.clientX, y: e.clientY });
-        document.body.style.cursor = 'grabbing';
-        document.body.style.userSelect = 'none';
-      }
+      // Start camera dragging
+      setIsDragging(true);
+      setDragStart({ x: e.clientX, y: e.clientY });
+      document.body.style.cursor = 'grabbing';
+      document.body.style.userSelect = 'none';
 
       e.preventDefault();
     };
@@ -403,13 +393,7 @@ const Graphible = () => {
     const handleMouseMove = (e) => {
       if (isDraggingNode !== null || isResizingNode !== null) return;
 
-      // Handle drag selection (selection mode)
-      if (isDragSelecting) {
-        updateDragSelection(e.clientX, e.clientY, camera);
-        return;
-      }
-
-      // Handle camera dragging (normal mode)
+      // Handle camera dragging
       if (!isDragging) return;
 
       const deltaX = e.clientX - dragStart.x;
@@ -429,10 +413,6 @@ const Graphible = () => {
 
     const handleMouseUp = (e) => {
       if (isDraggingNode !== null || isResizingNode !== null) return;
-
-      if (isDragSelecting) {
-        endDragSelection(nodes);
-      }
 
       if (isDragging) {
         setIsDragging(false);
@@ -459,16 +439,12 @@ const Graphible = () => {
     };
   }, [
     isDragging,
-    isDragSelecting,
     camera,
     setCameraImmediate,
     dragStart,
     contextMode,
     isDraggingNode,
     isResizingNode,
-    startDragSelection,
-    updateDragSelection,
-    endDragSelection,
     nodes,
     showPromptCenter
   ]);
@@ -585,25 +561,15 @@ const Graphible = () => {
 
       if (isInteractiveClick) return;
 
-      if (contextMode === 'manual') {
-        // Use the fixed coordinate system for drag selection
-        startDragSelection(e.clientX, e.clientY, camera);
-      } else {
-        setIsDragging(true);
-        setDragStart({ x: e.clientX, y: e.clientY });
-        document.body.style.cursor = 'grabbing';
-        document.body.style.userSelect = 'none';
-      }
+      setIsDragging(true);
+      setDragStart({ x: e.clientX, y: e.clientY });
+      document.body.style.cursor = 'grabbing';
+      document.body.style.userSelect = 'none';
 
       e.preventDefault();
     };
 
     const handleMouseMove = (e) => {
-      if (isDragSelecting) {
-        updateDragSelection(e.clientX, e.clientY, camera);
-        return;
-      }
-
       if (!isDragging) return;
 
       // Fixed camera movement calculation
@@ -648,10 +614,7 @@ const Graphible = () => {
     dragStart,
     contextMode,
     isDraggingNode,
-    isResizingNode,
-    isDragSelecting,
-    startDragSelection,
-    updateDragSelection
+    isResizingNode
   ]);
 
   // Zoom handling
@@ -784,13 +747,11 @@ const Graphible = () => {
                   <button
                     onClick={toggleContextMode}
                     className="flex items-center gap-2 px-3 py-1 rounded-md text-sm transition-all duration-200 bg-indigo-100 text-indigo-800"
-                    title={`Context: ${contextMode === 'smart' ? 'Smart (auto path)' :
-                      contextMode === 'manual' ? 'Manual (Ctrl+click)' :
+                    title={`Context: ${contextMode === 'smart' ? 'Smart (Ctrl+click to select)' :
                       contextMode === 'branch' ? 'Branch (click subtree)' :
                       'Batch (click generation)'}`}
                   >
                     {contextMode === 'smart' && <><Circle size={14} />Smart</>}
-                    {contextMode === 'manual' && <><MousePointer size={14} />Manual</>}
                     {contextMode === 'branch' && <><Link size={14} />Branch</>}
                     {contextMode === 'batch' && <><Target size={14} />Batch</>}
                     {selectedCount > 0 && (
@@ -994,24 +955,6 @@ const Graphible = () => {
                 </div>
               ))}
 
-              {/* Selection box overlay - positioned in world coordinates */}
-              {isDragSelecting && (() => {
-                const selectionBox = getSelectionBox();
-                if (!selectionBox) return null;
-
-                return (
-                  <div
-                    className="absolute border-2 border-blue-500 bg-blue-500 bg-opacity-20 pointer-events-none z-20"
-                    style={{
-                      left: selectionBox.x,
-                      top: selectionBox.y,
-                      width: selectionBox.width,
-                      height: selectionBox.height,
-                      opacity: 0.3
-                    }}
-                  />
-                );
-              })()}
             </div>
           </div>
 

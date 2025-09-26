@@ -3,10 +3,7 @@ import { screenToWorld } from '../utils/coordinateUtils';
 
 export const useNodeSelection = () => {
   const [selectedNodeIds, setSelectedNodeIds] = useState(new Set());
-  const [contextMode, setContextMode] = useState('smart'); // 'smart', 'manual', 'branch', 'batch'
-  const [isDragSelecting, setIsDragSelecting] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-  const [dragEnd, setDragEnd] = useState({ x: 0, y: 0 });
+  const [contextMode, setContextMode] = useState('auto'); // 'auto', 'manual', 'branch', 'batch'
 
   // Memory management: Track refs to avoid stale closures
   const selectedNodeIdsRef = useRef(new Set());
@@ -61,41 +58,88 @@ export const useNodeSelection = () => {
 
   // Toggle between context modes
   const toggleContextMode = useCallback(() => {
-    const modes = ['smart', 'manual', 'branch', 'batch'];
+    const modes = ['auto', 'manual', 'branch', 'batch'];
     setContextMode(prev => {
       const currentIndex = modes.indexOf(prev);
       const nextIndex = (currentIndex + 1) % modes.length;
-      const newMode = modes[nextIndex];
-
-      // Clear manual selections when switching away from manual mode
-      if (prev === 'manual' && newMode !== 'manual') {
-        setSelectedNodeIds(new Set());
-      }
-
-      return newMode;
+      return modes[nextIndex];
     });
   }, []);
 
-  // Smart context selection - automatically includes relevant context
-  const updateSmartContext = useCallback((nodes, currentNodeId, connections) => {
-    if (contextMode !== 'smart' || !currentNodeId) return;
+  // Auto context selection - automatically selects relevant nodes
+  const updateAutoContext = useCallback((nodes, currentNodeId, connections) => {
+    if (contextMode !== 'auto' || !currentNodeId) return;
 
-    // Build path from root to current node
-    const buildPathToNode = (nodeId) => {
-      const path = [];
-      let current = nodes.find(n => n.id === nodeId);
+    const currentNode = nodes.find(n => n.id === currentNodeId);
+    if (!currentNode) return;
 
-      while (current) {
-        path.unshift(current.id);
-        const parentConnection = connections.find(c => c.to === current.id);
-        current = parentConnection ? nodes.find(n => n.id === parentConnection.from) : null;
+    // Algorithm for intelligent selection:
+    // 1. Always include the current node
+    // 2. Include recent nodes from same generation/batch
+    // 3. Include directly connected nodes (parents/children)
+    // 4. Include nodes with similar keywords in label/description
+    // 5. Limit total selection to avoid context overload
+
+    const selectedIds = new Set([currentNodeId]);
+
+    // 1. Include nodes from the same batch (recent context)
+    const currentBatch = currentNode.batchId || 0;
+    const recentNodes = nodes
+      .filter(n => (n.batchId || 0) === currentBatch && n.id !== currentNodeId)
+      .slice(-3); // Limit to 3 most recent from same batch
+    recentNodes.forEach(node => selectedIds.add(node.id));
+
+    // 2. Include directly connected nodes
+    const directConnections = connections.filter(c =>
+      c.from === currentNodeId || c.to === currentNodeId
+    );
+    directConnections.forEach(conn => {
+      const relatedId = conn.from === currentNodeId ? conn.to : conn.from;
+      selectedIds.add(relatedId);
+    });
+
+    // 3. Include parent path to root (for context continuity)
+    let parentNode = currentNode;
+    let pathLength = 0;
+    while (parentNode && pathLength < 3) { // Limit path depth to avoid too much context
+      const parentConnection = connections.find(c => c.to === parentNode.id);
+      if (parentConnection) {
+        parentNode = nodes.find(n => n.id === parentConnection.from);
+        if (parentNode) {
+          selectedIds.add(parentNode.id);
+          pathLength++;
+        }
+      } else {
+        break;
       }
+    }
 
-      return path;
-    };
+    // 4. Semantic similarity - find nodes with similar keywords
+    if (currentNode.label || currentNode.description) {
+      const currentText = `${currentNode.label || ''} ${currentNode.description || ''}`.toLowerCase();
+      const keywords = currentText.split(/\s+/)
+        .filter(word => word.length > 3 && !['the', 'and', 'for', 'are', 'but', 'not', 'you', 'all', 'can', 'had', 'her', 'was', 'one', 'our', 'out', 'day', 'get', 'has', 'him', 'his', 'how', 'its', 'may', 'new', 'now', 'old', 'see', 'two', 'who', 'boy', 'did', 'she', 'use', 'her', 'now', 'oil', 'sit', 'set'].includes(word))
+        .slice(0, 5); // Top 5 keywords
 
-    const contextPath = buildPathToNode(currentNodeId);
-    setSelectedNodeIds(new Set(contextPath));
+      if (keywords.length > 0) {
+        const similarNodes = nodes
+          .filter(n => n.id !== currentNodeId && !selectedIds.has(n.id))
+          .map(node => {
+            const nodeText = `${node.label || ''} ${node.description || ''}`.toLowerCase();
+            const matchCount = keywords.filter(keyword => nodeText.includes(keyword)).length;
+            return { node, similarity: matchCount / keywords.length };
+          })
+          .filter(item => item.similarity > 0.3) // At least 30% keyword match
+          .sort((a, b) => b.similarity - a.similarity)
+          .slice(0, 2); // Top 2 most similar
+
+        similarNodes.forEach(item => selectedIds.add(item.node.id));
+      }
+    }
+
+    // Limit total selection to prevent overwhelming context
+    const finalSelection = Array.from(selectedIds).slice(0, 8);
+    setSelectedNodeIds(new Set(finalSelection));
   }, [contextMode]);
 
   // Select entire branch/subtree from a node
@@ -131,81 +175,30 @@ export const useNodeSelection = () => {
     return screenToWorld(clientX, clientY, camera);
   }, []);
 
-  // Start drag selection (only in manual mode)
-  const startDragSelection = useCallback((clientX, clientY, camera) => {
-    if (contextMode !== 'manual') return;
-    setIsDragSelecting(true);
-    const coords = clientToWorldCoords(clientX, clientY, camera);
-    setDragStart(coords);
-    setDragEnd(coords);
-  }, [contextMode, clientToWorldCoords]);
-
-  // Update drag selection
-  const updateDragSelection = useCallback((clientX, clientY, camera) => {
-    if (!isDragSelecting) return;
-
-    // Convert screen coordinates to world coordinates
-    const coords = clientToWorldCoords(clientX, clientY, camera);
-    setDragEnd(coords);
-  }, [isDragSelecting, clientToWorldCoords]);
-
-  // End drag selection and select nodes in area
-  const endDragSelection = useCallback((nodes) => {
-    if (!isDragSelecting) return;
-
-    setIsDragSelecting(false);
-
-    if (!Array.isArray(nodes)) {
-      console.warn('endDragSelection: nodes is not an array:', nodes);
-      return;
-    }
-
-    // Clean up selections before adding new ones
-    const validNodeIds = nodes.map(n => n.id);
-    scheduleCleanup(validNodeIds);
-
-    const minX = Math.min(dragStart.x, dragEnd.x);
-    const maxX = Math.max(dragStart.x, dragEnd.x);
-    const minY = Math.min(dragStart.y, dragEnd.y);
-    const maxY = Math.max(dragStart.y, dragEnd.y);
-
-    // Only select if there's a meaningful drag area
-    const dragArea = Math.abs(maxX - minX) * Math.abs(maxY - minY);
-    if (dragArea < 100) return; // Minimum drag area threshold
-
-    const nodesInArea = nodes.filter(node =>
-      node.worldX >= minX && node.worldX <= maxX &&
-      node.worldY >= minY && node.worldY <= maxY
-    );
-
-    const nodeIds = nodesInArea.map(node => node.id);
+  // Direct node selection toggle for smart interaction
+  const toggleNodeSelection = useCallback((nodeId) => {
     setSelectedNodeIds(prev => {
       const newSet = new Set(prev);
-      nodeIds.forEach(id => newSet.add(id));
+      if (newSet.has(nodeId)) {
+        newSet.delete(nodeId);
+      } else {
+        newSet.add(nodeId);
+      }
       return newSet;
     });
-  }, [isDragSelecting, dragStart, dragEnd, scheduleCleanup]);
+  }, []);
 
-  // Smart node selection based on context mode and modifier keys
+  // Node selection based on context mode and modifier keys
   const handleNodeSelection = useCallback((nodeId, nodes, connections, modifierKey = false) => {
-    if (contextMode === 'smart') {
-      // In smart mode, just update the smart context
+    if (contextMode === 'auto') {
+      // In auto mode, allow both regular clicks and Ctrl/Cmd+click for individual node toggling
+      toggleNodeSelection(nodeId);
       return;
     }
 
     if (contextMode === 'manual') {
-      if (modifierKey) {
-        // Ctrl/Cmd+click: toggle individual node
-        setSelectedNodeIds(prev => {
-          const newSet = new Set(prev);
-          if (newSet.has(nodeId)) {
-            newSet.delete(nodeId);
-          } else {
-            newSet.add(nodeId);
-          }
-          return newSet;
-        });
-      }
+      // In manual mode, all clicks toggle individual nodes
+      toggleNodeSelection(nodeId);
       return;
     }
 
@@ -221,20 +214,8 @@ export const useNodeSelection = () => {
       }
       return;
     }
-  }, [contextMode, selectBranch, selectBatch]);
+  }, [contextMode, selectBranch, selectBatch, toggleNodeSelection]);
 
-  // Legacy method for backwards compatibility
-  const toggleNodeSelection = useCallback((nodeId) => {
-    setSelectedNodeIds(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(nodeId)) {
-        newSet.delete(nodeId);
-      } else {
-        newSet.add(nodeId);
-      }
-      return newSet;
-    });
-  }, []);
 
   // Check if a node is selected
   const isNodeSelected = useCallback((nodeId) => {
@@ -247,17 +228,6 @@ export const useNodeSelection = () => {
     setSelectedNodeIds(selectedNodeIdsRef.current);
   }, []);
 
-  // Get selection box coordinates for rendering
-  const getSelectionBox = useCallback(() => {
-    if (!isDragSelecting) return null;
-
-    return {
-      x: Math.min(dragStart.x, dragEnd.x),
-      y: Math.min(dragStart.y, dragEnd.y),
-      width: Math.abs(dragEnd.x - dragStart.x),
-      height: Math.abs(dragEnd.y - dragStart.y)
-    };
-  }, [isDragSelecting, dragStart, dragEnd]);
 
   // Enhanced selector that returns actual node objects, not just IDs
   const getSelectedNodeObjects = useCallback((allNodes) => {
@@ -300,15 +270,14 @@ export const useNodeSelection = () => {
     // State
     selectedNodeIds,
     contextMode,
-    isDragSelecting,
     selectedCount: selectedNodeIds.size,
 
     // Mode management
     toggleContextMode,
 
-    // Smart selection methods
+    // Auto selection methods
     handleNodeSelection,
-    updateSmartContext,
+    updateAutoContext,
     selectBranch,
     selectBatch,
 
@@ -322,12 +291,6 @@ export const useNodeSelection = () => {
 
     // Batch operations
     getSelectedNodeObjects,
-
-    // Drag selection (manual mode only)
-    startDragSelection,
-    updateDragSelection,
-    endDragSelection,
-    getSelectionBox,
 
     // Memory management
     cleanupInvalidSelections,

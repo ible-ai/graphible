@@ -111,7 +111,8 @@ const NodeComponent = memo(({
   const handleMouseDown = useCallback((e) => {
     e.stopPropagation();
 
-    if (contextMode === 'manual') {
+    // Handle Ctrl+click selection in smart mode
+    if (e.ctrlKey || e.metaKey) {
       onToggleSelection?.(node.id);
       return;
     }
@@ -146,9 +147,7 @@ const NodeComponent = memo(({
   return (
     <div
       id={`node-${node.id}`}
-      className={`node-component font-inter ${contextMode === 'manual' ? 'cursor-pointer' :
-        (isClickable ? 'cursor-pointer' : 'cursor-wait')
-        }`}
+      className={`node-component font-inter ${isClickable ? 'cursor-pointer' : 'cursor-wait'}`}
       style={nodeStyles}
       onMouseDown={handleMouseDown}
       onMouseEnter={() => setShowControls(true)}
@@ -166,10 +165,6 @@ const NodeComponent = memo(({
         </div>
       )}
 
-      {/* Manual mode overlay */}
-      {contextMode === 'manual' && (
-        <div className="absolute inset-0 bg-blue-500 bg-opacity-10 rounded-2xl border-2 border-dashed border-blue-400 opacity-70 pointer-events-none" />
-      )}
 
       {/* Header */}
       <div className="flex items-center space-x-3 mb-3">
@@ -202,7 +197,7 @@ const NodeComponent = memo(({
       </div>
 
       {/* Control buttons */}
-      {(showControls || isSelected) && contextMode !== 'manual' && (
+      {(showControls || isSelected) && (
         <div className="absolute top-2 right-2 flex gap-1 bg-white/95 rounded-lg p-1 shadow-lg border border-slate-200">
           <button
             onClick={(e) => {
@@ -218,7 +213,7 @@ const NodeComponent = memo(({
       )}
 
       {/* Resize handle */}
-      {contextMode !== 'manual' && (showControls || isSelected) && (
+      {(showControls || isSelected) && (
         <div
           className="absolute bottom-1 right-1 w-5 h-5 cursor-se-resize bg-slate-300/80 rounded-tl-lg hover:bg-slate-400/80 transition-colors border border-slate-400/50 flex items-center justify-center"
           onMouseDown={handleResizeMouseDown}
@@ -236,8 +231,8 @@ const NodeComponent = memo(({
         ></div>
       )}
 
-      {/* Drag instruction hint for non-manual mode */}
-      {contextMode !== 'manual' && showControls && (
+      {/* Drag instruction hint */}
+      {showControls && (
         <div className="absolute -bottom-6 left-0 text-xs text-slate-500 bg-white/90 px-2 py-1 rounded shadow-sm whitespace-nowrap">
           Shift + click to drag
         </div>
