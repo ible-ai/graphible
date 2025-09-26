@@ -21,6 +21,46 @@ const CenteredPrompt = ({
   const [inputPrompt, setInputPrompt] = useState(
     'I want to understand the transformer architecture.'
   );
+  const [isTyping, setIsTyping] = useState(false);
+
+  const defaultText = 'I want to understand the transformer architecture.';
+
+  // Calculate how much the user has deviated from default text
+  const getTypingProgress = useCallback(() => {
+    // If they have the exact default text, no progress
+    if (inputPrompt === defaultText) return 0;
+
+    const textLength = inputPrompt.length;
+    const defaultLength = defaultText.length;
+
+    // If they've cleared the text entirely and haven't started typing yet
+    if (textLength === 0) return 0;
+
+    // Check if current text is a prefix of default (user is deleting from default)
+    const isDeleteFromDefault = defaultText.startsWith(inputPrompt) && textLength < defaultLength;
+
+    // Check if current text starts with default (user is adding to default)
+    const isAddingToDefault = inputPrompt.startsWith(defaultText) && textLength > defaultLength;
+
+    // If they're deleting from default text, start showing progress once they've deleted some
+    if (isDeleteFromDefault) {
+      const deletedChars = defaultLength - textLength;
+      return Math.min(deletedChars / 20, 0.3); // Show some effect when deleting
+    }
+
+    // If they're adding to default text
+    if (isAddingToDefault) {
+      const additionalChars = textLength - defaultLength;
+      return Math.min(additionalChars / 30, 1);
+    }
+
+    // If they've completely replaced or are typing from scratch
+    if (textLength > 0) {
+      return Math.min(textLength / 50, 1); // Max out at 50 characters for full effect
+    }
+
+    return 0;
+  }, [inputPrompt, defaultText]);
 
   // Global typing listener
   useEffect(() => {
@@ -36,6 +76,7 @@ const CenteredPrompt = ({
       // Handle single character input to start new prompt
       if (e.key.length === 1 && e.key.match(/^[a-z0-9 ]$/i)) {
         setInputPrompt(e.key);
+        setIsTyping(true);
       }
     };
 
@@ -58,6 +99,18 @@ const CenteredPrompt = ({
     }
   }, [handleSubmit]);
 
+  const handleInputChange = useCallback((e) => {
+    setInputPrompt(e.target.value);
+  }, []);
+
+  const handleInputFocus = useCallback(() => {
+    setIsTyping(true);
+  }, []);
+
+  const handleInputBlur = useCallback(() => {
+    setIsTyping(false);
+  }, []);
+
   if (!showPromptCenter) return null;
   return (
     <div className="fixed inset-0 flex items-center justify-center z-20 bg-gradient-to-br from-slate-50 to-slate-100 font-inter">
@@ -73,25 +126,57 @@ const CenteredPrompt = ({
         />
       </div>
 
-      <div className="text-center max-w-2xl mx-4">
-        <div className="mb-8">
-          <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-slate-200 to-slate-300 rounded-2xl shadow-sm flex items-center justify-center">
+      <div className={`text-center max-w-2xl mx-4 transition-all duration-700 ease-out`}
+           style={{
+             transform: `translateY(${getTypingProgress() * -32}px)`
+           }}>
+        <div className="mb-8 transition-all duration-700 ease-out"
+             style={{
+               opacity: Math.max(0.3, 1 - getTypingProgress() * 0.7),
+               transform: `scale(${Math.max(0.9, 1 - getTypingProgress() * 0.1)})`,
+               filter: `blur(${getTypingProgress() * 3}px) saturate(${Math.max(0.5, 1 - getTypingProgress() * 0.5)})`
+             }}>
+          <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-slate-200 to-slate-300 rounded-2xl shadow-sm flex items-center justify-center transition-all duration-500"
+               style={{
+                 opacity: Math.max(0.2, 1 - getTypingProgress() * 0.8),
+                 filter: `blur(${getTypingProgress() * 2}px)`
+               }}>
             <Waypoints className="text-slate-600" size={40} />
           </div>
-          <h1 className="text-5xl font-medium text-slate-800 mb-4 tracking-tight">graph.ible</h1>
-          <p className="text-slate-600 text-lg">Follow what makes you curious.</p>
+          <h1 className="text-5xl font-medium text-slate-800 mb-4 tracking-tight transition-all duration-700 ease-out"
+              style={{
+                opacity: Math.max(0.1, 1 - getTypingProgress() * 0.9),
+                filter: `blur(${getTypingProgress() * 4}px) contrast(${Math.max(0.3, 1 - getTypingProgress() * 0.7)})`,
+                textShadow: getTypingProgress() > 0.5 ? '0 0 20px rgba(148, 163, 184, 0.3)' : 'none'
+              }}>graph.ible</h1>
+          <p className="text-slate-600 text-lg transition-all duration-500"
+             style={{
+               opacity: Math.max(0.2, 1 - getTypingProgress() * 0.8),
+               filter: `blur(${getTypingProgress() * 2}px)`
+             }}>Follow what makes you curious.</p>
         </div>
 
-        <div className="w-full bg-white/70 backdrop-blur-sm rounded-2xl p-8 border border-slate-200/50 shadow-lg">
+        <div className={`w-full bg-white/70 backdrop-blur-sm rounded-2xl p-8 border border-slate-200/50 shadow-lg transition-all duration-500 ${isTyping ? 'shadow-xl bg-white/90 border-slate-300/70' : ''}`}>
           <div className="mb-6">
-            <input
+            <textarea
               id="main-prompt"
-              onChange={(e) => setInputPrompt(e.target.value)}
+              onChange={handleInputChange}
               value={inputPrompt}
               placeholder="Enter your new prompt here..."
-              className="w-full px-6 py-4 bg-white/80 border border-slate-200/50 rounded-xl text-slate-800 placeholder-slate-500 text-lg focus:border-slate-400 focus:outline-none shadow-sm transition-all duration-200 font-inter"
+              className={`w-full px-6 bg-white/80 border border-slate-200/50 rounded-xl text-slate-800 placeholder-slate-500 text-lg focus:border-slate-400 focus:outline-none shadow-sm transition-all duration-300 font-inter resize-none overflow-hidden ${isTyping ? 'bg-white/95 border-slate-300/80' : ''}`}
               autoFocus
               onKeyUp={handleKeyPress}
+              onFocus={handleInputFocus}
+              onBlur={handleInputBlur}
+              rows={Math.max(1, Math.ceil(inputPrompt.length / 80))}
+              style={{
+                minHeight: '60px',
+                maxHeight: '200px',
+                height: 'auto',
+                paddingTop: '16px',
+                paddingBottom: '24px',
+                lineHeight: '1.5'
+              }}
             />
           </div>
 
