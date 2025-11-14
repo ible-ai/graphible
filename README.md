@@ -113,7 +113,7 @@ Modify `colorSchemes` in constants or use the adaptive UI system for dynamic the
 
 ## 📝 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+Contact for licensing information.
 
 ## 🙏 Acknowledgments
 
