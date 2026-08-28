@@ -315,11 +315,13 @@ function tryStaticExtraction(responseString) {
 
 // Extract from markdown code blocks
 function extractFromCodeBlock(responseString) {
+  // Non-global so String.match returns capture groups: with /g it returns
+  // the list of whole matches instead, making match[1] a second code block.
   const patterns = [
-    /```json\s*\n([\s\S]*?)\n```/g,
-    /```json([\s\S]*?)```/g,
-    /```\s*\n(\{[\s\S]*?\})\s*\n```/g,
-    /```(\{[\s\S]*?\})```/g
+    /```json\s*\n([\s\S]*?)\n```/,
+    /```json([\s\S]*?)```/,
+    /```\s*\n(\{[\s\S]*?\})\s*\n```/,
+    /```(\{[\s\S]*?\})```/
   ];
 
   for (const pattern of patterns) {

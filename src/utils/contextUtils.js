@@ -3,7 +3,8 @@
 // Builds conversation context up to a specific node, including all predecessor nodes but excluding
 // any nodes that come after it in the conversation flow
 export const buildContextUpToNode = (targetNodeId, allNodes, connections) => {
-    if (!targetNodeId || !allNodes.length) return [];
+    // Node 0 is the root, so guard on null/undefined rather than falsiness.
+    if (targetNodeId === null || targetNodeId === undefined || !allNodes.length) return [];
 
     const targetNode = allNodes[targetNodeId];
     if (!targetNode || !connections) return [];
