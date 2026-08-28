@@ -39,10 +39,6 @@ export const useSaveLoad = (nodes, connections, currentNodeId, initialPromptText
     }
   };
 
-  const loadGraph = (graphData) => {
-    return graphData;
-  };
-
   const deleteGraph = (id) => {
     const updated = savedGraphs.filter(g => g.id !== id);
     setSavedGraphs(updated);
@@ -59,7 +55,6 @@ export const useSaveLoad = (nodes, connections, currentNodeId, initialPromptText
     showSaveLoad,
     setShowSaveLoad,
     saveCurrentGraph,
-    loadGraph,
     deleteGraph
   };
 };

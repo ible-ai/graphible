@@ -1,7 +1,7 @@
 // Coordinate system utilities
 
 import * as d3 from 'd3-force';
-import { WORLD_CENTER, NODE_SIZE, NODE_SPACING, VIEWPORT_CENTER, RAD_PER_DEPTH } from '../constants/graphConstants';
+import { WORLD_CENTER, NODE_SIZE, NODE_SPACING, RAD_PER_DEPTH } from '../constants/graphConstants';
 
 // Core coordinate transformation functions
 export const worldToScreen = (worldX, worldY, camera = { x: 0, y: 0, zoom: 1 }) => {

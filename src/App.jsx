@@ -870,7 +870,6 @@ const Graphible = () => {
             connections={connections}
             currentNodeId={currentNodeId}
             camera={camera}
-            colorScheme={currentScheme}
             onNavigateToNode={(nodeId) => {
               const node = nodes.find(n => n.id === nodeId);
               if (node) {
