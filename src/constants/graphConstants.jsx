@@ -152,29 +152,31 @@ export const LLM_CONFIG = {
     }
   },
 
-  // External API configurations
+  // External API configurations.
+  // Single source of truth for the Google model list: ModelSelector, the setup
+  // wizard and the installation guide all derive from this.
   EXTERNAL: {
     GOOGLE: {
       MODELS: {
-        'gemini-2.5-flash-lite': {
-          name: 'Gemini 2.5 Flash Lite',
-          description: 'Fast and lightweight',
-          maxTokens: 2048
+        'gemini-3.5-flash-lite': {
+          name: 'Gemini 3.5 Flash Lite',
+          description: 'Fastest and most cost-effective',
+          recommended: true
         },
-        'gemini-2.5-flash': {
-          name: 'Gemini 2.5 Flash',
-          description: 'Balanced performance',
-          maxTokens: 8192
+        'gemini-3.6-flash': {
+          name: 'Gemini 3.6 Flash',
+          description: 'Balanced speed and capability',
+          recommended: false
         },
-        'gemini-2.5-pro': {
-          name: 'Gemini 2.5 Pro',
-          description: 'Maximum capability',
-          maxTokens: 32768
+        'gemini-3.7-flash': {
+          name: 'Gemini 3.7 Flash',
+          description: 'Most capable, for complex reasoning',
+          recommended: false
         }
       },
       DEFAULT_CONFIG: {
         temperature: 0.7,
-        maxOutputTokens: 2048,
+        maxOutputTokens: 8192,
         topK: 40,
         topP: 0.95
       }
@@ -205,7 +207,7 @@ export const DEFAULT_MODEL_CONFIGS = {
   EXTERNAL: {
     type: 'external',
     provider: 'google',
-    model: 'gemini-2.5-flash-lite',
+    model: 'gemini-3.5-flash-lite',
     apiKey: ''
   },
   WEBLLM: {
@@ -223,7 +225,7 @@ export const API_INFO = {
   google: {
     sdkPackage: '@google/genai',
     documentationUrl: 'https://github.com/google-gemini/generative-ai-js',
-    supportedModels: ['gemini-2.5-flash-lite', 'gemini-2.5-flash', 'gemini-2.5-pro']
+    supportedModels: Object.keys(LLM_CONFIG.EXTERNAL.GOOGLE.MODELS)
   }
 };
 
@@ -278,3 +280,7 @@ export const BROWSER_LLM_TO_PROVIDER = new Map([
 // Derived so download sizes and names cannot drift from LLM_CONFIG.WEBLLM.
 export const DEFAULT_WEBLLM_MODEL_INFO =
   LLM_CONFIG.WEBLLM[DEFAULT_MODEL_CONFIGS.WEBLLM.model];
+
+// Google models as an ordered array, for components that render a list.
+export const GOOGLE_MODEL_LIST = Object.entries(LLM_CONFIG.EXTERNAL.GOOGLE.MODELS)
+  .map(([id, info]) => ({ id, ...info }));

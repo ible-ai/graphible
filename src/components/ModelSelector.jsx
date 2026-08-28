@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { ChevronDown, Settings, Globe, Server, Compass, CheckCircle, AlertCircle } from 'lucide-react';
-import { LLM_CONFIG, DEFAULT_MODEL_CONFIGS, WEBLLM_STATE, DEFAULT_MODEL_CONFIG } from '../constants/graphConstants';
+import { LLM_CONFIG, DEFAULT_MODEL_CONFIGS, WEBLLM_STATE, DEFAULT_MODEL_CONFIG, GOOGLE_MODEL_LIST } from '../constants/graphConstants';
 import WebLLMProgressTracker from '../components/WebLLMProgressTracker';
 
 const ModelSelector = ({
@@ -41,12 +41,6 @@ const ModelSelector = ({
             setExternalConfig(prev => ({ ...prev, apiKey: savedApiKey }));
         }
     }, [externalConfig.apiKey]);
-
-    const googleModels = [
-        { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash Lite', description: 'Fast and lightweight' },
-        { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', description: 'Balanced performance' },
-        { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', description: 'Maximum capability' }
-    ];
 
     // Close dropdown when clicking outside
     useEffect(() => {
@@ -93,7 +87,7 @@ const ModelSelector = ({
 
     const getDisplayName = () => {
         if (currentModel.type === 'external') {
-            const model = googleModels.find(m => m.id === currentModel.model);
+            const model = GOOGLE_MODEL_LIST.find(m => m.id === currentModel.model);
             return model ? model.name : currentModel.model;
         } else if (currentModel.type === 'webllm') {
             const model = LLM_CONFIG.WEBLLM[currentModel.model];
@@ -363,7 +357,7 @@ const ModelSelector = ({
                                             onChange={(e) => setExternalConfig(prev => ({
                                                 ...prev,
                                                 provider: e.target.value,
-                                                model: 'gemini-2.5-flash-lite' // Reset to default model
+                                                model: DEFAULT_MODEL_CONFIGS.EXTERNAL.model // Reset to default model
                                             }))}
                                             className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded text-white focus:border-purple-500 focus:outline-none transition-all duration-200 appearance-none"
                                             onFocus={(e) => {
@@ -384,7 +378,7 @@ const ModelSelector = ({
                                         Model
                                     </label>
                                     <div className="space-y-2">
-                                        {googleModels.map((model) => (
+                                        {GOOGLE_MODEL_LIST.map((model) => (
                                             <label
                                                 key={model.id}
                                                 className={`flex items-center p-3 border rounded cursor-pointer transition-all duration-200 group ${externalConfig.model === model.id

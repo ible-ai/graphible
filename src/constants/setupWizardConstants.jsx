@@ -1,5 +1,7 @@
 // Shared types, constants, and configurations for the Setup Wizard
 
+import { GOOGLE_MODEL_LIST } from './graphConstants';
+
 export const SETUP_STEPS = {
     WELCOME: 'welcome',
     CHOICE: 'choice',
@@ -128,26 +130,14 @@ export const SETUP_MESSAGES = {
     }
 };
 
-export const GOOGLE_AI_MODELS = [
-    {
-        id: 'gemini-2.5-flash-lite',
-        name: 'Gemini 2.5 Flash Lite',
-        description: 'Fast and efficient for most tasks',
-        recommendation: 'Recommended',
-    },
-    {
-        id: 'gemini-2.5-flash',
-        name: 'Gemini 2.5 Flash',
-        description: 'Balanced performance and capability',
-        recommendation: null,
-    },
-    {
-        id: 'gemini-2.5-pro',
-        name: 'Gemini 2.5 Pro',
-        description: 'Maximum capability for complex tasks',
-        recommendation: null,
-    }
-];
+// Derived from LLM_CONFIG.EXTERNAL.GOOGLE.MODELS so the wizard cannot drift
+// from the list ModelSelector offers.
+export const GOOGLE_AI_MODELS = GOOGLE_MODEL_LIST.map(model => ({
+    id: model.id,
+    name: model.name,
+    description: model.description,
+    recommendation: model.recommended ? 'Recommended' : null,
+}));
 
 export const PRIVACY_NOTICE = {
     title: "Privacy & Security",
