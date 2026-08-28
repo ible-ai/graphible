@@ -181,7 +181,7 @@ const Graphible = () => {
     setShowFeedbackModal,
     submitFeedback,
     getQuickFeedbackOptions
-  } = useFeedback();
+  } = useFeedback(generateWithLLM);
 
   const {
     savedGraphs,
@@ -893,6 +893,7 @@ const Graphible = () => {
         setUiPersonality={setUiPersonality}
         adaptivePrompts={adaptivePrompts}
         setAdaptivePrompts={setAdaptivePrompts}
+        generateWithLLM={generateWithLLM}
       />
 
       <NewPromptBox

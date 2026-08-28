@@ -2,8 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { X } from 'lucide-react';
-import { extractJsonFromLlmResponse } from '../utils/llmUtils';
-import { LLM_CONFIG } from '../constants/graphConstants';
+import { extractJsonFromLlmResponse, resetStreamingParser } from '../utils/llmUtils';
 
 const FeedbackModal = ({
   showFeedbackModal,
@@ -13,22 +12,20 @@ const FeedbackModal = ({
   uiPersonality,
   setUiPersonality,
   adaptivePrompts,
-  setAdaptivePrompts
+  setAdaptivePrompts,
+  generateWithLLM
 }) => {
   const [feedbackText, setFeedbackText] = useState('');
 
   // Function to analyze user input for UI adaptation cues
   const analyzeForUIAdaptation = async (userInput) => {
+    if (!generateWithLLM) return null;
+
     try {
       const existingOptions = JSON.stringify(uiPersonality);
-      console.log(`ExistingUiOptions: ${existingOptions}`)
 
-      const response = await fetch('http://localhost:11434/api/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: LLM_CONFIG.LW_MODEL,
-          prompt: `Analyze this user input for UI/visual style preferences.
+      const response = await generateWithLLM(
+        `Analyze this user input for UI/visual style preferences.
 
           Look for mentions of:
           - Colors (red, blue, dark, bright, neon, pastel, etc.)
@@ -75,15 +72,14 @@ const FeedbackModal = ({
 
           USER: "${userInput}"
           `,
-          stream: false
-        })
-      });
+        false
+      );
 
-      if (response.ok) {
+      if (response?.ok) {
         const data = await response.json();
-        console.log(`FeedbackModal data.response: ${JSON.stringify(data.response)}`)
+        // Shared singleton parser; clear any buffer left by a prior stream.
+        resetStreamingParser();
         const [analysis] = extractJsonFromLlmResponse(data.response);
-        console.log(`FeedbackModal analysis: ${JSON.stringify(analysis)}`)
 
         if (analysis && analysis.hasUIPreferences) {
           return analysis;

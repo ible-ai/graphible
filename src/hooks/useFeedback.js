@@ -1,10 +1,11 @@
 // User feedback collection and analysis
 
 import { useState } from 'react';
-import { LLM_CONFIG } from '../constants/graphConstants';
-import { extractJsonFromLlmResponse, createFeedbackAnalysisPrompt } from '../utils/llmUtils';
+import { extractJsonFromLlmResponse, createFeedbackAnalysisPrompt, resetStreamingParser } from '../utils/llmUtils';
 
-export const useFeedback = () => {
+// generateWithLLM comes from useLLMConnection, so feedback analysis runs on
+// whichever model the user configured rather than assuming a local Ollama.
+export const useFeedback = (generateWithLLM = null) => {
   const [feedbackHistory, setFeedbackHistory] = useState([]);
   const [feedbackCategories, setFeedbackCategories] = useState({
     content: { positive: [], negative: [] },
@@ -15,20 +16,20 @@ export const useFeedback = () => {
   const [showFeedbackModal, setShowFeedbackModal] = useState(null);
 
   const analyzeFeedback = async (nodeId, isPositive, userInput) => {
-    try {
-      const response = await fetch(`${LLM_CONFIG.BASE_URL}${LLM_CONFIG.GENERATE_ENDPOINT}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: LLM_CONFIG.MODEL,
-          prompt: createFeedbackAnalysisPrompt(userInput, isPositive),
-          stream: false
-        })
-      });
+    if (!generateWithLLM) return [null, null];
 
-      if (response.ok) {
+    try {
+      const response = await generateWithLLM(
+        createFeedbackAnalysisPrompt(userInput, isPositive),
+        false
+      );
+
+      if (response?.ok) {
         const data = await response.json();
         try {
+          // The parser is a shared singleton; don't inherit a half-read
+          // buffer from an interrupted graph generation.
+          resetStreamingParser();
           return extractJsonFromLlmResponse(data.response);
         } catch (e) {
           console.error("Failed to parse feedback analysis JSON:", e);
