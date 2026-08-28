@@ -5,7 +5,9 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  // src/dev and _src are gitignored scratch areas that nothing imports; linting
+  // them only adds noise to real runs.
+  globalIgnores(['dist', 'src/dev', '_src']),
   {
     files: ['**/*.{js,jsx}'],
     extends: [
