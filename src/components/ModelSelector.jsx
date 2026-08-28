@@ -317,7 +317,7 @@ const ModelSelector = ({
                                     <div className="font-semibold mb-1">Local Setup Instructions:</div>
                                     <div>1. Install <span className="text-blue-400">Ollama</span></div>
                                     <div>2. Run: <code className="bg-gray-100 px-1 rounded">OLLAMA_ORIGINS=* ollama serve</code></div>
-                                    <div>3. Pull model: <code className="bg-gray-100 px-1 rounded">ollama pull gemma3:4b</code></div>
+                                    <div>3. Pull model: <code className="bg-gray-100 px-1 rounded">ollama pull {LLM_CONFIG.LOCAL.DEFAULT_MODEL}</code></div>
                                 </div>
                             </div>
                         )}

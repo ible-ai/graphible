@@ -75,8 +75,9 @@ const InstallationGuide = ({ showGuide, onClose }) => {
                   <h4 className="text-white font-medium mb-2">3. Pull a Model</h4>
                   <div className="space-y-2">
                     {[
-                      { cmd: 'ollama pull gemma3:4b', desc: 'Workhorse' },
-                      { cmd: 'ollama pull gemma3:270m', desc: 'Lightweight' },
+                      { cmd: 'ollama pull gemma3:4b', desc: 'Workhorse · 3.3GB · default' },
+                      { cmd: 'ollama pull gemma3:270m', desc: 'Lightweight · 292MB' },
+                      { cmd: 'ollama pull gemma4:e4b', desc: 'Newest · 7GB+ · multimodal' },
                     ].map((model, idx) => (
                       <div key={idx} className="flex items-center gap-2 bg-gray-900 p-3 rounded">
                         <code className="text-green-400 flex-1 font-mono text-sm">{model.cmd}</code>

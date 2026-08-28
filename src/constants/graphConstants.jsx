@@ -110,6 +110,9 @@ export const LLM_CONFIG = {
   // Local configuration (Ollama)
   LOCAL: {
     DEFAULT_BASE_URL: 'http://localhost:11434',
+    // gemma3:4b (3.3GB) stays the default: gemma4's smallest variant is 7.2GB
+    // and the line has no sub-1GB tier. gemma4:e4b is offered in the setup
+    // guide for anyone who wants the newer, multimodal generation.
     DEFAULT_MODEL: 'gemma3:4b',
     LIGHTWEIGHT_MODEL: 'gemma3:270m',
     TAGS_ENDPOINT: '/api/tags',
