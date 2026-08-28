@@ -21,7 +21,11 @@ No test suite, no test runner, no TypeScript — `.js`/`.jsx` only. Node >= 18.
 
 `npm run lint` is clean of errors; 4 `react-hooks/exhaustive-deps` warnings remain (two in `FeedbackModal`, two in `SetupWizard`). `globalIgnores` covers `dist`, `src/dev` and `_src`. The one rule override is `no-unused-vars` with `varsIgnorePattern: '^[A-Z_]'`.
 
-To run against a real local model: install [Ollama](https://ollama.ai), start it with CORS open (`OLLAMA_ORIGINS=* ollama serve`), and pull a model (`ollama pull gemma3:4b`, or `gemma3:270m` for the lightweight path). Without any of that the app still runs — it defaults to demo mode.
+To run against a real local model: install [Ollama](https://ollama.ai), start it with CORS open (`OLLAMA_ORIGINS=* ollama serve`), and pull a model (`ollama pull gemma3:4b`, 3.3GB). `gemma3:270m` (292MB) is the lightweight path; `gemma4:e4b` is the current generation but over 7GB, which is why the default stays on gemma3. Without any of that the app still runs — it defaults to demo mode.
+
+**Model catalogs live in `LLM_CONFIG` only.** Google models are defined once in `LLM_CONFIG.EXTERNAL.GOOGLE.MODELS` and reach the UI through `GOOGLE_MODEL_LIST`; the WebLLM download copy comes from `DEFAULT_WEBLLM_MODEL_INFO`. Both exist because these lists were previously duplicated across `ModelSelector`, `InstallationGuide` and the wizard constants, and drifted. Add or change a model in one place.
+
+Browser-LLM dependencies are `@huggingface/transformers` v4 (rewritten WebGPU runtime) and `@mlc-ai/web-llm`. Note Node-side smoke tests of transformers.js from inside this project's `node_modules` fail on an onnxruntime conflict; test it in an isolated directory instead, or in the browser, where Vite bundles onnxruntime-web.
 
 Push to `main` → `.github/workflows/deploy.yml` builds and deploys to GitHub Pages. `base: './'` makes the bundle work from the Pages subpath. `vite-plugin-node-polyfills` (util/buffer/process/global) is needed by the LLM SDKs; `crypto` is marked external in the rollup config. `.github/workflows/local_test.sh` is not a workflow — it's a three-line scratch script (clean install, build, `git add .`).
 
@@ -53,7 +57,7 @@ Normalizes four backends behind one `generateWithLLM(prompt, stream, config)`. *
 |---|---|
 | `demo` | one canned node wrapped in a synthetic `ReadableStream`; the default, so the app works with nothing configured |
 | `local` | Ollama at `config.address` — `POST /api/generate`, `GET /api/tags` |
-| `external` | Google Gemini via `@google/genai`; `generateContentStream`, chunks flattened across `candidates[].content.parts[].text` |
+| `external` | Google Gemini via `@google/genai`; `generateContentStream`, chunks flattened across `candidates[].content.parts[].text`. Generation params go in `config` (the SDK ignores the older `generationConfig`) and come from `LLM_CONFIG.EXTERNAL.GOOGLE.DEFAULT_CONFIG` |
 | `webllm` | `BrowserLLMEngine` (`useBrowserLLMEngine.js`), which dispatches per model id through `BROWSER_LLM_TO_PROVIDER` to either `@mlc-ai/web-llm` (`MLCEngine.chat.completions.create`) or `@huggingface/transformers` (`pipeline` + `TextStreamer`), re-wrapping both into the same envelope |
 
 Connection state is a tri-state string: `'pending' | 'connected' | 'disconnected'`. `testLLMConnection` throttles itself — after `maxFailures` (3) it refuses to retry within a `cooldownPeriod` (5s).
