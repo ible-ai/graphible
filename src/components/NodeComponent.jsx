@@ -15,7 +15,7 @@ const NodeComponent = memo(({
   generationStatus,
   uiPersonality,
   isSelected = false,
-  contextMode = 'smart',
+  contextMode = 'auto',
   onStartDrag,
   onStartResize,
   onDelete,

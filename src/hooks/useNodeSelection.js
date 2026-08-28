@@ -274,6 +274,7 @@ export const useNodeSelection = () => {
 
     // Mode management
     toggleContextMode,
+    setContextMode,
 
     // Auto selection methods
     handleNodeSelection,

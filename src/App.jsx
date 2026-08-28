@@ -32,6 +32,14 @@ import SetupWizard from './components/SetupWizard/SetupWizard';
 import { colorSchemes } from './constants/graphConstants';
 import { loadSetupConfig } from './utils/setupWizardUtils';
 
+// Must stay in sync with the modes useNodeSelection cycles through.
+const CONTEXT_MODE_LABELS = {
+  auto: { title: 'Auto (relevant nodes selected for you)' },
+  manual: { title: 'Manual (click nodes to select)' },
+  branch: { title: 'Branch (click a subtree)' },
+  batch: { title: 'Batch (click a generation)' }
+};
+
 const Graphible = () => {
   // Core state
   const [preferences, setPreferences] = useState({
@@ -158,6 +166,7 @@ const Graphible = () => {
     selectedNodeIds,
     contextMode,
     toggleContextMode,
+    setContextMode,
     handleNodeSelection,
     updateAutoContext,
     toggleNodeSelection,
@@ -622,9 +631,9 @@ const Graphible = () => {
                 <div className="flex bg-white border border-slate-200 rounded-lg p-1">
                   <button
                     onClick={() => {
-                      if (contextMode !== 'smart') toggleContextMode();
+                      setContextMode('auto');
                     }}
-                    className={`flex items-center gap-2 px-3 py-1 rounded-md text-sm transition-all duration-200 ${contextMode === 'smart'
+                    className={`flex items-center gap-2 px-3 py-1 rounded-md text-sm transition-all duration-200 ${contextMode === 'auto'
                       ? 'bg-slate-100 text-slate-800'
                       : 'text-slate-600 hover:text-slate-800'
                       }`}
@@ -636,11 +645,10 @@ const Graphible = () => {
                   <button
                     onClick={toggleContextMode}
                     className="flex items-center gap-2 px-3 py-1 rounded-md text-sm transition-all duration-200 bg-indigo-100 text-indigo-800"
-                    title={`Context: ${contextMode === 'smart' ? 'Smart (Ctrl+click to select)' :
-                      contextMode === 'branch' ? 'Branch (click subtree)' :
-                      'Batch (click generation)'}`}
+                    title={`Context: ${CONTEXT_MODE_LABELS[contextMode]?.title ?? contextMode}`}
                   >
-                    {contextMode === 'smart' && <><Circle size={14} />Smart</>}
+                    {contextMode === 'auto' && <><Circle size={14} />Auto</>}
+                    {contextMode === 'manual' && <><MousePointer size={14} />Manual</>}
                     {contextMode === 'branch' && <><Link size={14} />Branch</>}
                     {contextMode === 'batch' && <><Target size={14} />Batch</>}
                     {selectedCount > 0 && (
