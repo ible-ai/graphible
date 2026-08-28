@@ -142,14 +142,10 @@ const Graphible = () => {
 
   // Node manipulation and selection hooks
   const {
-    isDraggingNode,
-    isResizingNode,
+    draggingNodeId,
+    isResizingNodeId,
     startNodeDrag,
-    updateNodeDrag,
-    endNodeDrag,
     startNodeResize,
-    updateNodeResize,
-    endNodeResize,
     deleteNode,
     restoreNode,
     permanentlyDeleteNode,
@@ -361,7 +357,7 @@ const Graphible = () => {
   useEffect(() => {
     const handleMouseDown = (e) => {
       // Don't interfere with node manipulation
-      if (isDraggingNode != null || isResizingNode != null) return;
+      if (draggingNodeId !== null || isResizingNodeId !== null) return;
 
       const clickedElement = e.target;
       const isInteractiveClick =
@@ -391,7 +387,7 @@ const Graphible = () => {
     };
 
     const handleMouseMove = (e) => {
-      if (isDraggingNode !== null || isResizingNode !== null) return;
+      if (draggingNodeId !== null || isResizingNodeId !== null) return;
 
       // Handle camera dragging
       if (!isDragging) return;
@@ -412,7 +408,7 @@ const Graphible = () => {
     };
 
     const handleMouseUp = (e) => {
-      if (isDraggingNode !== null || isResizingNode !== null) return;
+      if (draggingNodeId !== null || isResizingNodeId !== null) return;
 
       if (isDragging) {
         setIsDragging(false);
@@ -443,8 +439,8 @@ const Graphible = () => {
     setCameraImmediate,
     dragStart,
     contextMode,
-    isDraggingNode,
-    isResizingNode,
+    draggingNodeId,
+    isResizingNodeId,
     nodes,
     showPromptCenter
   ]);
@@ -545,7 +541,7 @@ const Graphible = () => {
   // Background drag handling
   useEffect(() => {
     const handleMouseDown = (e) => {
-      if (isDraggingNode !== null || isResizingNode !== null) return;
+      if (draggingNodeId !== null || isResizingNodeId !== null) return;
 
       const clickedElement = e.target;
       const isInteractiveClick =
@@ -613,8 +609,8 @@ const Graphible = () => {
     setCameraImmediate,
     dragStart,
     contextMode,
-    isDraggingNode,
-    isResizingNode
+    draggingNodeId,
+    isResizingNodeId
   ]);
 
   // Zoom handling
