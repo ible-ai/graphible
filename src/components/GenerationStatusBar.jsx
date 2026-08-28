@@ -1,8 +1,8 @@
 // Shows LLM generation progress
 
-import { Brain, Circle } from 'lucide-react';
+import { Brain, Circle, X } from 'lucide-react';
 
-const GenerationStatusBar = ({ generationStatus, streamingContent }) => {
+const GenerationStatusBar = ({ generationStatus, streamingContent, onCancel }) => {
   if (!generationStatus.isGenerating) return null;
 
   const formatTime = (ms) => {
@@ -33,6 +33,16 @@ const GenerationStatusBar = ({ generationStatus, streamingContent }) => {
             <div className="text-slate-500 bg-slate-100 px-2 py-1 rounded-md text-xs">
               Node: {generationStatus.currentNodeId}
             </div>
+          )}
+          {onCancel && (
+            <button
+              onClick={onCancel}
+              className="flex items-center gap-1 px-2 py-1 rounded-md text-xs text-slate-600 hover:bg-rose-50 hover:text-rose-600 transition-colors"
+              title="Stop generating"
+            >
+              <X size={14} />
+              Stop
+            </button>
           )}
         </div>
       </div>

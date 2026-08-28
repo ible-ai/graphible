@@ -325,6 +325,10 @@ Generate 3-6 nodes total. Start now:`;
         // Check for abort signal
         if (abortControllerRef.current?.signal.aborted) {
           console.log('Generation aborted by user');
+          reader.cancel().catch(() => { });
+          updateGenerationStatus({ isGenerating: false, currentNodeId: null });
+          setStreamingContent('');
+          setCurrentStreamingNodeId(null);
           break;
         }
 

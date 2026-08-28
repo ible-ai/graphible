@@ -144,6 +144,7 @@ const Graphible = () => {
     resetGraph,
     generateWithLLM: generateGraphWithLLM,
     applyLayoutOptimization,
+    cancelGeneration,
     setConnections,
     setNodes
   } = useGraphState(generateWithLLM);
@@ -580,6 +581,7 @@ const Graphible = () => {
       <GenerationStatusBar
         generationStatus={generationStatus}
         streamingContent={streamingContent}
+        onCancel={cancelGeneration}
       />
 
       <CenteredPrompt
