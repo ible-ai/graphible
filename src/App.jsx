@@ -206,11 +206,7 @@ const Graphible = () => {
 
   useEffect(() => {
     const initializeConnection = async () => {
-      let setupConfig = null;
-      setTimeout(() => {
-        setupConfig = loadSetupConfig();
-      }, 2000);
-      if (setupConfig === null || setupConfig?.isComplete) return;
+      const setupConfig = loadSetupConfig();
 
       if (setupConfig.isComplete && setupConfig.config) {
         // Use saved setup configuration
@@ -315,34 +311,6 @@ const Graphible = () => {
 
   // Use UI personality color scheme, fall back to preferences, then default
   const currentScheme = colorSchemes[uiPersonality.colorScheme || preferences.colorScheme || 'default'];
-
-  // Initialize LLM connection
-  useCallback(() => {
-    const initializeConnection = async () => {
-      let savedConfig;
-      setTimeout(() => {
-        savedConfig = loadSavedConfig();
-        console.log('App initialization - loaded config:', savedConfig);
-      }, 1500);
-
-      if (savedConfig.type === 'external' && savedConfig.provider === 'google' && !savedConfig.apiKey) {
-        const savedApiKey = localStorage.getItem('graphible-google-api-key');
-        if (savedApiKey) {
-          const updatedConfig = { ...savedConfig, apiKey: savedApiKey };
-          handleModelChange(updatedConfig);
-          console.log('Updated config with saved API key:', updatedConfig);
-        }
-      }
-
-      if (!hasTestedInitially) {
-        setTimeout(async () => {
-          await testLLMConnection(savedConfig);
-        }, 1500);
-      }
-    };
-
-    initializeConnection();
-  }, [loadSavedConfig, handleModelChange, testLLMConnection, hasTestedInitially]);
 
   // Node focusing
   useEffect(() => {
