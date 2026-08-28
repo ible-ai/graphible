@@ -1,7 +1,7 @@
 // Node component
 
 import { useState, memo, useMemo, useCallback } from 'react';
-import { Circle, Move, X } from 'lucide-react';
+import { Circle, ThumbsUp, ThumbsDown, X } from 'lucide-react';
 import { NODE_SIZE } from '../constants/graphConstants';
 
 const NodeComponent = memo(({
@@ -198,7 +198,27 @@ const NodeComponent = memo(({
 
       {/* Control buttons */}
       {(showControls || isSelected) && (
-        <div className="absolute top-2 right-2 flex gap-1 bg-white/95 rounded-lg p-1 shadow-lg border border-slate-200">
+        <div className="node-controls absolute top-2 right-2 flex gap-1 bg-white/95 rounded-lg p-1 shadow-lg border border-slate-200">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onFeedback?.(node.id, true);
+            }}
+            className="p-1.5 hover:bg-emerald-100 rounded text-emerald-600 transition-colors"
+            title="This was helpful"
+          >
+            <ThumbsUp size={14} />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onFeedback?.(node.id, false);
+            }}
+            className="p-1.5 hover:bg-amber-100 rounded text-amber-600 transition-colors"
+            title="This needs improvement"
+          >
+            <ThumbsDown size={14} />
+          </button>
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -215,7 +235,7 @@ const NodeComponent = memo(({
       {/* Resize handle */}
       {(showControls || isSelected) && (
         <div
-          className="absolute bottom-1 right-1 w-5 h-5 cursor-se-resize bg-slate-300/80 rounded-tl-lg hover:bg-slate-400/80 transition-colors border border-slate-400/50 flex items-center justify-center"
+          className="resize-handle absolute bottom-1 right-1 w-5 h-5 cursor-se-resize bg-slate-300/80 rounded-tl-lg hover:bg-slate-400/80 transition-colors border border-slate-400/50 flex items-center justify-center"
           onMouseDown={handleResizeMouseDown}
           title="Resize node"
         >
