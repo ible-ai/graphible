@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { Maximize2, Minimize2, ZoomIn, ZoomOut, Layers } from 'lucide-react';
 import { getMinimapBounds } from '../utils/coordinateUtils';
-import { applyClustering, getClusterColor, setLabelGenerator } from '../utils/clusteringUtils';
+import { applyClustering, getClusterColor } from '../utils/clusteringUtils';
 
 const Minimap = ({
   nodes,
@@ -11,9 +11,7 @@ const Minimap = ({
   currentNodeId,
   camera,
   onNavigateToNode,
-  onCameraMove,
-  generateWithLLM, // Added for cluster label generation
-  currentModel // Added to pass to label generator
+  onCameraMove
 }) => {
   const [minimapExpanded, setMinimapExpanded] = useState(false);
   const [minimapZoom, setMinimapZoom] = useState(1.0);
@@ -25,26 +23,6 @@ const Minimap = ({
 
   // State for async clustering
   const [clusterState, setClusterState] = useState({ clusters: [], showClusters: false });
-
-  // Set up label generator when component mounts
-  useEffect(() => {
-    if (generateWithLLM && currentModel) {
-      const labelGenerator = async (prompt) => {
-        try {
-          const response = await generateWithLLM(prompt, false, currentModel);
-          if (response.ok) {
-            const text = await response.text();
-            return text.trim();
-          }
-          return 'Cluster';
-        } catch (error) {
-          console.warn('Label generation failed:', error);
-          return 'Cluster';
-        }
-      };
-      setLabelGenerator(labelGenerator);
-    }
-  }, [generateWithLLM, currentModel]);
 
   // Apply clustering with async support
   useEffect(() => {

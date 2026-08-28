@@ -1,7 +1,6 @@
 import { pipeline } from '@huggingface/transformers';
 
 let embeddingPipeline = null;
-let llmGenerateLabel = null;
 
 const embeddingCache = new Map();
 const CACHE_SIZE_LIMIT = 1000;
@@ -16,10 +15,6 @@ const initializeEmbeddings = async () => {
     }
   }
   return true;
-};
-
-export const setLabelGenerator = (generateFn) => {
-  llmGenerateLabel = generateFn;
 };
 
 const getCachedEmbeddings = async (nodeTexts) => {
@@ -413,10 +408,6 @@ const generateSimpleClusterLabel = (cluster) => {
   }
 
   return cluster.nodes[0]?.label || 'Topics';
-};
-
-const generateFallbackLabel = (cluster) => {
-  return generateSimpleClusterLabel(cluster);
 };
 
 const calculateCentroid = (nodes) => {

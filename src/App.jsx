@@ -874,8 +874,6 @@ const Graphible = () => {
               }
             }}
             onCameraMove={setCameraTarget}
-            generateWithLLM={generateWithLLM}
-            currentModel={currentModel}
           />
         </>
       )}
