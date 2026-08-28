@@ -2,7 +2,7 @@
 
 import { Brain, Circle, X } from 'lucide-react';
 
-const GenerationStatusBar = ({ generationStatus, streamingContent, onCancel }) => {
+const GenerationStatusBar = ({ generationStatus, onCancel }) => {
   if (!generationStatus.isGenerating) return null;
 
   const formatTime = (ms) => {

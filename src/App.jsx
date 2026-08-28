@@ -42,7 +42,7 @@ const CONTEXT_MODE_LABELS = {
 
 const Graphible = () => {
   // Core state
-  const [preferences, setPreferences] = useState({
+  const [preferences] = useState({
     colorScheme: 'blue',
     layoutStyle: 'hierarchical',
     animationSpeed: 1.0,
@@ -136,7 +136,6 @@ const Graphible = () => {
     nodes,
     connections,
     generationStatus,
-    streamingContent,
     currentNodeId,
     currentStreamingNodeId,
     setCurrentNodeId,
@@ -444,7 +443,7 @@ const Graphible = () => {
     const modifierKey = event?.ctrlKey || event?.metaKey;
 
     // Handle context selection based on mode
-    handleNodeSelection(node.id, nodes, connections, modifierKey);
+    handleNodeSelection(node.id, nodes, connections);
 
     // Always update current node (except in manual mode with modifier key)
     if (!(contextMode === 'manual' && modifierKey)) {
@@ -580,7 +579,6 @@ const Graphible = () => {
     <div className="w-screen h-screen relative bg-gradient-to-br from-slate-50 to-slate-100 font-inter">
       <GenerationStatusBar
         generationStatus={generationStatus}
-        streamingContent={streamingContent}
         onCancel={cancelGeneration}
       />
 
@@ -836,13 +834,11 @@ const Graphible = () => {
                     isCurrent={node.id === currentNodeId}
                     isStreaming={currentStreamingNodeId === node.id}
                     isSelected={isNodeSelected(node.id)}
-                    contextMode={contextMode}
                     onClick={handleNodeClick}
                     onFeedback={handleFeedback}
                     colorScheme={currentScheme}
                     showPromptCenter={showPromptCenter}
                     generationStatus={generationStatus}
-                    uiPersonality={uiPersonality}
                     // Manipulation handlers
                     onStartDrag={startNodeDrag}
                     onStartResize={startNodeResize}
@@ -862,7 +858,6 @@ const Graphible = () => {
             nodeDetails={nodeDetails}
             onClose={() => setNodeDetails(null)}
             feedbackHistory={feedbackHistory}
-            uiPersonality={uiPersonality}
           />
 
           <Minimap
@@ -898,20 +893,14 @@ const Graphible = () => {
       />
 
       <NewPromptBox
-        initialPromptText={initialPromptText}
         currentNodeId={currentNodeId}
         nodeDetails={nodeDetails}
         generationStatus={generationStatus}
         onGenerate={enhancedGenerateWithLLM}
         isTypingPrompt={isTypingPrompt}
         setIsTypingPrompt={setIsTypingPrompt}
-        uiPersonality={uiPersonality}
-        setUiPersonality={setUiPersonality}
-        adaptivePrompts={adaptivePrompts}
-        setAdaptivePrompts={setAdaptivePrompts}
         nodes={nodes}
         connections={connections}
-        setConnections={setConnections}
         selectedNodeIds={selectedNodeIds}
       />
 

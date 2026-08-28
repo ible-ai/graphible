@@ -44,7 +44,7 @@ export const WelcomeStep = ({ onNext }) => (
     </div>
 );
 
-export const ChoiceStep = ({ detectionResults, onSelect, selectedOption }) => {
+export const ChoiceStep = ({ detectionResults, onSelect }) => {
     const hasLocal = detectionResults?.local?.status === CONNECTION_STATUS.SUCCESS;
 
     return (
@@ -443,7 +443,7 @@ export const TestingStep = ({ config, isTesting, testResults }) => (
 );
 
 // Success Step - Clear next steps
-export const SuccessStep = ({ config, onFinish }) => (
+export const SuccessStep = ({ onFinish }) => (
     <div className="text-center max-w-md">
         <div className="w-16 h-16 mx-auto mb-6 bg-green-100 rounded-2xl flex items-center justify-center">
             <CheckCircle className="text-green-600" size={32} />

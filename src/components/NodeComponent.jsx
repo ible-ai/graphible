@@ -13,9 +13,7 @@ const NodeComponent = memo(({
   colorScheme,
   showPromptCenter,
   generationStatus,
-  uiPersonality,
   isSelected = false,
-  contextMode = 'auto',
   onStartDrag,
   onStartResize,
   onDelete,
@@ -111,7 +109,7 @@ const NodeComponent = memo(({
   const handleMouseDown = useCallback((e) => {
     e.stopPropagation();
 
-    // Handle Ctrl+click selection in smart mode
+    // Ctrl/Cmd+click toggles selection
     if (e.ctrlKey || e.metaKey) {
       onToggleSelection?.(node.id);
       return;
@@ -127,14 +125,7 @@ const NodeComponent = memo(({
     if (isClickable) {
       onClick(node, e);
     }
-  }, [contextMode, onToggleSelection, onStartDrag, camera, isClickable, onClick, node]);
-
-  const handleDragHandleMouseDown = useCallback((e) => {
-    e.stopPropagation();
-    e.preventDefault();
-    console.log('Drag handle clicked for node:', node.id);
-    onStartDrag?.(node.id, e.clientX, e.clientY, camera);
-  }, [onStartDrag, node.id, camera]);
+  }, [onToggleSelection, onStartDrag, camera, isClickable, onClick, node]);
 
   const handleResizeMouseDown = useCallback((e) => {
     e.stopPropagation();
@@ -271,7 +262,6 @@ const NodeComponent = memo(({
     prevProps.isCurrent === nextProps.isCurrent &&
     prevProps.isStreaming === nextProps.isStreaming &&
     prevProps.isSelected === nextProps.isSelected &&
-    prevProps.contextMode === nextProps.contextMode &&
     prevProps.showPromptCenter === nextProps.showPromptCenter
   );
 });

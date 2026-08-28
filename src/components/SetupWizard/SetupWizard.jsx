@@ -54,7 +54,7 @@ const SetupWizard = ({
     const [detectionResults, setDetectionResults] = useState(null);
 
     // NEW: Navigation and state management
-    const [navigationHistory, setNavigationHistory] = useState([SETUP_STEPS.WELCOME]);
+    const [, setNavigationHistory] = useState([SETUP_STEPS.WELCOME]);
     const [completedSteps, setCompletedSteps] = useState(new Set());
     const [stepData, setStepData] = useState({
         selectedOption: null,
@@ -255,7 +255,7 @@ const SetupWizard = ({
                     }
                     break;
 
-                case 'Tab':
+                case 'Tab': {
                     // Ensure tab navigation stays within modal
                     const focusableElements = modalRef.current?.querySelectorAll(
                         'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
@@ -280,6 +280,7 @@ const SetupWizard = ({
                         }
                     }
                     break;
+                }
 
                 default:
                     // Number keys for step navigation (1-6)

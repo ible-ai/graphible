@@ -7,7 +7,7 @@ import RemarkMathPlugin from 'remark-math';
 import RehypeKatex from 'rehype-katex';
 
 
-const NodeDetailsPanel = ({ nodeDetails, onClose, feedbackHistory, uiPersonality }) => {
+const NodeDetailsPanel = ({ nodeDetails, onClose, feedbackHistory }) => {
   const [position, setPosition] = useState({ x: 24, y: 120 });
   const [size, setSize] = useState({ width: 450, height: 500 });
   const [isDragging, setIsDragging] = useState(false);

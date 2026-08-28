@@ -1,29 +1,23 @@
 // Enhanced prompt input with selected nodes - DIRECT REPLACEMENT for NewPromptBox.jsx
 import { useState, useCallback, useEffect } from 'react';
 import { X, Send, Link, Sparkles, Eye, EyeOff } from 'lucide-react';
-import { buildContextUpToNode, buildContextSummaryString } from '../utils/contextUtils';
+import { buildContextUpToNode } from '../utils/contextUtils';
 
 const NewPromptBox = ({
-  initialPromptText,
   currentNodeId,
   nodeDetails,
   generationStatus,
   onGenerate,
   isTypingPrompt,
   setIsTypingPrompt,
-  uiPersonality,
-  setUiPersonality,
-  adaptivePrompts,
-  setAdaptivePrompts,
   nodes,
   connections,
-  setConnections,
   selectedNodeIds,
 }) => {
 
   const [newPromptInput, setNewPromptInput] = useState('');
   const [includeContext, setIncludeContext] = useState(true);
-  const [includeSelectedNodes, setIncludeSelectedNodes] = useState(true);
+  const [includeSelectedNodes] = useState(true);
   const [showSelectedPreview, setShowSelectedPreview] = useState(true);
   const [showContextPreview, setShowContextPreview] = useState(true);
   const [contextNodeIds, setContextNodeIds] = useState(new Set());
