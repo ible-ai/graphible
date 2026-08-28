@@ -111,9 +111,9 @@ export const testModelConnection = async (config, abortSignal) => {
                 const response = await ai.models.generateContent({
                     model: config.model,
                     contents: testPrompt,
-                    generationConfig: {
+                    config: {
                         temperature: 0.1,
-                        maxOutputTokens: 5,
+                        maxOutputTokens: 16,
                     }
                 });
 

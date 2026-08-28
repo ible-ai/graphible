@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { GoogleGenAI } from '@google/genai';
-import { WEBLLM_STATE, DEFAULT_WEBLLM_MODEL_INFO } from '../constants/graphConstants';
+import { WEBLLM_STATE, DEFAULT_WEBLLM_MODEL_INFO, LLM_CONFIG } from '../constants/graphConstants';
 import { BrowserLLMEngine } from './useBrowserLLMEngine';
 
 
@@ -304,10 +304,7 @@ export const useLLMConnection = () => {
         const response = await ai.models.generateContentStream({
           model: config.model,
           contents: prompt,
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 2048,
-          }
+          config: LLM_CONFIG.EXTERNAL.GOOGLE.DEFAULT_CONFIG
         });
 
         const processChunk = (chunk) => {
@@ -349,10 +346,7 @@ export const useLLMConnection = () => {
         const response = await ai.models.generateContent({
           model: config.model,
           contents: prompt,
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 2048,
-          }
+          config: LLM_CONFIG.EXTERNAL.GOOGLE.DEFAULT_CONFIG
         });
 
         if (response === null) {
