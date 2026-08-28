@@ -271,7 +271,7 @@ const FeedbackModal = ({
       >
         {/* Inject custom CSS if needed */}
         {uiPersonality?.customCSS && (
-          <style jsx>{uiPersonality.customCSS}</style>
+          <style>{uiPersonality.customCSS}</style>
         )}
 
         <div className="flex items-center justify-between mb-4">

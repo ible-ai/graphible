@@ -590,7 +590,7 @@ const Graphible = () => {
         llmConnected={llmConnected}
         onSubmit={handleInitialPromptSubmit}
         onShowSaveLoad={() => setShowSaveLoad(true)}
-        onShowInstallationGuide={handleShowSetupWizard}
+        onShowInstallationGuide={() => setShowInstallationGuide(true)}
         onShowSetupWizard={handleShowSetupWizard}
         currentModel={currentModel}
         onModelChange={handleModelChange}
