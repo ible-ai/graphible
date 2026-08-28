@@ -181,6 +181,12 @@ export const useGraphState = (generateWithLLM) => {
     const previousNodeId = uniqueNodeId > 0 ? uniqueNodeId - 1 : null;
     const nodeDepth = currNodeDepth;
 
+    // Mirror the edge created below, so parentNodeId always names the node
+    // this one is actually connected to.
+    const parentNodeId = (nodeCount === 0 && sourceNodeId !== null)
+      ? sourceNodeId
+      : previousNodeId;
+
     const newNode = createNode(
       uniqueNodeId,
       parsedData.label,
@@ -190,7 +196,7 @@ export const useGraphState = (generateWithLLM) => {
       prevWorldX,
       prevWorldY,
       currentBatch,
-      previousNodeId > 0 ? previousNodeId : null,
+      parentNodeId,
       nodeDepth,
       "",
       preceedingSiblingNodes
