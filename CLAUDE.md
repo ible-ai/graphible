@@ -19,7 +19,7 @@ No test suite, no test runner, no TypeScript — `.js`/`.jsx` only. Node >= 18.
 
 **`npm run dev` requires local TLS certs** at `.env/localhost+2-key.pem` and `.env/localhost+2.pem`. `.env/` is gitignored, so a fresh clone cannot start the dev server until you generate them (`mkcert localhost 127.0.0.1 ::1`). Vite declares HTTPS in three places (`server`, `preview`, and a non-standard `dev` block). HTTPS matters because WebGPU/WebLLM and the local Ollama fetches expect a secure context.
 
-**`npm run lint` currently fails on a clean tree** — 62 problems (56 errors, 6 warnings), mostly `no-unused-vars`, plus a `no-undef` in `src/dev/themes/ocean.js` and a `no-async-promise-executor` in `src/utils/setupWizardUtils.js`. Don't read a red lint run as damage you caused; diff against this baseline. `globalIgnores` only lists `dist`, so the gitignored `src/dev/` scratch fork gets linted too and contributes errors. The one rule override is `no-unused-vars` with `varsIgnorePattern: '^[A-Z_]'`.
+`npm run lint` is clean of errors; 4 `react-hooks/exhaustive-deps` warnings remain (two in `FeedbackModal`, two in `SetupWizard`). `globalIgnores` covers `dist`, `src/dev` and `_src`. The one rule override is `no-unused-vars` with `varsIgnorePattern: '^[A-Z_]'`.
 
 To run against a real local model: install [Ollama](https://ollama.ai), start it with CORS open (`OLLAMA_ORIGINS=* ollama serve`), and pull a model (`ollama pull gemma3:4b`, or `gemma3:270m` for the lightweight path). Without any of that the app still runs — it defaults to demo mode.
 
@@ -27,16 +27,16 @@ Push to `main` → `.github/workflows/deploy.yml` builds and deploys to GitHub P
 
 ## Repo map
 
-36 source files under `src/`:
+34 source files under `src/`:
 
 ```
-src/App.jsx              1069 lines — the whole app shell; all UI state lives here
+src/App.jsx               955 lines — the whole app shell; all UI state lives here
 src/main.jsx                        — React root; hides index.html's #loading div
 src/index.css                       — Tailwind + KaTeX imports, hit-test classes, hand-rolled .prose
 src/hooks/          (10)            — camera, graph state, LLM, selection, manipulation, feedback, save/load, keyboard, browser-LLM engine
 src/utils/           (5)            — coordinates, LLM parsing, context building, clustering, wizard helpers
 src/constants/       (2)            — graphConstants.jsx, setupWizardConstants.jsx
-src/components/     (16)            — Minimap (806) and SetupWizard (824) are the two big ones
+src/components/     (15)            — Minimap (784) and SetupWizard (825) are the two big ones
 ```
 
 Gitignored and unimported: `src/dev/` (7 files; `src/dev/App.jsx` is a stale 1117-line fork of `App.jsx`) and `_src/`. Don't edit them for app changes.
@@ -70,14 +70,14 @@ Wraps the user prompt in one of two hard-coded templates; the *context-aware* va
 4. Each object → `processNewNode` → `createNode`, which computes a world position and returns an `Object.freeze`d node, pushed onto state immediately — so the graph grows live while the model is still talking.
 5. On stream end, `extractMultipleJsonFromResponse` (capped at 10 nodes) sweeps whatever is left in the buffer. On a thrown error the same sweep runs, and if it finds nothing but there are >20 characters of text, `createFallbackNode` turns the raw text into a visible node rather than dropping it. Failures surface through `alert()`.
 
-`generationStatus` is `{ isGenerating, currentNodeId, tokensGenerated, startTime, elapsedTime }`, mirrored into a `generationStateRef` so the streaming loop can read a fresh token count without re-rendering; a 1s interval updates `elapsedTime` and feeds `GenerationStatusBar`. Token counts are character counts, not real tokens. An `AbortController` guards the whole loop.
+`generationStatus` is `{ isGenerating, currentNodeId, tokensGenerated, startTime, elapsedTime }`, mirrored into a `generationStateRef` so the streaming loop can read a fresh token count without re-rendering; a 1s interval updates `elapsedTime` and feeds `GenerationStatusBar`. Token counts are character counts, not real tokens. An `AbortController` guards the whole loop, surfaced as the Stop button in `GenerationStatusBar`.
 
 **Node shape**: `{ id, label, type: 'root'|'concept'|'example'|'detail', description, content, context, worldX, worldY, width, height?, batchId, parentNodeId, depth, createdAt }`. **Connections**: `{ from, to }` holding node ids.
 
 Two structural facts worth knowing before touching graph code:
 
 - **`id` is the index into the `nodes` array** (`uniqueNodeId = nodes.length + nodeCount`). Much of the app depends on it: `App.jsx` draws edges via `nodes[conn.from]`, `useKeyboardNavigation` reads `nodes[currentNodeId]`, `Minimap` uses `nodes.at(conn.from)`, `buildContextUpToNode` does `allNodes[targetNodeId]`. Deletion filters the array without reindexing, so afterwards index-based and id-based lookups disagree. This is the single most load-bearing invariant in the codebase.
-- **New nodes are chained, not treed.** Within a batch, the first node connects to `sourceNodeId` (the node you prompted from) and every subsequent node connects to the *previous* node in the stream. `parentNodeId` is set as `previousNodeId > 0 ? previousNodeId : null`, so node 1 always records a `null` parent — which matters to `hierarchical` clustering, which groups by `parentNodeId`.
+- **New nodes are chained, not treed.** Within a batch, the first node connects to `sourceNodeId` (the node you prompted from) and every subsequent node connects to the *previous* node in the stream. `parentNodeId` is derived from that same condition, so it always names the node the edge actually points from.
 
 `currNodeDepth` increments once per completed generation, and depth is what rotates the layout direction (below). `cleanupOrphanedConnections` runs automatically whenever `nodes` changes.
 
@@ -95,13 +95,13 @@ Rendering deliberately avoids per-node transforms: **one wrapper div** carries t
 
 ### 4. Interaction layer
 
-Four independent global mouse-listener systems coexist. Check all of them when touching pointer behavior:
+Three independent global mouse-listener systems coexist. Check all of them when touching pointer behavior:
 
-- **`App.jsx`, twice.** Two near-duplicate `useEffect`s each attach document-level `mousedown`/`mousemove`/`mouseup` for background panning — one gated on `!showPromptCenter` with a longer element list, one ungated with a shorter one. Both decide "is this the background?" with `e.target.closest()` against `.node-component`, `.minimap-container`, `.details-panel`, `.modal`, `.node-controls`, `.resize-handle`, plus `button/input/textarea/select/a`. **Renaming or dropping those class names silently breaks panning.** A separate non-passive `wheel` listener does zoom.
-- **`useNodeManipulation`** — node drag and resize. Snapshots the start point and camera into a ref, converts screen delta to world delta by `/ camera.zoom`, and attaches its listeners only while a manipulation is active. Resize clamps to 200–800 × 100–600. **Name mismatch:** the hook returns `draggingNodeId`/`isResizingNodeId`, but `App.jsx` destructures `isDraggingNode`/`isResizingNode` — permanently `undefined`, so every `if (isDraggingNode !== null) return;` guard in the pan handlers is inert and background panning can't tell a node drag is underway.
+- **`App.jsx`** — background panning, one effect gated on `!showPromptCenter`. It decides "is this the background?" with `e.target.closest()` against `.node-component`, `.minimap-container`, `.details-panel`, `.modal`, `.node-controls`, `.resize-handle`, plus `button/input/textarea/select/a`. **Renaming or dropping those class names silently breaks panning**, and conversely a new interactive overlay needs one of them or dragging from it will pan the camera. A separate non-passive `wheel` listener does zoom.
+- **`useNodeManipulation`** — node drag and resize. Snapshots the start point and camera into a ref, converts screen delta to world delta by `/ camera.zoom`, and attaches its listeners only while a manipulation is active. Resize clamps to 200–800 × 100–600. It returns `draggingNodeId`/`isResizingNodeId`; the pan handlers bail out while either is set.
 - **`NodeDetailsPanel`** and **`Minimap`** — each implements its own drag/pan/resize with its own document listeners.
 
-Node verbs (`NodeComponent`): plain click focuses (sets `currentNodeId`, opens the details panel, centers the camera); **Ctrl/Cmd+click** toggles selection; **Shift+click** or the drag handle moves; the corner handle resizes; the ✕ soft-deletes into the deletion store. `isClickable` blocks clicks on nodes ahead of the generation cursor. The component is `memo`'d with a **hand-written comparator** — a new prop that should trigger re-render must be added to that list or it silently won't.
+Node verbs (`NodeComponent`): plain click focuses (sets `currentNodeId`, opens the details panel, centers the camera); **Ctrl/Cmd+click** toggles selection; **Shift+click** moves; the corner handle resizes; hover controls give thumbs up/down (feedback) and ✕ (soft-delete into the deletion store). `isClickable` blocks clicks on nodes ahead of the generation cursor. The component is `memo`'d with a **hand-written comparator** — a new prop that should trigger re-render must be added to that list or it silently won't.
 
 `useKeyboardNavigation`: WASD/arrows **snap to the nearest node in that direction** (>50px away, minimum Euclidean distance) rather than moving the camera freely; polled on a 50ms interval (`KEYBOARD_THROTTLE_MS`) and suppressed while the centered prompt, a modal, or the prompt box is active. Two components additionally register global keydown listeners that fire on any alphanumeric key: `CenteredPrompt` (replaces the start prompt with that character) and `NewPromptBox` (opens the follow-up prompt). Neither unregisters when hidden, since both hooks run before the component's early return.
 
@@ -114,6 +114,8 @@ Node verbs (`NodeComponent`): plain click focuses (sets `currentNodeId`, opens t
 - `branch` — recursive subtree from the clicked node
 - `batch` — every node sharing the clicked node's `batchId`
 
+`App.jsx`'s "Normal" button calls `setContextMode('auto')`; the adjacent button cycles. Tooltips live in `CONTEXT_MODE_LABELS` at the top of `App.jsx` — keep it in sync with the hook's mode list.
+
 The hook also exposes debounced hygiene helpers (`cleanupInvalidSelections`, `scheduleCleanup` — throttled to once per 200ms, then a 100ms debounce) to drop selections pointing at deleted nodes. `App.jsx` doesn't call them.
 
 `NewPromptBox` assembles the outgoing prompt. It inlines its own `CONTEXT:` and `SELECTED NODES CONTEXT:` blocks — topic lists and label/description summaries built from `buildContextUpToNode` — plus checkboxes to include/exclude each, and a live preview of which nodes are in context. `useGraphState` then sniffs that prefix to pick its template. **Changing those marker strings breaks the handshake.**
@@ -122,7 +124,7 @@ The hook also exposes debounced hygiene helpers (`cleanupInvalidSelections`, `sc
 
 ### 6. Minimap and clustering
 
-`Minimap.jsx` (806 lines) is effectively a self-contained sub-app: its own SVG viewport driven by `viewBox`, its own pan and zoom (0.5–3.0, wheel + buttons), expand/collapse (280×200 → 600×400), click-to-navigate, and a dashed rect showing the main viewport. Nodes render as **layered blurred circles** — a heat-map look rather than dots — with root nodes and the current node getting extra glow.
+`Minimap.jsx` (~780 lines) is effectively a self-contained sub-app: its own SVG viewport driven by `viewBox`, its own pan and zoom (0.5–3.0, wheel + buttons), expand/collapse (280×200 → 600×400), click-to-navigate, and a dashed rect showing the main viewport. Nodes render as **layered blurred circles** — a heat-map look rather than dots — with root nodes and the current node getting extra glow.
 
 Cluster rendering adds: per-cluster zoom-visibility thresholds with opacity fades (`getClusterLabelVisibility`, scored by node count, presence of a root node, and rank), viewport-relevance ranking (`calculateClusterViewportRelevance`), a cap on how many clusters get labels at once (`baseLimit + zoom * 4`), and **spiral collision avoidance** for label placement (`calculateSmartLabelPositions`, 12 attempts around 8 directions). Below 1.5× zoom individual nodes are replaced by merged cluster blobs. Label font size and blur radii all scale by `1 / minimapZoom` so text grows as you zoom out.
 
@@ -135,7 +137,7 @@ Cluster rendering adds: per-cluster zoom-visibility thresholds with opacity fade
 | `spatial` | proximity within 800 units; single-node clusters filtered out | NATO phonetic alphabet |
 | `hierarchical` | `depth`, subdivided by `parentNodeId` when a level exceeds 4 nodes | the depth number |
 
-`applyClustering` merges per-algorithm defaults and falls back to `groupByTypeSimplified` on any error. Semantic clustering downloads `Xenova/all-MiniLM-L6-v2` through `@huggingface/transformers` on first use, cached in a module-level pipeline with a 1000-entry FIFO embedding cache. Cluster labels can optionally come from the LLM via `setLabelGenerator` — a **module-level singleton** callback that `Minimap` re-registers whenever the model changes.
+`applyClustering` merges per-algorithm defaults and falls back to `groupByTypeSimplified` on any error. Semantic clustering downloads `Xenova/all-MiniLM-L6-v2` through `@huggingface/transformers` on first use, cached in a module-level pipeline with a 1000-entry FIFO embedding cache. All labels are computed locally. Note clustering re-runs on every `nodes`/`connections` change, so anything added here runs often — an earlier LLM-labelling hook was removed for exactly that reason.
 
 ### 7. Onboarding, modals, persistence
 
@@ -168,33 +170,22 @@ Tailwind v4 via `@tailwindcss/vite`; there is **no `tailwind.config.js`**. Globa
 
 `index.html` paints a dark full-screen `#loading` spinner that `main.jsx` hides once React mounts, and inlines its own scrollbar/body CSS. It also has duplicated `<meta charset>`/`viewport` tags and links two favicon PNGs (`favicon-32x32.png`, `favicon-16x16.png`) that don't exist in `public/` — only `favicon.svg` and `brain-icon.svg` do. `src/App.css` is untouched Vite-template boilerplate imported nowhere.
 
-## Known dead code and inconsistencies
+## Known issues
 
-All verified by reading the tree. Worth checking before "fixing" something that was never wired up, or before assuming a feature works.
+Verified by reading the tree. The list below is what remains after the fix branch; see `git log` for what was addressed and why.
 
-**Unreachable features**
-- **Feedback is dead from the UI.** `NodeComponent` accepts an `onFeedback` prop and never calls it; nothing else sets `showFeedbackModal`. So `FeedbackModal`, `useFeedback`, and the whole adaptive-UI path can't be triggered.
-- **`InstallationGuide` is unreachable** — it's rendered, but `setShowInstallationGuide(true)` is never called; its former trigger now opens the wizard.
-- **No cancel button for generation** despite full `AbortController` support: `useGraphState` returns `cancelGeneration`, `getNodeById`, `getConnectedNodes`, `nodeMap`, and `cleanupOrphanedConnections`, none of which `App.jsx` destructures.
+**Still open**
+- `useKeyboardNavigation`'s snap navigation and `NewPromptBox`/`CenteredPrompt`'s global alphanumeric listeners are registered even while their components are hidden, because the hooks run before the early return. Typing anywhere can open a prompt box.
+- `NewPromptBox` inlines its own `CONTEXT:` / `SELECTED NODES CONTEXT:` strings, and `useGraphState` sniffs for those exact markers to pick a prompt template. The richer builders in `contextUtils.js` (`buildContextString`, `buildContextSummaryString`, `buildSelectedNodesContext`) are exported but unused, and the file ends with ~200 lines of commented-out helpers.
+- `calculateNodePosition` measures the live DOM through `getCurrentElementDimensions`, so layout depends on what is already rendered; there is a standing TODO to cache dimensions on the node. It also uses `NODE_SPACING.x` for both axes, which may or may not be deliberate.
+- `worldToScreen`/`screenToWorld` read `window.innerWidth/innerHeight` directly while `App.jsx` re-derives the same transform inline in a style attribute — two implementations of one mapping.
+- `useNodeSelection` exports `cleanupInvalidSelections`/`scheduleCleanup` to drop selections pointing at deleted nodes; `App.jsx` never calls them.
+- `NodeComponent` syncs width/height from props inside a `useMemo` used as an effect.
+- 4 `react-hooks/exhaustive-deps` warnings: `FeedbackModal`'s two submit callbacks omit the functions they call, and `SetupWizard` has an unnecessary `allSteps` dep plus a ref-in-cleanup warning.
+- `LLM_CONFIG` still carries a flat backwards-compatibility block (`BASE_URL`, `MODEL`, `LW_MODEL`, …) alongside the structured `LOCAL`/`WEBLLM`/`EXTERNAL` sections. Nothing reads the flat one now.
+- `setupWizardConstants.jsx` exports `SETUP_MESSAGES`, `CONSENT_CATEGORIES`, `CONSENT_REQUIREMENTS`, `DOWNLOAD_SIZE_THRESHOLDS` and `TROUBLESHOOTING_TIPS` that nothing imports; the wizard hardcodes equivalent copy inline.
+- Saved graphs live in `sessionStorage`, so they do not survive a browser restart.
 
-**Dead files and props**
-- `src/components/ConnectionComponent.jsx` — superseded by the inline SVG in `App.jsx`. It also calls `worldToScreen` without passing a camera, so it would render at default-camera coordinates if revived.
-- `src/App.css` — Vite boilerplate, imported nowhere.
-- `Minimap` receives a `colorScheme` prop it never reads; `useLLMConnection` exports `hasUserConsent`/`requestWebLLMConsent` that `App.jsx` ignores; `useSaveLoad.loadGraph` is an identity function (the real load lives in `App.jsx`).
-- The `useCallback` at `App.jsx:324` is never invoked, so the legacy `initializeConnection` inside it never runs.
+**The load-bearing invariant**
 
-**Logic bugs**
-- **`isDraggingNode`/`isResizingNode` are always `undefined`** (the hook returns `draggingNodeId`/`isResizingNodeId`), so the node-drag guards inside the background-pan handlers never fire.
-- **Background panning is registered twice**, by two near-identical effects with different element lists. Both run; edit both or consolidate.
-- **`contextMode === 'smart'`** is tested in `App.jsx`'s mode buttons and defaulted in `NodeComponent`, but `useNodeSelection` only produces `auto`/`manual`/`branch`/`batch` — so the mode label renders blank in two of four modes.
-- **`buildContextUpToNode` early-returns on `!targetNodeId`**, so node id `0` — always the root — yields empty context.
-- **`extractFromCodeBlock` uses `String.match` with `/g` regexes**, where `match[1]` is the second whole match rather than a capture group; that extraction strategy rarely does what it looks like it does.
-- **Both init effects read a config assigned inside a `setTimeout` callback** synchronously afterward, so the value is always `undefined`/stale.
-- **`parentNodeId` is `null` for node 1** because of a `> 0` truthiness check, which skews `hierarchical` clustering.
-- `VIEWPORT_CENTER` in `graphConstants.jsx` is computed once at module load, so it's wrong after a window resize.
-- `FeedbackModal` uses `<style jsx>`, a Next.js styled-jsx construct this Vite setup doesn't process.
-
-**Stale or inconsistent config**
-- The wizard's browser step advertises "Llama 3.2 3B, ~2GB", and `WEBLLM_MODELS` in `setupWizardConstants.jsx` lists a model absent from `LLM_CONFIG.WEBLLM` — while the actual `DEFAULT_MODEL_CONFIGS.WEBLLM` is `onnx-community/Qwen3-0.6B-ONNX`. `WebLLMProgressTracker` also hardcodes a 2048 MB total for its percentage and ETA math.
-- `LLM_CONFIG` keeps a flat backwards-compatibility block (`BASE_URL`, `MODEL`, `LW_MODEL`, …) alongside the structured `LOCAL`/`WEBLLM`/`EXTERNAL` sections; the feedback path is what still reads the flat one.
-- `index.html` references two favicon PNGs that don't exist in `public/`.
+`id` is the index into the `nodes` array, and deletion filters the array without reindexing. After any delete, `nodes[conn.from]` (used by `App.jsx` and `Minimap`) and id-keyed lookups disagree. Nothing in this branch changed that; treat it as the first thing to check when graph rendering goes strange.
