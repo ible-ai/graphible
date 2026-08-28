@@ -9,7 +9,7 @@ import {
     MODEL_TYPES,
     DEMO_GRAPH_DATA,
 } from '../../constants/setupWizardConstants';
-import { DEFAULT_MODEL_CONFIGS } from '../../constants/graphConstants';
+import { DEFAULT_MODEL_CONFIGS, DEFAULT_WEBLLM_MODEL_INFO } from '../../constants/graphConstants';
 
 import {
     detectAvailableModels,
@@ -345,7 +345,7 @@ const SetupWizard = ({
     const prepareConsentInfo = useCallback((option) => {
         if (option === 'browser') {
             return {
-                downloadSize: '~2.2GB',
+                downloadSize: DEFAULT_WEBLLM_MODEL_INFO.size,
                 storageLocation: 'Your browser\'s local storage',
                 privacyInfo: {
                     dataStaysLocal: true,

@@ -128,15 +128,6 @@ export const SETUP_MESSAGES = {
     }
 };
 
-export const WEBLLM_MODELS = {
-    'Llama-3.2-3B-Instruct-q4f32_1-MLC': {
-        name: 'Llama 3.2 3B',
-        description: 'Balanced performance and size, optimized for web browsers',
-        size: '~2GB',
-        recommended: true
-    }
-};
-
 export const GOOGLE_AI_MODELS = [
     {
         id: 'gemini-2.5-flash-lite',
@@ -187,8 +178,7 @@ export const CONSENT_REQUIREMENTS = {
     [MODEL_TYPES.WEBLLM]: {
         required: true,
         category: CONSENT_CATEGORIES.MODEL_DOWNLOAD,
-        downloadSize: '~2.2GB',
-        reason: 'Large AI model download required for browser-based AI'
+        reason: 'AI model download required for browser-based AI'
     },
     [MODEL_TYPES.EXTERNAL]: {
         required: true,
@@ -213,7 +203,7 @@ export const CONSENT_REQUIREMENTS = {
 export const TROUBLESHOOTING_TIPS = {
     browser: [
         "Ensure you're using Chrome 113+, Firefox 141+, or Safari 26+",
-        "Allow the browser to download the AI model (2GB)",
+        "Allow the browser to download the AI model",
         "Make sure you have enough storage space available",
         "Try refreshing the page if the download gets stuck"
     ],

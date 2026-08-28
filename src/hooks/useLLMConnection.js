@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { GoogleGenAI } from '@google/genai';
-import { WEBLLM_STATE } from '../constants/graphConstants';
+import { WEBLLM_STATE, DEFAULT_WEBLLM_MODEL_INFO } from '../constants/graphConstants';
 import { BrowserLLMEngine } from './useBrowserLLMEngine';
 
 
@@ -110,8 +110,8 @@ export const useLLMConnection = () => {
       // This would typically be handled by a modal component
       // For now, using a confirm dialog
       const consent = window.confirm(
-        'This will download a 2GB AI model to your browser for private, offline use. ' +
-        'The model will be stored locally and never shared. Continue?'
+        `This will download a ${DEFAULT_WEBLLM_MODEL_INFO.size} AI model to your browser ` +
+        'for private, offline use. The model will be stored locally and never shared. Continue?'
       );
       resolve(consent);
     });

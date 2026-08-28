@@ -19,6 +19,7 @@ import {
     PRIVACY_NOTICE,
     CONNECTION_STATUS
 } from '../../constants/setupWizardConstants';
+import { DEFAULT_WEBLLM_MODEL_INFO } from '../../constants/graphConstants';
 
 export const WelcomeStep = ({ onNext }) => (
     <div className="text-center max-w-md">
@@ -93,7 +94,7 @@ export const ChoiceStep = ({ detectionResults, onSelect, selectedOption }) => {
                         </div>
                         <div>
                             <h4 className="font-medium text-slate-800">AI in your browser</h4>
-                            <p className="text-slate-600 text-sm">Private AI that runs in your browser (2GB download)</p>
+                            <p className="text-slate-600 text-sm">Private AI that runs in your browser ({DEFAULT_WEBLLM_MODEL_INFO.size} download)</p>
                         </div>
                     </div>
                 </button>
@@ -281,8 +282,8 @@ export const SetupStep = ({ option, apiKey, onApiKeyChange, onSetup, detectionRe
 
                 <div className="bg-blue-50 rounded-xl p-4 mb-6 text-left">
                     <div className="text-sm text-blue-800 space-y-1">
-                        <div>• Model: Llama 3.2 3B (optimized for web)</div>
-                        <div>• Size: ~2GB download</div>
+                        <div>• Model: {DEFAULT_WEBLLM_MODEL_INFO.name}</div>
+                        <div>• Size: {DEFAULT_WEBLLM_MODEL_INFO.size} download</div>
                         <div>• Storage: Saved in your browser</div>
                         <div>• Privacy: Never leaves your device</div>
                     </div>

@@ -273,3 +273,8 @@ export const BROWSER_LLM_TO_PROVIDER = new Map([
   ["onnx-community/Qwen3-1.7B-ONNX", `${BROWSER_LLM_PROVIDERS.TRANSFORMERS_JS}`],
   ["onnx-community/Qwen3-0.6B-ONNX", `${BROWSER_LLM_PROVIDERS.TRANSFORMERS_JS}`]
 ]);
+
+// The browser model the setup wizard actually configures, for UI copy.
+// Derived so download sizes and names cannot drift from LLM_CONFIG.WEBLLM.
+export const DEFAULT_WEBLLM_MODEL_INFO =
+  LLM_CONFIG.WEBLLM[DEFAULT_MODEL_CONFIGS.WEBLLM.model];
