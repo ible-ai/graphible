@@ -6,6 +6,8 @@ import { WEBLLM_STATE, DEFAULT_WEBLLM_MODEL_INFO, LLM_CONFIG, ERROR_MESSAGES, mi
 import { BrowserLLMEngine } from './useBrowserLLMEngine';
 import { getModelConsent, setModelConsent, clearModelConsent, isModelCached } from '../utils/modelConsent';
 import { getAccessToken, clearSession, isSignedIn } from '../utils/googleAuth';
+import * as codeAssistAuth from '../utils/codeAssistAuth';
+import { loadCodeAssist, streamGenerateContent, generateContent, sseToEnvelope } from '../utils/codeAssist';
 
 const GEMINI_REST = 'https://generativelanguage.googleapis.com/v1beta';
 
@@ -149,6 +151,17 @@ export const useLLMConnection = () => {
     return true;
   };
 
+  // Resolves the account's project and tier, which doubles as proof the token
+  // works. Costs no tokens, so testing does not spend the user's allowance.
+  const testCodeAssistConnection = async () => {
+    if (!codeAssistAuth.isSignedIn() && !codeAssistAuth.hasStoredGrant()) return false;
+
+    const { project, tier } = await loadCodeAssist();
+    // Cached onto the live config so generation does not repeat the lookup.
+    setCurrentModel((prev) => (prev.type === 'code-assist' ? { ...prev, project, tier } : prev));
+    return true;
+  };
+
   const initializeWebLLMWithConsent = useCallback(async (config, granted = hasUserConsent) => {
     // setHasUserConsent has not necessarily re-rendered by the time the
     // awaiting caller resumes, so the decision is passed in explicitly.
@@ -281,6 +294,8 @@ export const useLLMConnection = () => {
         isConnected = await testExternalConnection(config);
       } else if (config.type === 'google-oauth') {
         isConnected = await testGoogleOAuthConnection(config, { interactive });
+      } else if (config.type === 'code-assist') {
+        isConnected = await testCodeAssistConnection();
       } else if (config.type === 'webllm') {
         isConnected = await testWebLLMConnection(config, { interactive });
       } else if (config.type === 'demo') {
@@ -325,6 +340,8 @@ export const useLLMConnection = () => {
       return generateWithExternalLLM(prompt, stream, modelToUse);
     } else if (modelToUse.type === 'google-oauth') {
       return generateWithGoogleOAuth(prompt, stream, modelToUse);
+    } else if (modelToUse.type === 'code-assist') {
+      return generateWithCodeAssist(prompt, stream, modelToUse);
     } else if (modelToUse.type === 'webllm') {
       return generateWithWebLLM(prompt, stream, modelToUse);
     }
@@ -523,6 +540,26 @@ export const useLLMConnection = () => {
     });
 
     return { ok: true, status: 200, body: readableStream };
+  };
+
+  // Gemini on the signed-in user's own Code Assist allowance. Unlike every
+  // other cloud path here, nothing is billed to whoever deployed Graphible.
+  const generateWithCodeAssist = async (prompt, stream = true, config = currentModel) => {
+    // The project comes back from loadCodeAssist and is cached on the config by
+    // the connection test; re-resolving it per prompt would double the requests.
+    const project = config.project ?? (await loadCodeAssist()).project;
+    const settings = {
+      model: config.model,
+      project,
+      generationConfig: LLM_CONFIG.EXTERNAL.GOOGLE.DEFAULT_CONFIG,
+    };
+
+    if (!stream) {
+      const text = await generateContent(prompt, settings);
+      return { ok: true, status: 200, json: async () => ({ response: text }) };
+    }
+
+    return { ok: true, status: 200, body: sseToEnvelope(await streamGenerateContent(prompt, settings)) };
   };
 
   const generateWithWebLLM = async (prompt, stream = true, config = currentModel) => {
