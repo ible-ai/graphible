@@ -57,62 +57,6 @@ const Graphible = () => {
     nodeSize: 'medium'
   });
 
-  // UI Personality state - keeping existing structure
-  const [uiPersonality, setUiPersonality] = useState({
-    theme: 'tech',
-    colorScheme: 'blue',
-    fontFamily: 'system',
-    nodeStyle: 'rounded',
-    animationStyle: 'smooth',
-    layoutPattern: 'hierarchical',
-    customCSS: '',
-    colors: {
-      root: {
-        backgroundColor: '#FCD34D',
-        borderColor: '#1E40AF',
-        textColor: 'white',
-        accentColor: '#60A5FA',
-        positiveColor: '#10B981',
-        negativeColor: '#EF4444',
-        boxShadow: '0 4px 16px rgba(0, 0, 0, 0.05)',
-        isCurrent: {
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
-        },
-      },
-      default: {
-        backgroundColor: '#3B82F6',
-        borderColor: '#1E40AF',
-        textColor: 'white',
-        accentColor: '#60A5FA',
-        positiveColor: '#10B981',
-        negativeColor: '#EF4444'
-      },
-    },
-    typography: {
-      fontFamily: '"Courier New", monospace',
-      fontSize: '14px',
-      fontWeight: 'normal'
-    },
-    layout: {
-      padding: '16px',
-      borderRadius: '12px',
-      borderWidth: '2px',
-      scale: '1.0'
-    },
-    effects: {
-      shadow: '0 4px 6px rgba(0, 0, 0, 0.3)',
-      textShadow: 'none',
-      filter: 'none'
-    },
-    animations: {
-      transition: 'all 0.3s ease-out',
-      transform: 'none'
-    },
-    customProperties: {},
-    decorativeElements: []
-  });
-
-  const [adaptivePrompts, setAdaptivePrompts] = useState([]);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [nodeDetails, setNodeDetails] = useState(null);
@@ -343,19 +287,10 @@ const Graphible = () => {
     setNodeDetails(null);
     clearSelections();
 
-    // Reset UI personality for demo
-    setUiPersonality(prevUiPersonality => ({
-      ...prevUiPersonality,
-      theme: 'tech',
-      colorScheme: 'blue',
-      fontFamily: 'system',
-      customCSS: ''
-    }));
-    setAdaptivePrompts([]);
 
     setCameraImmediate(0, 0, 1.0);
   }, [resetGraph, addNode, setConnections, setCurrentNodeId, setInitialPromptText, setShowPromptCenter,
-    setNodeDetails, clearSelections, setUiPersonality, setAdaptivePrompts, setCameraImmediate]);
+    setNodeDetails, clearSelections, setCameraImmediate]);
 
   const handleShowSetupWizard = useCallback(() => {
     setShowSetupWizard(true);
@@ -369,7 +304,7 @@ const Graphible = () => {
   }, [nodes, currentNodeId, connections, updateAutoContext]);
 
   // Use UI personality color scheme, fall back to preferences, then default
-  const currentScheme = colorSchemes[uiPersonality.colorScheme || preferences.colorScheme || 'default'];
+  const currentScheme = colorSchemes[preferences.colorScheme || 'default'];
 
   useEffect(() => {
     connectionErrorRef.current = connectionError;
@@ -552,14 +487,6 @@ const Graphible = () => {
     setNodeDetails(null);
     clearSelections();
 
-    setUiPersonality(prevUiPersonality => ({
-      ...prevUiPersonality,
-      theme: 'tech',
-      colorScheme: 'blue',
-      fontFamily: 'system',
-      customCSS: ''
-    }));
-    setAdaptivePrompts([]);
 
     setCameraImmediate(0, 0, 1.0);
   };
@@ -621,43 +548,6 @@ const Graphible = () => {
       document.removeEventListener('wheel', handleWheelEvent);
     };
   }, [handleWheel, showPromptCenter]);
-
-  // Apply adaptive body styles based on UI personality
-  useEffect(() => {
-    const applyGlobalStyles = () => {
-      if (uiPersonality.customCSS) {
-        let styleElement = document.getElementById('adaptive-styles');
-        if (!styleElement) {
-          styleElement = document.createElement('style');
-          styleElement.id = 'adaptive-styles';
-          document.head.appendChild(styleElement);
-        }
-        styleElement.textContent = uiPersonality.customCSS;
-      }
-
-      if (uiPersonality.typography?.fontFamily && uiPersonality.typography.fontFamily !== 'system') {
-        if (uiPersonality.typography.fontFamily.includes('bubble')) {
-          document.body.style.fontFamily = '"Comic Sans MS", cursive, sans-serif';
-        } else if (uiPersonality.typography.fontFamily.includes('mono')) {
-          document.body.style.fontFamily = '"Courier New", monospace';
-        } else if (uiPersonality.typography.fontFamily.includes('serif')) {
-          document.body.style.fontFamily = 'Georgia, serif';
-        }
-      } else {
-        document.body.style.fontFamily = '';
-      }
-    };
-
-    applyGlobalStyles();
-
-    return () => {
-      const styleElement = document.getElementById('adaptive-styles');
-      if (styleElement) {
-        styleElement.remove();
-      }
-      document.body.style.fontFamily = '';
-    };
-  }, [uiPersonality]);
 
   return (
     <div className="w-screen h-screen relative bg-gradient-to-br from-slate-50 to-slate-100 font-inter">
@@ -988,11 +878,6 @@ const Graphible = () => {
         onClose={() => setShowFeedbackModal(null)}
         onSubmit={submitFeedback}
         getQuickFeedbackOptions={getQuickFeedbackOptions}
-        uiPersonality={uiPersonality}
-        setUiPersonality={setUiPersonality}
-        adaptivePrompts={adaptivePrompts}
-        setAdaptivePrompts={setAdaptivePrompts}
-        generateWithLLM={generateWithLLM}
       />
 
       <NewPromptBox

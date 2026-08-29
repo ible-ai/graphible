@@ -8,6 +8,13 @@ export default defineConfig([
   // src/dev and _src are gitignored scratch areas that nothing imports; linting
   // them only adds noise to real runs.
   globalIgnores(['dist', 'src/dev', '_src']),
+  // Config files and the Playwright suite run in Node, not the browser.
+  {
+    files: ['*.config.js', 'e2e/**/*.js', 'test/**/*.{js,jsx}'],
+    languageOptions: {
+      globals: { ...globals.node, ...globals.browser },
+    },
+  },
   {
     files: ['**/*.{js,jsx}'],
     extends: [

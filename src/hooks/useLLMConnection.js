@@ -1,6 +1,6 @@
 // LLM connection status management
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { GoogleGenAI } from '@google/genai';
 import { WEBLLM_STATE, DEFAULT_WEBLLM_MODEL_INFO, LLM_CONFIG, ERROR_MESSAGES } from '../constants/graphConstants';
 import { BrowserLLMEngine } from './useBrowserLLMEngine';
@@ -21,7 +21,6 @@ export const useLLMConnection = () => {
   const [webllmLoadingProgress, setWebllmLoadingProgress] = useState(null);
   const [webllmLoadState, setWebllmLoadState] = useState(WEBLLM_STATE.NULL);
   const [hasUserConsent, setHasUserConsent] = useState(false);
-  const [consentRequested, setConsentRequested] = useState(false);
 
   // A pending download request, surfaced as a modal. Held as a promise so the
   // caller that needs the model can await the user's decision.
@@ -136,7 +135,6 @@ export const useLLMConnection = () => {
       if (prev) setModelConsent(prev.modelId, granted);
       return null;
     });
-    setConsentRequested(true);
     setHasUserConsent(granted);
 
     consentResolverRef.current?.(granted);
