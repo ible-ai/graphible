@@ -13,6 +13,7 @@ const NewPromptBox = ({
   nodes,
   connections,
   selectedNodeIds,
+  quotedPassage,
 }) => {
 
   const [newPromptInput, setNewPromptInput] = useState('');
@@ -181,6 +182,14 @@ Generate 3-5 NEW learning nodes that address the user's request while building u
           <div className="p-6">
             {/* Context indicators */}
             <div className="space-y-3 mb-4">
+              {quotedPassage && (
+                <div className="p-3 bg-indigo-50 rounded-xl border border-indigo-200">
+                  <p className="text-xs font-medium text-indigo-800 mb-1">Asking about this passage</p>
+                  <p className="text-xs text-indigo-700 italic break-words line-clamp-3">
+                    &ldquo;{quotedPassage}&rdquo;
+                  </p>
+                </div>
+              )}
               {/* Previous context */}
               {includeContext && nodeDetails && (
                 <div className="p-3 bg-indigo-50/50 rounded-xl border border-indigo-200/30">

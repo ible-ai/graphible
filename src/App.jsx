@@ -39,6 +39,7 @@ import {
 } from './constants/graphConstants';
 import { loadSetupConfig } from './utils/setupWizardUtils';
 import { focusOffsetForPanel } from './utils/panelLayout';
+import { buildQuotePrompt } from './utils/threadUtils';
 
 // Must stay in sync with the modes useNodeSelection cycles through.
 const CONTEXT_MODE_LABELS = {
@@ -462,6 +463,16 @@ const Graphible = () => {
     }
   }, [camera.zoom, handleNodeSelection, nodes, connections, contextMode, setCurrentNodeId, setNodeDetails, setCameraImmediate]);
 
+  // Branching from a quoted passage: the follow-up hangs off the node the
+  // passage came from, and carries the quote as its context.
+  const [pendingQuote, setPendingQuote] = useState(null);
+
+  const handleBranchFromQuote = useCallback((quote, sourceNode) => {
+    setPendingQuote({ quote, sourceNode });
+    setCurrentNodeId(sourceNode.id);
+    setIsTypingPrompt(true);
+  }, [setCurrentNodeId]);
+
   const handleFeedback = (nodeId, isPositive) => {
     setShowFeedbackModal({ nodeId, isPositive });
   };
@@ -523,7 +534,13 @@ const Graphible = () => {
   };
 
   const enhancedGenerateWithLLM = async (prompt, prevWorldX, prevWorldY) => {
-    return generateGraphWithLLM(prompt, prevWorldX, prevWorldY, currentModel, currentNodeId, responseMode);
+    const finalPrompt = pendingQuote
+      ? buildQuotePrompt(pendingQuote.quote, prompt, pendingQuote.sourceNode?.label)
+      : prompt;
+    const source = pendingQuote?.sourceNode?.id ?? currentNodeId;
+    setPendingQuote(null);
+
+    return generateGraphWithLLM(finalPrompt, prevWorldX, prevWorldY, currentModel, source, responseMode);
   };
 
   // Zoom handling
@@ -853,6 +870,10 @@ const Graphible = () => {
             nodeDetails={nodeDetails}
             onClose={() => setNodeDetails(null)}
             feedbackHistory={feedbackHistory}
+            nodes={nodes}
+            connections={connections}
+            onBranchFromQuote={handleBranchFromQuote}
+            onNavigateToNode={(id) => setCurrentNodeId(id)}
           />
 
           <Minimap
@@ -887,6 +908,7 @@ const Graphible = () => {
         onGenerate={enhancedGenerateWithLLM}
         isTypingPrompt={isTypingPrompt}
         setIsTypingPrompt={setIsTypingPrompt}
+        quotedPassage={pendingQuote?.quote}
         nodes={nodes}
         connections={connections}
         selectedNodeIds={selectedNodeIds}

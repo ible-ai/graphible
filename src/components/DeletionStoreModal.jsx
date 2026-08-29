@@ -54,7 +54,7 @@ const DeletionStoreModal = ({
     };
 
     return (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 font-inter">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[200] font-inter">
             <div className="bg-white rounded-2xl shadow-xl max-w-4xl w-full mx-4 max-h-[80vh] overflow-hidden">
                 {/* Header */}
                 <div className="flex items-center justify-between p-6 border-b border-slate-200">

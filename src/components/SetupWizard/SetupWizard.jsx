@@ -576,7 +576,7 @@ const SetupWizard = ({
         accessible.includes(allSteps[allSteps.indexOf(currentStep) + 1]);
 
     return (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[200] p-4">
             <div
                 ref={modalRef}
                 className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl border border-slate-200 max-h-[90vh] overflow-y-auto"
@@ -801,7 +801,7 @@ const SetupWizard = ({
 
             {/* Exit Confirmation Modal */}
             {showExitConfirm && (
-                <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-60">
+                <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[210]">
                     <div
                         className="bg-white rounded-xl p-6 max-w-md mx-4 shadow-2xl"
                         role="alertdialog"

@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { Maximize2, Minimize2, ZoomIn, ZoomOut, Layers } from 'lucide-react';
 import { getMinimapBounds } from '../utils/coordinateUtils';
 import { applyClustering, getClusterColor } from '../utils/clusteringUtils';
+import { Z } from '../constants/zLayers';
 
 const Minimap = ({
   nodes,
@@ -363,7 +364,7 @@ const Minimap = ({
       style={{
         width: minimapExpanded ? 600 : 280,
         height: minimapExpanded ? 400 : 200,
-        zIndex: 100
+        zIndex: Z.MINIMAP
       }}
       onWheel={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
