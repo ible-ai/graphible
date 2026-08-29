@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef } from 'react';
 import { GoogleGenAI } from '@google/genai';
-import { WEBLLM_STATE, DEFAULT_WEBLLM_MODEL_INFO, LLM_CONFIG, ERROR_MESSAGES } from '../constants/graphConstants';
+import { WEBLLM_STATE, DEFAULT_WEBLLM_MODEL_INFO, LLM_CONFIG, ERROR_MESSAGES, migrateModelConfig } from '../constants/graphConstants';
 import { BrowserLLMEngine } from './useBrowserLLMEngine';
 import { getModelConsent, setModelConsent, clearModelConsent, isModelCached } from '../utils/modelConsent';
 
@@ -413,7 +413,11 @@ export const useLLMConnection = () => {
     }
   };
 
-  const handleModelChange = useCallback((newConfig) => {
+  const handleModelChange = useCallback((incomingConfig) => {
+    // Every path that adopts a config - the wizard, the selector, the saved
+    // blob restored at startup - funnels through here, so this is the one
+    // place a retired model id has to be caught.
+    const newConfig = migrateModelConfig(incomingConfig);
     console.log('handleModelChange called with:', newConfig);
     setCurrentModel(newConfig);
 
@@ -440,7 +444,7 @@ export const useLLMConnection = () => {
     try {
       const saved = localStorage.getItem('graphible-model-config');
       if (saved) {
-        config = JSON.parse(saved);
+        config = migrateModelConfig(JSON.parse(saved));
         setCurrentModel(config);
       }
     } catch (error) {

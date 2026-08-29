@@ -6,6 +6,8 @@ import {
   GOOGLE_MODEL_LIST,
   BROWSER_LLM_TO_PROVIDER,
   BROWSER_LLM_PROVIDERS,
+  RECOMMENDED_GOOGLE_MODEL,
+  migrateModelConfig,
 } from '../src/constants/graphConstants';
 
 // The catalogs used to be duplicated across ModelSelector, the wizard
@@ -89,5 +91,42 @@ describe('google model catalog', () => {
       temperature: expect.any(Number),
       maxOutputTokens: expect.any(Number),
     });
+  });
+});
+
+// A config saved against an older catalog outlives the catalog. Google retires
+// model ids, and generateContent then answers 404 with an empty body - no error
+// text reaches the UI, so the app just appears to do nothing.
+describe('migrateModelConfig', () => {
+  it('rewrites a retired google model id to the recommended one', () => {
+    const migrated = migrateModelConfig({
+      type: 'external', provider: 'google', model: 'gemini-2.0-flash', apiKey: 'k',
+    });
+    expect(migrated.model).toBe(RECOMMENDED_GOOGLE_MODEL);
+    expect(migrated.apiKey).toBe('k');
+  });
+
+  it('leaves a current google model id alone, and returns it unchanged', () => {
+    const config = { type: 'external', provider: 'google', model: RECOMMENDED_GOOGLE_MODEL };
+    expect(migrateModelConfig(config)).toBe(config);
+  });
+
+  it('recommends a model that is actually in the catalog', () => {
+    expect(LLM_CONFIG.EXTERNAL.GOOGLE.MODELS[RECOMMENDED_GOOGLE_MODEL]).toBeDefined();
+  });
+
+  it('does not touch other backends, whose model ids are not google ids', () => {
+    for (const config of [
+      { type: 'demo' },
+      { type: 'local', model: 'gemma3:4b' },
+      { type: 'webllm', model: 'onnx-community/gemma-3-270m-it-ONNX' },
+    ]) {
+      expect(migrateModelConfig(config)).toBe(config);
+    }
+  });
+
+  it('survives a malformed saved blob', () => {
+    expect(migrateModelConfig(null)).toBe(null);
+    expect(migrateModelConfig({})).toEqual({});
   });
 });

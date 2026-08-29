@@ -333,3 +333,17 @@ export const DEFAULT_WEBLLM_MODEL_INFO =
 // Google models as an ordered array, for components that render a list.
 export const GOOGLE_MODEL_LIST = Object.entries(LLM_CONFIG.EXTERNAL.GOOGLE.MODELS)
   .map(([id, info]) => ({ id, ...info }));
+
+// The recommended Google model, and the fallback for anything unrecognised.
+export const RECOMMENDED_GOOGLE_MODEL =
+  (GOOGLE_MODEL_LIST.find((m) => m.recommended) ?? GOOGLE_MODEL_LIST[0]).id;
+
+// A model id persisted before the catalog moved on can name a model Google has
+// since retired. The saved config is loaded verbatim, so the stale id survives
+// upgrades and every request 404s - with an empty body, so nothing surfaces.
+// Any id no longer in the catalog is rewritten to the recommended one.
+export const migrateModelConfig = (config) => {
+  if (config?.type !== 'external' || config?.provider !== 'google') return config;
+  if (Object.hasOwn(LLM_CONFIG.EXTERNAL.GOOGLE.MODELS, config.model)) return config;
+  return { ...config, model: RECOMMENDED_GOOGLE_MODEL };
+};

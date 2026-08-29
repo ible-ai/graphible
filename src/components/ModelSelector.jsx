@@ -19,20 +19,38 @@ const ModelSelector = ({
         return ((webllmState == WEBLLM_STATE.RELOADING) || (webllmState == WEBLLM_STATE.DOWNLOADING));
     };
 
-    const [localConfig, setLocalConfig] = useState({
+    // Seed each tab from the model actually in use, so the panel shows what is
+    // running rather than the defaults. Previously the selection always read
+    // back as the default, which made a saved-but-different model invisible.
+    const fromCurrent = useCallback((type, fallback) => (
+        currentModel?.type === type ? { ...fallback, ...currentModel } : fallback
+    ), [currentModel]);
+
+    const [localConfig, setLocalConfig] = useState(() => fromCurrent('local', {
         address: DEFAULT_MODEL_CONFIGS.LOCAL.address,
         model: DEFAULT_MODEL_CONFIGS.LOCAL.model
-    });
+    }));
 
-    const [externalConfig, setExternalConfig] = useState({
+    const [externalConfig, setExternalConfig] = useState(() => fromCurrent('external', {
         provider: DEFAULT_MODEL_CONFIGS.EXTERNAL.provider,
         model: DEFAULT_MODEL_CONFIGS.EXTERNAL.model,
         apiKey: currentModel.apiKey || ''
-    });
+    }));
 
-    const [webllmConfig, setWebllmConfig] = useState({
+    const [webllmConfig, setWebllmConfig] = useState(() => fromCurrent('webllm', {
         model: DEFAULT_MODEL_CONFIGS.WEBLLM.model
-    });
+    }));
+
+    // The saved config is restored asynchronously at startup, after this panel
+    // has already mounted, so seeding at first render is not enough on its own.
+    useEffect(() => {
+        if (currentModel?.type === 'local') setLocalConfig(prev => ({ ...prev, ...currentModel }));
+        if (currentModel?.type === 'external') setExternalConfig(prev => ({ ...prev, ...currentModel }));
+        if (currentModel?.type === 'webllm') setWebllmConfig(prev => ({ ...prev, ...currentModel }));
+        // Only while closed - switching the tab under an open panel would move
+        // the controls out from under the user.
+        if (!isOpen && currentModel?.type) setActiveTab(currentModel.type);
+    }, [currentModel, isOpen]);
 
     // Load saved API key on component mount
     useEffect(() => {

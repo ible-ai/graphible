@@ -1,6 +1,7 @@
 // Shared utility functions for the Setup Wizard
 
 import { CONNECTION_STATUS, MODEL_TYPES } from '../constants/setupWizardConstants';
+import { migrateModelConfig } from '../constants/graphConstants';
 
 // Detection utilities with abort signal support
 export const detectAvailableModels = async (abortSignal) => {
@@ -252,7 +253,8 @@ export const loadSetupConfig = () => {
         const configStr = localStorage.getItem('graphible-model-config');
 
         if (isComplete && configStr) {
-            const config = JSON.parse(configStr);
+            // A config saved against an older catalog can name a retired model.
+            const config = migrateModelConfig(JSON.parse(configStr));
 
             // For external configs, load API key separately
             if (config.type === MODEL_TYPES.EXTERNAL && config.provider) {
