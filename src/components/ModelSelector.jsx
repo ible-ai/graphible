@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { ChevronDown, Settings, Globe, Server, Compass, CheckCircle, AlertCircle } from 'lucide-react';
-import { LLM_CONFIG, DEFAULT_MODEL_CONFIGS, WEBLLM_STATE, DEFAULT_MODEL_CONFIG } from '../constants/graphConstants';
+import { LLM_CONFIG, DEFAULT_MODEL_CONFIGS, WEBLLM_STATE, DEFAULT_MODEL_CONFIG, GOOGLE_MODEL_LIST } from '../constants/graphConstants';
 import WebLLMProgressTracker from '../components/WebLLMProgressTracker';
 
 const ModelSelector = ({
@@ -42,12 +42,6 @@ const ModelSelector = ({
         }
     }, [externalConfig.apiKey]);
 
-    const googleModels = [
-        { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash Lite', description: 'Fast and lightweight' },
-        { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', description: 'Balanced performance' },
-        { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', description: 'Maximum capability' }
-    ];
-
     // Close dropdown when clicking outside
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -80,7 +74,8 @@ const ModelSelector = ({
         console.log(config);
         setIsOpen(false);
         // Test the connection with new config
-        setTimeout(() => onTestConnection(config), 100);
+        // Applying a model is deliberate, so this test may prompt to download.
+        setTimeout(() => onTestConnection(config, { interactive: true }), 100);
     };
 
     const getStatusColor = () => {
@@ -93,7 +88,7 @@ const ModelSelector = ({
 
     const getDisplayName = () => {
         if (currentModel.type === 'external') {
-            const model = googleModels.find(m => m.id === currentModel.model);
+            const model = GOOGLE_MODEL_LIST.find(m => m.id === currentModel.model);
             return model ? model.name : currentModel.model;
         } else if (currentModel.type === 'webllm') {
             const model = LLM_CONFIG.WEBLLM[currentModel.model];
@@ -141,10 +136,14 @@ const ModelSelector = ({
             {/* Dropdown */}
             {isOpen && (
                 <div
-                    className="absolute top-full left-0 mt-2 w-96 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden"
+                    // Bounded to the viewport: the panel is taller than a
+                    // laptop screen, and the page itself does not scroll, so an
+                    // unbounded panel put "Apply Settings" permanently out of
+                    // reach and the chosen model could never be applied.
+                    className="absolute top-full left-0 mt-2 w-96 bg-white border border-slate-200 rounded-xl shadow-xl z-50 flex flex-col max-h-[calc(100vh-6rem)]"
                 >
                     {/* Tab Headers */}
-                    <div className="flex border-b border-slate-200">
+                    <div className="flex border-b border-slate-200 flex-shrink-0 rounded-t-xl overflow-hidden">
                         <button
                             onClick={() => setActiveTab('webllm')}
                             className={`flex-1 px-3 py-3 text-sm font-medium transition-all duration-200 relative ${activeTab === 'webllm'
@@ -195,7 +194,7 @@ const ModelSelector = ({
                     </div>
 
                     {/* Tab Content */}
-                    <div className="p-4">
+                    <div className="p-4 overflow-y-auto flex-1 min-h-0">
                         {activeTab === 'webllm' && (
                             <div className="space-y-4">
                                 <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mb-4">
@@ -323,7 +322,7 @@ const ModelSelector = ({
                                     <div className="font-semibold mb-1">Local Setup Instructions:</div>
                                     <div>1. Install <span className="text-blue-400">Ollama</span></div>
                                     <div>2. Run: <code className="bg-gray-100 px-1 rounded">OLLAMA_ORIGINS=* ollama serve</code></div>
-                                    <div>3. Pull model: <code className="bg-gray-100 px-1 rounded">ollama pull gemma3:4b</code></div>
+                                    <div>3. Pull model: <code className="bg-gray-100 px-1 rounded">ollama pull {LLM_CONFIG.LOCAL.DEFAULT_MODEL}</code></div>
                                 </div>
                             </div>
                         )}
@@ -363,7 +362,7 @@ const ModelSelector = ({
                                             onChange={(e) => setExternalConfig(prev => ({
                                                 ...prev,
                                                 provider: e.target.value,
-                                                model: 'gemini-2.5-flash-lite' // Reset to default model
+                                                model: DEFAULT_MODEL_CONFIGS.EXTERNAL.model // Reset to default model
                                             }))}
                                             className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded text-white focus:border-purple-500 focus:outline-none transition-all duration-200 appearance-none"
                                             onFocus={(e) => {
@@ -384,7 +383,7 @@ const ModelSelector = ({
                                         Model
                                     </label>
                                     <div className="space-y-2">
-                                        {googleModels.map((model) => (
+                                        {GOOGLE_MODEL_LIST.map((model) => (
                                             <label
                                                 key={model.id}
                                                 className={`flex items-center p-3 border rounded cursor-pointer transition-all duration-200 group ${externalConfig.model === model.id
@@ -447,7 +446,7 @@ const ModelSelector = ({
                         )}
 
                         {/* Action Buttons */}
-                        <div className="flex gap-3 pt-4 border-t border-gray-700 mt-4">
+                        <div className="flex gap-3 pt-4 border-t border-slate-200 mt-4 sticky bottom-0 bg-white pb-1">
                             <button
                                 onClick={handleSave}
                                 disabled={

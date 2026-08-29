@@ -1,0 +1,42 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+graphible/node_modules
+graphible/node_modules*
+graphible/node_modules/*
+dist
+dist-ssr
+*.local
+node_modules
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Internal dev lib for non-public experimentation.
+_src
+src/dev
+.env
+
+# Playwright
+/test-results
+/playwright-report
+/blob-report
+/playwright/.cache
+
+# Demo media: large, and not needed to build or run the app.
+*.mov
+*.gif

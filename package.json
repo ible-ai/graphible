@@ -22,14 +22,17 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "deploy": "npm run build && gh-pages -d dist",
-    "test-build": "npm run build && npm run preview"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:all": "vitest run && playwright test",
+    "deploy": "npm run build && gh-pages -d dist"
   },
   "dependencies": {
     "@google/genai": "^1.15.0",
-    "@huggingface/transformers": "^3.7.3",
+    "@huggingface/transformers": "^4.2.0",
     "@mediapipe/tasks-genai": "^0.10.25",
-    "@mlc-ai/web-llm": "^0.2.79",
+    "@mlc-ai/web-llm": "^0.2.84",
     "d3-force": "^3.0.0",
     "lucide-react": "^0.536.0",
     "react": "^19.1.1",
@@ -40,7 +43,10 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",
+    "@playwright/test": "^1.62.1",
     "@tailwindcss/vite": "^4.1.11",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
     "@types/react": "^18.2.15",
     "@types/react-dom": "^18.2.7",
     "@vitejs/plugin-react": "^4.7.0",
@@ -49,8 +55,10 @@
     "eslint-plugin-react-refresh": "^0.4.20",
     "gh-pages": "^6.0.0",
     "globals": "^16.3.0",
+    "jsdom": "^30.0.1",
     "tailwindcss": "^4.1.11",
     "vite": "^6.0.1",
-    "vite-plugin-node-polyfills": "^0.24.0"
+    "vite-plugin-node-polyfills": "^0.24.0",
+    "vitest": "^4.1.11"
   }
 }

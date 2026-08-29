@@ -3,7 +3,6 @@
 export const WORLD_CENTER = { x: 0, y: 0 };
 export const NODE_SIZE = { width: 280, height: 60 };
 export const NODE_SPACING = { x: NODE_SIZE.width * 0.5, y: NODE_SIZE.height * 0.5 };
-export const VIEWPORT_CENTER = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
 
 // Each successive group of nodes (i.e., depth => depth + 1) is projected in a different x and y
 // directions. This constant defines a convention for 6 possible projection directions, which are
@@ -111,6 +110,9 @@ export const LLM_CONFIG = {
   // Local configuration (Ollama)
   LOCAL: {
     DEFAULT_BASE_URL: 'http://localhost:11434',
+    // gemma3:4b (3.3GB) stays the default: gemma4's smallest variant is 7.2GB
+    // and the line has no sub-1GB tier. gemma4:e4b is offered in the setup
+    // guide for anyone who wants the newer, multimodal generation.
     DEFAULT_MODEL: 'gemma3:4b',
     LIGHTWEIGHT_MODEL: 'gemma3:270m',
     TAGS_ENDPOINT: '/api/tags',
@@ -119,63 +121,74 @@ export const LLM_CONFIG = {
 
   // See https://mlc.ai/models and
   // https://huggingface.co/models?pipeline_tag=text-generation&library=transformers.js
+  // Browser models. `size` is the actual download at the listed dtype, summed
+  // over the ONNX graph and its external .onnx_data weights - not the
+  // parameter count. WebLLMProgressTracker parses it for its progress maths,
+  // and the wizard quotes it for consent, so it has to be the real figure.
   WEBLLM: {
-    "onnx-community/Qwen3-0.6B-ONNX": {
-      name: 'Qwen3 0.6B (4-bit)',
-      description: 'Small, fast, and mighty.',
-      size: '0.6 GB',
-      dtype: 'fp16',
-      performance: 'Low-Medium',
+    "onnx-community/gemma-3-270m-it-ONNX": {
+      name: 'Gemma 3 270M',
+      description: 'Smallest and quickest to download.',
+      params: '270M',
+      size: '273 MB',
+      dtype: 'q4f16',
+      performance: 'Low',
       recommended: true
     },
-    "onnx-community/Qwen3-1.7B-ONNX": {
-      name: 'Qwen3 1.7B (4-bit)',
-      description: 'Well-balanced.',
-      size: '1.4GB',
+    "onnx-community/Qwen3-0.6B-ONNX": {
+      name: 'Qwen3 0.6B',
+      description: 'A step up in quality for a modest download.',
+      params: '0.6B',
+      size: '570 MB',
+      dtype: 'q4f16',
+      performance: 'Low-Medium',
+      recommended: false
+    },
+    "onnx-community/gemma-3-1b-it-ONNX": {
+      name: 'Gemma 3 1B',
+      description: 'Best quality of the browser options.',
+      params: '1B',
+      size: '764 MB',
       dtype: 'q4f16',
       performance: 'Medium',
       recommended: false
-    }, 'Llama-3.2-3B-Instruct-q4f16_1-MLC': {
-      name: 'Llama 3.2 3B (4-bit)',
-      description: 'Balanced performance and size',
-      size: '2.2GB',
+    },
+    'gemma3-1b-it-q4f16_1-MLC': {
+      name: 'Gemma 3 1B (MLC)',
+      description: 'Same model through the WebLLM runtime.',
+      params: '1B',
+      size: '711 MB',
       dtype: 'q4f16',
       performance: 'Medium',
       recommended: false
-      // },
-      // "onnx-community/Qwen3-4B-ONNX": {
-      //   name: 'Qwen3 4B (4-bit)',
-      //   description: 'Makes computer hot. Nice.',
-      //   size: '4GB',
-      //   dtype: 'q4f16',
-      //   performance: 'Medium-High',
-      //   recommended: false
     }
   },
 
-  // External API configurations
+  // External API configurations.
+  // Single source of truth for the Google model list: ModelSelector, the setup
+  // wizard and the installation guide all derive from this.
   EXTERNAL: {
     GOOGLE: {
       MODELS: {
-        'gemini-2.5-flash-lite': {
-          name: 'Gemini 2.5 Flash Lite',
-          description: 'Fast and lightweight',
-          maxTokens: 2048
+        'gemini-3.5-flash-lite': {
+          name: 'Gemini 3.5 Flash Lite',
+          description: 'Fastest and most cost-effective',
+          recommended: true
         },
-        'gemini-2.5-flash': {
-          name: 'Gemini 2.5 Flash',
-          description: 'Balanced performance',
-          maxTokens: 8192
+        'gemini-3.6-flash': {
+          name: 'Gemini 3.6 Flash',
+          description: 'Balanced speed and capability',
+          recommended: false
         },
-        'gemini-2.5-pro': {
-          name: 'Gemini 2.5 Pro',
-          description: 'Maximum capability',
-          maxTokens: 32768
+        'gemini-3.7-flash': {
+          name: 'Gemini 3.7 Flash',
+          description: 'Most capable, for complex reasoning',
+          recommended: false
         }
       },
       DEFAULT_CONFIG: {
         temperature: 0.7,
-        maxOutputTokens: 2048,
+        maxOutputTokens: 8192,
         topK: 40,
         topP: 0.95
       }
@@ -206,13 +219,13 @@ export const DEFAULT_MODEL_CONFIGS = {
   EXTERNAL: {
     type: 'external',
     provider: 'google',
-    model: 'gemini-2.5-flash-lite',
+    model: 'gemini-3.5-flash-lite',
     apiKey: ''
   },
   WEBLLM: {
     type: 'webllm',
-    model: 'onnx-community/Qwen3-0.6B-ONNX',
-    dtype: 'fp16'
+    model: 'onnx-community/gemma-3-270m-it-ONNX',
+    dtype: 'q4f16'
   }
 };
 
@@ -224,7 +237,7 @@ export const API_INFO = {
   google: {
     sdkPackage: '@google/genai',
     documentationUrl: 'https://github.com/google-gemini/generative-ai-js',
-    supportedModels: ['gemini-2.5-flash-lite', 'gemini-2.5-flash', 'gemini-2.5-pro']
+    supportedModels: Object.keys(LLM_CONFIG.EXTERNAL.GOOGLE.MODELS)
   }
 };
 
@@ -241,6 +254,43 @@ export const ERROR_MESSAGES = {
   CONSENT_REQUIRED: 'User consent is required before downloading AI models.',
   MODEL_DOWNLOAD_BLOCKED: 'Model download blocked - consent not granted.'
 };
+
+// How a model's answer becomes nodes.
+//
+//   graph  - ask for several JSON node objects and lay each one out as its own
+//            node, the original behaviour.
+//   single - let the model answer normally and keep the whole reply in one
+//            node. Branching and navigation then come from the graph rather
+//            than from decomposing a single reply.
+export const RESPONSE_MODES = {
+  GRAPH: 'graph',
+  SINGLE: 'single'
+};
+
+export const RESPONSE_MODE_LABELS = {
+  [RESPONSE_MODES.GRAPH]: {
+    name: 'Graph',
+    description: 'Break the answer into connected nodes'
+  },
+  [RESPONSE_MODES.SINGLE]: {
+    name: 'Single',
+    description: 'Keep the whole answer in one node'
+  }
+};
+
+export const DEFAULT_RESPONSE_MODE = RESPONSE_MODES.GRAPH;
+
+// Graph mode asks for several strictly-formatted JSON objects. Models of this
+// size do not reliably produce that, and the reply then falls back to a single
+// node anyway - so single mode is both the honest default and the better
+// experience for them.
+export const RESPONSE_MODE_BY_BACKEND = {
+  webllm: RESPONSE_MODES.SINGLE,
+};
+
+export const preferredResponseModeFor = (modelConfig) =>
+  RESPONSE_MODE_BY_BACKEND[modelConfig?.type] ?? null;
+export const RESPONSE_MODE_STORAGE_KEY = 'graphible-response-mode';
 
 export const WEBLLM_STATE = {
   NULL: '',
@@ -269,8 +319,17 @@ export const BROWSER_LLM_PROVIDERS = {
 };
 
 export const BROWSER_LLM_TO_PROVIDER = new Map([
-  ["Llama-3.2-3B-Instruct-q4f16_1-MLC", `${BROWSER_LLM_PROVIDERS.MLC_AI__WEB_LLM}`],
-  // ["onnx-community/Qwen3-4B-ONNX", `${BROWSER_LLM_PROVIDERS.TRANSFORMERS_JS}`],
-  ["onnx-community/Qwen3-1.7B-ONNX", `${BROWSER_LLM_PROVIDERS.TRANSFORMERS_JS}`],
-  ["onnx-community/Qwen3-0.6B-ONNX", `${BROWSER_LLM_PROVIDERS.TRANSFORMERS_JS}`]
+  ['gemma3-1b-it-q4f16_1-MLC', BROWSER_LLM_PROVIDERS.MLC_AI__WEB_LLM],
+  ['onnx-community/gemma-3-270m-it-ONNX', BROWSER_LLM_PROVIDERS.TRANSFORMERS_JS],
+  ['onnx-community/Qwen3-0.6B-ONNX', BROWSER_LLM_PROVIDERS.TRANSFORMERS_JS],
+  ['onnx-community/gemma-3-1b-it-ONNX', BROWSER_LLM_PROVIDERS.TRANSFORMERS_JS]
 ]);
+
+// The browser model the setup wizard actually configures, for UI copy.
+// Derived so download sizes and names cannot drift from LLM_CONFIG.WEBLLM.
+export const DEFAULT_WEBLLM_MODEL_INFO =
+  LLM_CONFIG.WEBLLM[DEFAULT_MODEL_CONFIGS.WEBLLM.model];
+
+// Google models as an ordered array, for components that render a list.
+export const GOOGLE_MODEL_LIST = Object.entries(LLM_CONFIG.EXTERNAL.GOOGLE.MODELS)
+  .map(([id, info]) => ({ id, ...info }));

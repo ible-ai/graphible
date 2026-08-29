@@ -90,46 +90,42 @@ export const testModelConnection = async (config, abortSignal) => {
                 };
             }
         } else if (config.type === MODEL_TYPES.EXTERNAL && config.provider === 'google') {
-            // Single test with timeout and abort support
-            const testWithTimeout = new Promise(async (resolve, reject) => {
-                const timeoutId = setTimeout(() => {
-                    reject(new Error('Connection timeout'));
-                }, 10000);
-
-                try {
-                    // Import dynamically
-                    const { GoogleGenAI } = await import('@google/genai');
-                    const ai = new GoogleGenAI({ apiKey: config.apiKey });
-
-                    // Check abort before making request
-                    if (abortSignal?.aborted) {
-                        clearTimeout(timeoutId);
-                        reject(new Error('Test cancelled'));
-                        return;
-                    }
-
-                    const response = await ai.models.generateContent({
-                        model: config.model,
-                        contents: testPrompt,
-                        generationConfig: {
-                            temperature: 0.1,
-                            maxOutputTokens: 5,
-                        }
-                    });
-
-                    clearTimeout(timeoutId);
-                    const text = response?.text || 'Connected successfully';
-                    resolve({
-                        success: true,
-                        response: text.trim()
-                    });
-                } catch (error) {
-                    clearTimeout(timeoutId);
-                    reject(error);
-                }
+            // Single test with timeout and abort support. The timeout is its
+            // own promise rather than an async executor, so a rejection raised
+            // before the first await is not swallowed.
+            let timeoutId;
+            const timeout = new Promise((_, reject) => {
+                timeoutId = setTimeout(() => reject(new Error('Connection timeout')), 10000);
             });
 
-            return await testWithTimeout;
+            const attempt = async () => {
+                // Import dynamically
+                const { GoogleGenAI } = await import('@google/genai');
+                const ai = new GoogleGenAI({ apiKey: config.apiKey });
+
+                // Check abort before making request
+                if (abortSignal?.aborted) {
+                    throw new Error('Test cancelled');
+                }
+
+                const response = await ai.models.generateContent({
+                    model: config.model,
+                    contents: testPrompt,
+                    config: {
+                        temperature: 0.1,
+                        maxOutputTokens: 16,
+                    }
+                });
+
+                const text = response?.text || 'Connected successfully';
+                return { success: true, response: text.trim() };
+            };
+
+            try {
+                return await Promise.race([attempt(), timeout]);
+            } finally {
+                clearTimeout(timeoutId);
+            }
         }
 
         else if (config.type === MODEL_TYPES.WEBLLM) {

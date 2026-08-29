@@ -126,7 +126,7 @@ export const useNodeManipulation = (nodes, setNodes, connections, setConnections
 
   // Delete a node (move to deletion store)
   const deleteNode = useCallback((nodeId) => {
-    const nodeToDelete = nodes.find(n => n && n.id && n.id === nodeId);
+    const nodeToDelete = nodes.find(n => n && n.id === nodeId);
     if (!nodeToDelete) {
       console.warn(`Attempted to delete non-existent node: ${nodeId}`);
       return;

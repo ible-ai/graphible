@@ -1,11 +1,12 @@
 // Program graph state
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { NODE_SIZE } from '../constants/graphConstants';
+import { NODE_SIZE, RESPONSE_MODES } from '../constants/graphConstants';
 import { applyForceDirectedLayout, calculateNodePosition } from '../utils/coordinateUtils';
-import { extractJsonFromLlmResponse, createFallbackNode, extractMultipleJsonFromResponse, resetStreamingParser } from '../utils/llmUtils';
+import { extractJsonFromLlmResponse, createFallbackNode, extractMultipleJsonFromResponse, resetStreamingParser, deriveHeadingFromText, deriveSummaryFromText } from '../utils/llmUtils';
+import { hasAssembledContext } from '../utils/contextUtils';
 
-export const useGraphState = (generateWithLLM) => {
+export const useGraphState = (generateWithLLM, onError = null) => {
   const [nodes, setNodes] = useState([]);
   const [connections, setConnections] = useState([]);
   const [currentNodeId, setCurrentNodeId] = useState(null);
@@ -28,6 +29,28 @@ export const useGraphState = (generateWithLLM) => {
   // Cleanup intervals on unmount
   const intervalRef = useRef(null);
   const abortControllerRef = useRef(null);
+
+  // Ids must never be reused. They were derived from the array length, so
+  // deleting two nodes and generating three could mint an id that already
+  // existed - silent corruption, since edges, selection, the deletion store and
+  // saved graphs all key on id. A counter only ever moves forward.
+  const nextNodeIdRef = useRef(0);
+  // The last node created within the current batch, for chaining.
+  const precedingNodeIdRef = useRef(null);
+
+  const claimNodeId = useCallback(() => {
+    const id = nextNodeIdRef.current;
+    nextNodeIdRef.current += 1;
+    return id;
+  }, []);
+
+  // Loading a graph adopts ids that were assigned elsewhere, so the counter has
+  // to clear the highest of them.
+  const reserveNodeId = useCallback((id) => {
+    if (Number.isFinite(id) && id >= nextNodeIdRef.current) {
+      nextNodeIdRef.current = id + 1;
+    }
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -103,6 +126,7 @@ export const useGraphState = (generateWithLLM) => {
   }, []);
 
   const addNode = useCallback((nodeData) => {
+    reserveNodeId(nodeData?.id);
     setNodes(prev => {
       // Prevent duplicate nodes
       if (prev.some(node => node.id === nodeData.id)) {
@@ -111,7 +135,7 @@ export const useGraphState = (generateWithLLM) => {
       }
       return [...prev, nodeData];
     });
-  }, []);
+  }, [reserveNodeId]);
 
   // Enhanced reset with proper cleanup
   const resetGraph = useCallback(() => {
@@ -135,6 +159,7 @@ export const useGraphState = (generateWithLLM) => {
     setCurrentStreamingNodeId(null);
     setGenerationBatch(0);
     setCurrNodeDepth(0);
+    nextNodeIdRef.current = 0;
 
     const resetStatus = {
       isGenerating: false,
@@ -177,9 +202,16 @@ export const useGraphState = (generateWithLLM) => {
   };
 
   const processNewNode = async (parsedData, nodeCount, currentBatch, prevWorldX, prevWorldY, preceedingSiblingNodes, sourceNodeId = null) => {
-    const uniqueNodeId = nodes.length + nodeCount;
-    const previousNodeId = uniqueNodeId > 0 ? uniqueNodeId - 1 : null;
+    const uniqueNodeId = claimNodeId();
+    const previousNodeId = precedingNodeIdRef.current;
+    precedingNodeIdRef.current = uniqueNodeId;
     const nodeDepth = currNodeDepth;
+
+    // Mirror the edge created below, so parentNodeId always names the node
+    // this one is actually connected to.
+    const parentNodeId = (nodeCount === 0 && sourceNodeId !== null)
+      ? sourceNodeId
+      : previousNodeId;
 
     const newNode = createNode(
       uniqueNodeId,
@@ -190,7 +222,7 @@ export const useGraphState = (generateWithLLM) => {
       prevWorldX,
       prevWorldY,
       currentBatch,
-      previousNodeId > 0 ? previousNodeId : null,
+      parentNodeId,
       nodeDepth,
       "",
       preceedingSiblingNodes
@@ -209,10 +241,10 @@ export const useGraphState = (generateWithLLM) => {
         from: sourceNodeId,
         to: uniqueNodeId
       }]);
-    } else if (nodeCount > 0) {
-      // Subsequent nodes connect to the previous node in the sequence
+    } else if (nodeCount > 0 && previousNodeId !== null) {
+      // Subsequent nodes chain to the previous node created in this batch.
       setConnections(prevConnections => [...prevConnections, {
-        from: uniqueNodeId - 1,
+        from: previousNodeId,
         to: uniqueNodeId
       }]);
     }
@@ -226,7 +258,20 @@ export const useGraphState = (generateWithLLM) => {
     });
   }, []);
 
-  const generateGraphWithLLM = async (prompt, prevWorldX = null, prevWorldY = null, modelConfig, sourceNodeId = null) => {
+  // Replaces a node in place. Nodes are frozen, so single-response streaming
+  // swaps the object rather than mutating it.
+  const updateNode = useCallback((nodeId, changes) => {
+    setNodes(prev => prev.map(n => (n.id === nodeId ? Object.freeze({ ...n, ...changes }) : n)));
+  }, []);
+
+  const generateGraphWithLLM = async (
+    prompt,
+    prevWorldX = null,
+    prevWorldY = null,
+    modelConfig,
+    sourceNodeId = null,
+    responseMode = RESPONSE_MODES.GRAPH
+  ) => {
     console.log('generateGraphWithLLM starting with prompt:', prompt);
     console.log('Using model config:', modelConfig);
 
@@ -254,12 +299,24 @@ export const useGraphState = (generateWithLLM) => {
     let rawResponseBuffer = '';
     let fallbackNodeCount = 0;
     let newNodeCount = 0;
+    let singleNodeId = null;
+    precedingNodeIdRef.current = null;
 
     try {
-      // Check if this looks like a context-aware prompt (contains "CONTEXT:" or "SELECTED NODES")
-      const isContextAware = prompt.includes('CONTEXT:') || prompt.includes('SELECTED NODES');
+      // composePrompt in contextUtils writes these markers; that is the other
+      // half of this handshake.
+      const isContextAware = hasAssembledContext(prompt);
+      const singleNode = responseMode === RESPONSE_MODES.SINGLE;
 
-      const fullPrompt = isContextAware ?
+      // Single mode asks for a normal answer and keeps it whole; the graph is
+      // then built by branching, not by splitting one reply.
+      const fullPrompt = singleNode ?
+        `${prompt}
+
+Answer directly and completely in Markdown. Do not split the answer into
+separate documents or JSON objects.` :
+
+        isContextAware ?
         // Context-aware prompt - be more explicit about generating NEW content
         `${prompt}
 
@@ -319,6 +376,10 @@ Generate 3-6 nodes total. Start now:`;
         // Check for abort signal
         if (abortControllerRef.current?.signal.aborted) {
           console.log('Generation aborted by user');
+          reader.cancel().catch(() => { });
+          updateGenerationStatus({ isGenerating: false, currentNodeId: null });
+          setStreamingContent('');
+          setCurrentStreamingNodeId(null);
           break;
         }
 
@@ -326,12 +387,49 @@ Generate 3-6 nodes total. Start now:`;
         if (done) {
           console.log('Stream finished');
 
+          if (singleNode) {
+            // Title and summary can only be derived once the answer is whole.
+            if (singleNodeId !== null) {
+              updateNode(singleNodeId, {
+                label: deriveHeadingFromText(rawResponseBuffer, prompt),
+                description: deriveSummaryFromText(rawResponseBuffer),
+                content: rawResponseBuffer,
+              });
+              newNodeCount = 1;
+            }
+
+            updateGenerationStatus({ isGenerating: false });
+            setStreamingContent('');
+            setCurrentStreamingNodeId(null);
+            setCurrNodeDepth(prev => (prev + 1));
+            console.log(`Generation complete: ${newNodeCount} node (single response)`);
+            break;
+          }
+
           // Process any remaining buffered content
           const finalResult = extractMultipleJsonFromResponse(rawResponseBuffer);
 
           for (const nodeData of finalResult.nodes) {
             await processNewNode(nodeData, newNodeCount, currentBatch, prevWorldX, prevWorldY, preceedingSiblingNodes, sourceNodeId);
             newNodeCount++;
+          }
+
+          // A model that ignores the JSON format streams to completion and
+          // parses to nothing. Keeping the reply as one node is far better
+          // than returning the user to an empty canvas.
+          if (newNodeCount === 0 && rawResponseBuffer.trim().length > 0) {
+            console.warn('No JSON nodes parsed; keeping the reply as a single node');
+            await processNewNode(
+              {
+                label: deriveHeadingFromText(rawResponseBuffer, prompt),
+                type: sourceNodeId === null ? 'root' : 'concept',
+                description: deriveSummaryFromText(rawResponseBuffer),
+                content: rawResponseBuffer,
+              },
+              0, currentBatch, prevWorldX, prevWorldY, preceedingSiblingNodes, sourceNodeId
+            );
+            newNodeCount++;
+            fallbackNodeCount++;
           }
 
           updateGenerationStatus({ isGenerating: false });
@@ -355,6 +453,26 @@ Generate 3-6 nodes total. Start now:`;
 
         rawResponseBuffer += chunk;
         setStreamingContent(rawResponseBuffer);
+
+        if (singleNode) {
+          // Create the node on the first real content, then grow it in place so
+          // the answer streams into the graph as it arrives.
+          if (singleNodeId === null) {
+            singleNodeId = nextNodeIdRef.current;
+            await processNewNode(
+              {
+                label: deriveHeadingFromText('', prompt),
+                type: sourceNodeId === null ? 'root' : 'concept',
+                description: '',
+                content: rawResponseBuffer,
+              },
+              0, currentBatch, prevWorldX, prevWorldY, preceedingSiblingNodes, sourceNodeId
+            );
+          } else {
+            updateNode(singleNodeId, { content: rawResponseBuffer });
+          }
+          continue;
+        }
 
         // Use streaming parser to extract JSON
         const [parsedData, newRawResponseBuffer] = extractJsonFromLlmResponse(rawResponseBuffer);
@@ -394,13 +512,14 @@ Generate 3-6 nodes total. Start now:`;
 
       updateGenerationStatus({ isGenerating: false, currentNodeId: null });
 
-      // More user-friendly error message
-      const errorMessage = error.name === 'AbortError' ?
-        'Generation was cancelled.' :
-        `Failed to generate graph: ${error.message}\n\nPlease check your model configuration and connection.`;
-
+      // Reported in-app rather than through window.alert, which froze the page
+      // and threw away the reason.
       if (error.name !== 'AbortError') {
-        alert(errorMessage);
+        onError?.({
+          title: 'Generation failed',
+          detail: error.message,
+          hint: 'Check the model in the menu at the top left, or try again.',
+        });
       }
     } finally {
       abortControllerRef.current = null;

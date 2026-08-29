@@ -1,29 +1,24 @@
 // Enhanced prompt input with selected nodes - DIRECT REPLACEMENT for NewPromptBox.jsx
 import { useState, useCallback, useEffect } from 'react';
 import { X, Send, Link, Sparkles, Eye, EyeOff } from 'lucide-react';
-import { buildContextUpToNode, buildContextSummaryString } from '../utils/contextUtils';
+import { buildContextUpToNode, composePrompt } from '../utils/contextUtils';
 
 const NewPromptBox = ({
-  initialPromptText,
   currentNodeId,
   nodeDetails,
   generationStatus,
   onGenerate,
   isTypingPrompt,
   setIsTypingPrompt,
-  uiPersonality,
-  setUiPersonality,
-  adaptivePrompts,
-  setAdaptivePrompts,
   nodes,
   connections,
-  setConnections,
   selectedNodeIds,
+  quotedPassage,
 }) => {
 
   const [newPromptInput, setNewPromptInput] = useState('');
   const [includeContext, setIncludeContext] = useState(true);
-  const [includeSelectedNodes, setIncludeSelectedNodes] = useState(true);
+  const [includeSelectedNodes] = useState(true);
   const [showSelectedPreview, setShowSelectedPreview] = useState(true);
   const [showContextPreview, setShowContextPreview] = useState(true);
   const [contextNodeIds, setContextNodeIds] = useState(new Set());
@@ -75,59 +70,15 @@ const NewPromptBox = ({
   const handleSubmit = useCallback(async () => {
     if (!newPromptInput.trim()) return;
 
-    let finalPrompt = newPromptInput;
-    let contextSummary = '';
-
-    // Build context if enabled and we have a current node
-    if (includeContext && currentNodeId !== null && nodes.length > 0) {
-      // Get context nodes
-      const contextNodes = buildContextUpToNode(currentNodeId, nodes, connections);
-
-      // Create a summary of what's already been covered (not full content)
-      const topicsCovered = contextNodes.map(node => `"${node.label}"`).join(', ');
-      const mainTopics = contextNodes
-        .filter(node => node.type === 'root' || node.type === 'concept')
-        .map(node => `- ${node.label}: ${node.description}`)
-        .join('\n');
-
-      contextSummary = `CONTEXT: We have already covered these topics: ${topicsCovered}
-
-Previous main concepts:
-${mainTopics}
-
-IMPORTANT: Do not recreate or duplicate the above topics. Instead, build NEW content that extends or relates to them.`;
-    }
-
-    // Handle selected nodes context separately and more carefully
-    if (includeSelectedNodes && selectedNodeIds.size > 0) {
-      const selectedNodes = nodes.filter(node => selectedNodeIds.has(node.id));
-      const selectedTopics = selectedNodes.map(node => `"${node.label}"`).join(', ');
-      const selectedSummaries = selectedNodes
-        .map(node => `- ${node.label}: ${node.description}`)
-        .join('\n');
-
-      const selectedContext = `SELECTED NODES CONTEXT: The user has specifically selected these ${selectedNodes.length} nodes for reference: ${selectedTopics}
-
-Selected concepts summary:
-${selectedSummaries}
-
-IMPORTANT: These are provided as BACKGROUND CONTEXT only. Do not recreate these topics. Generate NEW nodes that either:
-1. Explore deeper aspects of these topics
-2. Show practical applications
-3. Connect these concepts to new areas
-4. Provide related but distinct concepts`;
-
-      contextSummary = contextSummary ? `${contextSummary}\n\n${selectedContext}` : selectedContext;
-    }
-
-    // Create the final prompt with clear separation
-    if (contextSummary) {
-      finalPrompt = `${contextSummary}
-
-NEW REQUEST: ${newPromptInput}
-
-Generate 3-5 NEW learning nodes that address the user's request while building upon (not duplicating) the context provided above. Each node should cover NEW ground that hasn't been explored yet.`;
-    }
+    const finalPrompt = composePrompt({
+      request: newPromptInput,
+      targetNodeId: currentNodeId,
+      nodes,
+      connections,
+      selectedNodeIds,
+      includeContext,
+      includeSelection: includeSelectedNodes,
+    });
 
     setIsTypingPrompt(false);
     const curNode = nodes.find(n => n.id === currentNodeId);
@@ -187,6 +138,14 @@ Generate 3-5 NEW learning nodes that address the user's request while building u
           <div className="p-6">
             {/* Context indicators */}
             <div className="space-y-3 mb-4">
+              {quotedPassage && (
+                <div className="p-3 bg-indigo-50 rounded-xl border border-indigo-200">
+                  <p className="text-xs font-medium text-indigo-800 mb-1">Asking about this passage</p>
+                  <p className="text-xs text-indigo-700 italic break-words line-clamp-3">
+                    &ldquo;{quotedPassage}&rdquo;
+                  </p>
+                </div>
+              )}
               {/* Previous context */}
               {includeContext && nodeDetails && (
                 <div className="p-3 bg-indigo-50/50 rounded-xl border border-indigo-200/30">

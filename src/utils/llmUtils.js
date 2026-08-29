@@ -163,7 +163,7 @@ class StreamingJsonParser {
   cleanJsonString(jsonString) {
     return jsonString
       .replace(/^[^{]*/, '') // Remove everything before first {
-      .replace(/[^}]*$/, '}') // Ensure it ends with }
+      .replace(/[^}]*$/, '') // Drop any trailing junk after the last }
       .replace(/([{,]\s*)(\w+):/g, '$1"$2":') // Quote unquoted keys
       .replace(/:\s*'([^']*)'/g, ': "$1"') // Convert single quotes to double
       .replace(/,(\s*[}\]])/g, '$1') // Remove trailing commas
@@ -315,11 +315,13 @@ function tryStaticExtraction(responseString) {
 
 // Extract from markdown code blocks
 function extractFromCodeBlock(responseString) {
+  // Non-global so String.match returns capture groups: with /g it returns
+  // the list of whole matches instead, making match[1] a second code block.
   const patterns = [
-    /```json\s*\n([\s\S]*?)\n```/g,
-    /```json([\s\S]*?)```/g,
-    /```\s*\n(\{[\s\S]*?\})\s*\n```/g,
-    /```(\{[\s\S]*?\})```/g
+    /```json\s*\n([\s\S]*?)\n```/,
+    /```json([\s\S]*?)```/,
+    /```\s*\n(\{[\s\S]*?\})\s*\n```/,
+    /```(\{[\s\S]*?\})```/
   ];
 
   for (const pattern of patterns) {
@@ -469,4 +471,44 @@ Categorize the feedback into one of these categories and extract the key concern
 
 Respond with ONLY this JSON format, no other text:
 {"category": "category_name", "concern": "brief_description", "suggestion": "improvement_suggestion"}`;
+};
+
+// Derives a short node heading from a free-form answer: a markdown heading if
+// the model wrote one, otherwise the first sentence, otherwise the prompt.
+export const deriveHeadingFromText = (text, fallback = 'Response', maxLength = 60) => {
+  const trimmed = (text || '').trim();
+  if (!trimmed) return truncateHeading(fallback, maxLength);
+
+  const heading = trimmed.match(/^\s{0,3}#{1,6}\s+(.+)$/m);
+  if (heading) return truncateHeading(stripMarkdown(heading[1]), maxLength);
+
+  const bold = trimmed.match(/^\s*\*\*(.+?)\*\*\s*$/m);
+  if (bold) return truncateHeading(stripMarkdown(bold[1]), maxLength);
+
+  const firstLine = stripMarkdown(trimmed.split('\n').find((l) => l.trim()) || '');
+  const sentence = firstLine.split(/(?<=[.!?])\s/)[0] || firstLine;
+  return truncateHeading(sentence || fallback, maxLength);
+};
+
+// A short plain-text summary for the node body, which shows description only.
+export const deriveSummaryFromText = (text, maxLength = 180) => {
+  const plain = stripMarkdown((text || '').trim()).replace(/\s+/g, ' ').trim();
+  if (plain.length <= maxLength) return plain;
+  return plain.slice(0, maxLength - 1).trimEnd() + '\u2026';
+};
+
+const stripMarkdown = (text) =>
+  text
+    .replace(/`{1,3}([^`]*)`{1,3}/g, '$1')
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/\*(.*?)\*/g, '$1')
+    .replace(/^\s{0,3}#{1,6}\s+/gm, '')
+    .replace(/^\s*[-*+]\s+/gm, '')
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .trim();
+
+const truncateHeading = (text, maxLength) => {
+  const clean = text.replace(/\s+/g, ' ').trim();
+  if (clean.length <= maxLength) return clean;
+  return clean.slice(0, maxLength - 1).trimEnd() + '\u2026';
 };

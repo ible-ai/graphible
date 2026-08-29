@@ -3,7 +3,8 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { Maximize2, Minimize2, ZoomIn, ZoomOut, Layers } from 'lucide-react';
 import { getMinimapBounds } from '../utils/coordinateUtils';
-import { applyClustering, getClusterColor, setLabelGenerator } from '../utils/clusteringUtils';
+import { applyClustering, getClusterColor } from '../utils/clusteringUtils';
+import { Z } from '../constants/zLayers';
 
 const Minimap = ({
   nodes,
@@ -11,9 +12,7 @@ const Minimap = ({
   currentNodeId,
   camera,
   onNavigateToNode,
-  onCameraMove,
-  generateWithLLM, // Added for cluster label generation
-  currentModel // Added to pass to label generator
+  onCameraMove
 }) => {
   const [minimapExpanded, setMinimapExpanded] = useState(false);
   const [minimapZoom, setMinimapZoom] = useState(1.0);
@@ -25,26 +24,6 @@ const Minimap = ({
 
   // State for async clustering
   const [clusterState, setClusterState] = useState({ clusters: [], showClusters: false });
-
-  // Set up label generator when component mounts
-  useEffect(() => {
-    if (generateWithLLM && currentModel) {
-      const labelGenerator = async (prompt) => {
-        try {
-          const response = await generateWithLLM(prompt, false, currentModel);
-          if (response.ok) {
-            const text = await response.text();
-            return text.trim();
-          }
-          return 'Cluster';
-        } catch (error) {
-          console.warn('Label generation failed:', error);
-          return 'Cluster';
-        }
-      };
-      setLabelGenerator(labelGenerator);
-    }
-  }, [generateWithLLM, currentModel]);
 
   // Apply clustering with async support
   useEffect(() => {
@@ -73,6 +52,10 @@ const Minimap = ({
   }, [nodes, connections, clusteringMode]);
 
   const { clusters, showClusters } = clusterState;
+
+  // Edges reference node ids, which stop matching array positions after a
+  // deletion, so look them up rather than indexing.
+  const nodeById = useMemo(() => new Map(nodes.map(n => [n.id, n])), [nodes]);
 
   // Calculate zoomed bounds with memoization
   const zoomedBounds = useMemo(() => {
@@ -381,7 +364,7 @@ const Minimap = ({
       style={{
         width: minimapExpanded ? 600 : 280,
         height: minimapExpanded ? 400 : 200,
-        zIndex: 100
+        zIndex: Z.MINIMAP
       }}
       onWheel={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
@@ -563,9 +546,8 @@ const Minimap = ({
 
           {/* Minimap connections */}
           {connections.map((conn, index) => {
-            if (conn.from >= nodes.length || conn.to >= nodes.length) return null;
-            const fromNode = nodes.at(conn.from);
-            const toNode = nodes.at(conn.to);
+            const fromNode = nodeById.get(conn.from);
+            const toNode = nodeById.get(conn.to);
             if (!fromNode || !toNode) return null;
 
             return (

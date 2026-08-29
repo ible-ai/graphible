@@ -1,7 +1,7 @@
 // Node component
 
 import { useState, memo, useMemo, useCallback } from 'react';
-import { Circle, Move, X } from 'lucide-react';
+import { Circle, ThumbsUp, ThumbsDown, X } from 'lucide-react';
 import { NODE_SIZE } from '../constants/graphConstants';
 
 const NodeComponent = memo(({
@@ -13,9 +13,7 @@ const NodeComponent = memo(({
   colorScheme,
   showPromptCenter,
   generationStatus,
-  uiPersonality,
   isSelected = false,
-  contextMode = 'smart',
   onStartDrag,
   onStartResize,
   onDelete,
@@ -111,7 +109,15 @@ const NodeComponent = memo(({
   const handleMouseDown = useCallback((e) => {
     e.stopPropagation();
 
-    // Handle Ctrl+click selection in smart mode
+    // Let the hover controls and the resize grip handle their own presses.
+    // Focusing the node re-centres the camera, which slides the node out from
+    // under the pointer, so mouseup lands elsewhere and the button never sees
+    // a click at all.
+    if (e.target.closest('.node-controls') || e.target.closest('.resize-handle')) {
+      return;
+    }
+
+    // Ctrl/Cmd+click toggles selection
     if (e.ctrlKey || e.metaKey) {
       onToggleSelection?.(node.id);
       return;
@@ -127,14 +133,7 @@ const NodeComponent = memo(({
     if (isClickable) {
       onClick(node, e);
     }
-  }, [contextMode, onToggleSelection, onStartDrag, camera, isClickable, onClick, node]);
-
-  const handleDragHandleMouseDown = useCallback((e) => {
-    e.stopPropagation();
-    e.preventDefault();
-    console.log('Drag handle clicked for node:', node.id);
-    onStartDrag?.(node.id, e.clientX, e.clientY, camera);
-  }, [onStartDrag, node.id, camera]);
+  }, [onToggleSelection, onStartDrag, camera, isClickable, onClick, node]);
 
   const handleResizeMouseDown = useCallback((e) => {
     e.stopPropagation();
@@ -198,7 +197,27 @@ const NodeComponent = memo(({
 
       {/* Control buttons */}
       {(showControls || isSelected) && (
-        <div className="absolute top-2 right-2 flex gap-1 bg-white/95 rounded-lg p-1 shadow-lg border border-slate-200">
+        <div className="node-controls absolute top-2 right-2 flex gap-1 bg-white/95 rounded-lg p-1 shadow-lg border border-slate-200">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onFeedback?.(node.id, true);
+            }}
+            className="p-1.5 hover:bg-emerald-100 rounded text-emerald-600 transition-colors"
+            title="This was helpful"
+          >
+            <ThumbsUp size={14} />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onFeedback?.(node.id, false);
+            }}
+            className="p-1.5 hover:bg-amber-100 rounded text-amber-600 transition-colors"
+            title="This needs improvement"
+          >
+            <ThumbsDown size={14} />
+          </button>
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -215,7 +234,7 @@ const NodeComponent = memo(({
       {/* Resize handle */}
       {(showControls || isSelected) && (
         <div
-          className="absolute bottom-1 right-1 w-5 h-5 cursor-se-resize bg-slate-300/80 rounded-tl-lg hover:bg-slate-400/80 transition-colors border border-slate-400/50 flex items-center justify-center"
+          className="resize-handle absolute bottom-1 right-1 w-5 h-5 cursor-se-resize bg-slate-300/80 rounded-tl-lg hover:bg-slate-400/80 transition-colors border border-slate-400/50 flex items-center justify-center"
           onMouseDown={handleResizeMouseDown}
           title="Resize node"
         >
@@ -251,7 +270,6 @@ const NodeComponent = memo(({
     prevProps.isCurrent === nextProps.isCurrent &&
     prevProps.isStreaming === nextProps.isStreaming &&
     prevProps.isSelected === nextProps.isSelected &&
-    prevProps.contextMode === nextProps.contextMode &&
     prevProps.showPromptCenter === nextProps.showPromptCenter
   );
 });

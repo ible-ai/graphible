@@ -1,7 +1,7 @@
 // Main application
 
-import { useState, useEffect, useCallback } from 'react';
-import { RotateCcw, Save, Circle, MousePointer, Link, Trash2, Target, CircleQuestionMark } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { RotateCcw, Save, Circle, MousePointer, Link, Trash2, Target, CircleQuestionMark, FileText, Waypoints } from 'lucide-react';
 
 // Import custom hooks
 import { useCamera } from './hooks/useCamera';
@@ -12,6 +12,7 @@ import { useFeedback } from './hooks/useFeedback';
 import { useSaveLoad } from './hooks/useSaveLoad';
 import { useNodeManipulation } from './hooks/useNodeManipulation';
 import { useNodeSelection } from './hooks/useNodeSelection';
+import { useCanvasInteraction } from './hooks/useCanvasInteraction';
 
 // Import components
 import CenteredPrompt from './components/CenteredPrompt';
@@ -27,78 +28,39 @@ import InstallationGuide from './components/InstallationGuide';
 import DeletionStoreModal from './components/DeletionStoreModal';
 import ConnectionManager from './components/ConnectionManager';
 import SetupWizard from './components/SetupWizard/SetupWizard';
+import ModelDownloadConsent from './components/ModelDownloadConsent';
+import Notice from './components/Notice';
 
 // Import constants and utilities
-import { colorSchemes } from './constants/graphConstants';
+import {
+  colorSchemes,
+  RESPONSE_MODES,
+  RESPONSE_MODE_LABELS,
+  DEFAULT_RESPONSE_MODE,
+  RESPONSE_MODE_STORAGE_KEY,
+  preferredResponseModeFor
+} from './constants/graphConstants';
 import { loadSetupConfig } from './utils/setupWizardUtils';
+import { focusOffsetForPanel } from './utils/panelLayout';
+import { buildQuotePrompt } from './utils/threadUtils';
+
+// Must stay in sync with the modes useNodeSelection cycles through.
+const CONTEXT_MODE_LABELS = {
+  auto: { title: 'Auto (relevant nodes selected for you)' },
+  manual: { title: 'Manual (click nodes to select)' },
+  branch: { title: 'Branch (click a subtree)' },
+  batch: { title: 'Batch (click a generation)' }
+};
 
 const Graphible = () => {
   // Core state
-  const [preferences, setPreferences] = useState({
+  const [preferences] = useState({
     colorScheme: 'blue',
     layoutStyle: 'hierarchical',
     animationSpeed: 1.0,
     nodeSize: 'medium'
   });
 
-  // UI Personality state - keeping existing structure
-  const [uiPersonality, setUiPersonality] = useState({
-    theme: 'tech',
-    colorScheme: 'blue',
-    fontFamily: 'system',
-    nodeStyle: 'rounded',
-    animationStyle: 'smooth',
-    layoutPattern: 'hierarchical',
-    customCSS: '',
-    colors: {
-      root: {
-        backgroundColor: '#FCD34D',
-        borderColor: '#1E40AF',
-        textColor: 'white',
-        accentColor: '#60A5FA',
-        positiveColor: '#10B981',
-        negativeColor: '#EF4444',
-        boxShadow: '0 4px 16px rgba(0, 0, 0, 0.05)',
-        isCurrent: {
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
-        },
-      },
-      default: {
-        backgroundColor: '#3B82F6',
-        borderColor: '#1E40AF',
-        textColor: 'white',
-        accentColor: '#60A5FA',
-        positiveColor: '#10B981',
-        negativeColor: '#EF4444'
-      },
-    },
-    typography: {
-      fontFamily: '"Courier New", monospace',
-      fontSize: '14px',
-      fontWeight: 'normal'
-    },
-    layout: {
-      padding: '16px',
-      borderRadius: '12px',
-      borderWidth: '2px',
-      scale: '1.0'
-    },
-    effects: {
-      shadow: '0 4px 6px rgba(0, 0, 0, 0.3)',
-      textShadow: 'none',
-      filter: 'none'
-    },
-    animations: {
-      transition: 'all 0.3s ease-out',
-      transform: 'none'
-    },
-    customProperties: {},
-    decorativeElements: []
-  });
-
-  const [adaptivePrompts, setAdaptivePrompts] = useState([]);
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [nodeDetails, setNodeDetails] = useState(null);
   const [showPromptCenter, setShowPromptCenter] = useState(true);
   const [initialPromptText, setInitialPromptText] = useState('');
@@ -108,6 +70,37 @@ const Graphible = () => {
   const [showConnectionManager, setShowConnectionManager] = useState(false);
   const [showSetupWizard, setShowSetupWizard] = useState(false);
   const [isFirstRun, setIsFirstRun] = useState(false);
+
+  // Whether a reply is split into several nodes or kept whole in one.
+  const [responseMode, setResponseMode] = useState(() => {
+    try {
+      const saved = localStorage.getItem(RESPONSE_MODE_STORAGE_KEY);
+      return Object.values(RESPONSE_MODES).includes(saved) ? saved : DEFAULT_RESPONSE_MODE;
+    } catch {
+      return DEFAULT_RESPONSE_MODE;
+    }
+  });
+
+  const toggleResponseMode = useCallback(() => {
+    setResponseMode(prev => {
+      const next = prev === RESPONSE_MODES.GRAPH ? RESPONSE_MODES.SINGLE : RESPONSE_MODES.GRAPH;
+      try {
+        localStorage.setItem(RESPONSE_MODE_STORAGE_KEY, next);
+      } catch {
+        // Storage can be unavailable in private windows; the mode still applies.
+      }
+      return next;
+    });
+  }, []);
+
+  const [notice, setNotice] = useState(null);
+
+  // Guards the one-shot startup connection attempt (see the effect below).
+  const hasInitializedConnection = useRef(false);
+
+  // Mirrors connectionError so the submit handler can read the reason set
+  // during the await it just made, without waiting for a re-render.
+  const connectionErrorRef = useRef(null);
 
   // Custom hooks
   const { camera, setCameraImmediate, setCameraTarget } = useCamera();
@@ -122,7 +115,27 @@ const Graphible = () => {
     hasTestedInitially,
     webllmLoadingProgress,
     webllmLoadState,
+    consentRequest,
+    resolveConsentRequest,
+    connectionError,
   } = useLLMConnection();
+
+  // Switching to a backend that cannot do graph mode moves the user to single
+  // mode once, rather than letting them discover it through a degraded result.
+  const steeredBackendRef = useRef(null);
+  useEffect(() => {
+    const preferred = preferredResponseModeFor(currentModel);
+    if (!preferred || steeredBackendRef.current === currentModel?.type) return;
+
+    steeredBackendRef.current = currentModel?.type;
+    setResponseMode(preferred);
+    try {
+      localStorage.setItem(RESPONSE_MODE_STORAGE_KEY, preferred);
+    } catch {
+      // Storage may be unavailable; the mode still applies to this session.
+    }
+  }, [currentModel]);
+
 
   const {
     nodes,
@@ -131,25 +144,23 @@ const Graphible = () => {
     streamingContent,
     currentNodeId,
     currentStreamingNodeId,
+    nodeMap,
     setCurrentNodeId,
     addNode,
     resetGraph,
     generateWithLLM: generateGraphWithLLM,
     applyLayoutOptimization,
+    cancelGeneration,
     setConnections,
     setNodes
-  } = useGraphState(generateWithLLM);
+  } = useGraphState(generateWithLLM, setNotice);
 
   // Node manipulation and selection hooks
   const {
-    isDraggingNode,
-    isResizingNode,
+    draggingNodeId,
+    isResizingNodeId,
     startNodeDrag,
-    updateNodeDrag,
-    endNodeDrag,
     startNodeResize,
-    updateNodeResize,
-    endNodeResize,
     deleteNode,
     restoreNode,
     permanentlyDeleteNode,
@@ -162,6 +173,7 @@ const Graphible = () => {
     selectedNodeIds,
     contextMode,
     toggleContextMode,
+    setContextMode,
     handleNodeSelection,
     updateAutoContext,
     toggleNodeSelection,
@@ -176,15 +188,24 @@ const Graphible = () => {
     setShowFeedbackModal,
     submitFeedback,
     getQuickFeedbackOptions
-  } = useFeedback();
+  } = useFeedback(generateWithLLM);
 
   const {
     savedGraphs,
     showSaveLoad,
     setShowSaveLoad,
     saveCurrentGraph,
-    deleteGraph
+    deleteGraph,
+    exportGraph,
+    importGraph
   } = useSaveLoad(nodes, connections, currentNodeId, initialPromptText);
+
+  useCanvasInteraction({
+    camera,
+    setCameraImmediate,
+    enabled: !showPromptCenter,
+    isManipulatingNode: draggingNodeId !== null || isResizingNodeId !== null,
+  });
 
   useKeyboardNavigation({
     nodes,
@@ -210,11 +231,7 @@ const Graphible = () => {
 
   useEffect(() => {
     const initializeConnection = async () => {
-      let setupConfig = null;
-      setTimeout(() => {
-        setupConfig = loadSetupConfig();
-      }, 2000);
-      if (setupConfig === null || setupConfig?.isComplete) return;
+      const setupConfig = loadSetupConfig();
 
       if (setupConfig.isComplete && setupConfig.config) {
         // Use saved setup configuration
@@ -255,7 +272,12 @@ const Graphible = () => {
       }
     };
 
-    if (!isFirstRun) {
+    // Run once. loadSavedConfig/handleModelChange/testLLMConnection all change
+    // identity as a result of what this effect does - testLLMConnection depends
+    // on currentModel, which handleModelChange sets - so keeping them as
+    // dependencies re-fires the effect forever.
+    if (!isFirstRun && !hasInitializedConnection.current) {
+      hasInitializedConnection.current = true;
       initializeConnection();
     }
   }, [loadSavedConfig, handleModelChange, testLLMConnection, hasTestedInitially, isFirstRun, showSetupWizard]);
@@ -266,8 +288,8 @@ const Graphible = () => {
 
     if (config.type !== 'demo') {
       handleModelChange(config);
-      // Test the connection
-      setTimeout(() => testLLMConnection(config), 500);
+      // Finishing the wizard is an explicit choice, so this test may download.
+      setTimeout(() => testLLMConnection(config, { interactive: true }), 500);
     }
   }, [handleModelChange, testLLMConnection]);
 
@@ -286,25 +308,17 @@ const Graphible = () => {
     // Load the demo graph data
     resetGraph();
     demoData.nodes.forEach(node => addNode(node));
+    setConnections(demoData.connections || []);
     setCurrentNodeId(demoData.currentNodeId);
     setInitialPromptText(demoData.name);
     setShowPromptCenter(false);
     setNodeDetails(null);
     clearSelections();
 
-    // Reset UI personality for demo
-    setUiPersonality(prevUiPersonality => ({
-      ...prevUiPersonality,
-      theme: 'tech',
-      colorScheme: 'blue',
-      fontFamily: 'system',
-      customCSS: ''
-    }));
-    setAdaptivePrompts([]);
 
     setCameraImmediate(0, 0, 1.0);
-  }, [resetGraph, addNode, setCurrentNodeId, setInitialPromptText, setShowPromptCenter,
-    setNodeDetails, clearSelections, setUiPersonality, setAdaptivePrompts, setCameraImmediate]);
+  }, [resetGraph, addNode, setConnections, setCurrentNodeId, setInitialPromptText, setShowPromptCenter,
+    setNodeDetails, clearSelections, setCameraImmediate]);
 
   const handleShowSetupWizard = useCallback(() => {
     setShowSetupWizard(true);
@@ -318,136 +332,37 @@ const Graphible = () => {
   }, [nodes, currentNodeId, connections, updateAutoContext]);
 
   // Use UI personality color scheme, fall back to preferences, then default
-  const currentScheme = colorSchemes[uiPersonality.colorScheme || preferences.colorScheme || 'default'];
+  const currentScheme = colorSchemes[preferences.colorScheme || 'default'];
 
-  // Initialize LLM connection
-  useCallback(() => {
-    const initializeConnection = async () => {
-      let savedConfig;
-      setTimeout(() => {
-        savedConfig = loadSavedConfig();
-        console.log('App initialization - loaded config:', savedConfig);
-      }, 1500);
-
-      if (savedConfig.type === 'external' && savedConfig.provider === 'google' && !savedConfig.apiKey) {
-        const savedApiKey = localStorage.getItem('graphible-google-api-key');
-        if (savedApiKey) {
-          const updatedConfig = { ...savedConfig, apiKey: savedApiKey };
-          handleModelChange(updatedConfig);
-          console.log('Updated config with saved API key:', updatedConfig);
-        }
-      }
-
-      if (!hasTestedInitially) {
-        setTimeout(async () => {
-          await testLLMConnection(savedConfig);
-        }, 1500);
-      }
-    };
-
-    initializeConnection();
-  }, [loadSavedConfig, handleModelChange, testLLMConnection, hasTestedInitially]);
-
-  // Node focusing
   useEffect(() => {
-    const currentNode = nodes[currentNodeId];
-    if (currentNode && !showPromptCenter) {
+    connectionErrorRef.current = connectionError;
+  }, [connectionError]);
+
+  // Node focusing. The details panel follows the node as it streams, so this
+  // runs on every chunk - but the camera only moves when the focused node
+  // actually changes, otherwise the canvas jitters throughout a generation.
+  const focusedNodeIdRef = useRef(null);
+  useEffect(() => {
+    const currentNode = nodeMap.get(currentNodeId);
+    if (!currentNode || showPromptCenter) return;
+
+    if (focusedNodeIdRef.current !== currentNodeId) {
+      focusedNodeIdRef.current = currentNodeId;
       setNodeDetails(currentNode);
-      setCameraImmediate(-currentNode.worldX, -currentNode.worldY);
-    }
-  }, [currentNodeId, showPromptCenter, nodes, setCameraImmediate]);
-
-  // Handle node manipulation mouse events
-  useEffect(() => {
-    const handleMouseDown = (e) => {
-      // Don't interfere with node manipulation
-      if (isDraggingNode != null || isResizingNode != null) return;
-
-      const clickedElement = e.target;
-      const isInteractiveClick =
-        clickedElement.closest('.node-component') ||
-        clickedElement.closest('.minimap-container') ||
-        clickedElement.closest('.details-panel') ||
-        clickedElement.closest('button') ||
-        clickedElement.closest('input') ||
-        clickedElement.closest('textarea') ||
-        clickedElement.closest('.modal') ||
-        clickedElement.closest('select') ||
-        clickedElement.closest('a') ||
-        clickedElement.closest('.node-controls') ||
-        clickedElement.closest('.resize-handle');
-
-      if (isInteractiveClick) return;
-
-      if (e.shiftKey && clickedElement.closest('.node-component')) return;
-
-      // Start camera dragging
-      setIsDragging(true);
-      setDragStart({ x: e.clientX, y: e.clientY });
-      document.body.style.cursor = 'grabbing';
-      document.body.style.userSelect = 'none';
-
-      e.preventDefault();
-    };
-
-    const handleMouseMove = (e) => {
-      if (isDraggingNode !== null || isResizingNode !== null) return;
-
-      // Handle camera dragging
-      if (!isDragging) return;
-
-      const deltaX = e.clientX - dragStart.x;
-      const deltaY = e.clientY - dragStart.y;
-
-      // Apply camera movement
+      // Shift left by half the panel so the node lands in the visible half.
       setCameraImmediate(
-        camera.x + deltaX / camera.zoom,
-        camera.y + deltaY / camera.zoom,
-        camera.zoom
+        -currentNode.worldX - focusOffsetForPanel(camera.zoom, true),
+        -currentNode.worldY
       );
-
-      // Update drag start for next frame
-      setDragStart({ x: e.clientX, y: e.clientY });
-      e.preventDefault();
-    };
-
-    const handleMouseUp = (e) => {
-      if (isDraggingNode !== null || isResizingNode !== null) return;
-
-      if (isDragging) {
-        setIsDragging(false);
-        document.body.style.cursor = 'default';
-        document.body.style.userSelect = '';
-      }
-
-      e.preventDefault();
-    };
-
-    // Only add listeners when not in prompt center mode
-    if (!showPromptCenter) {
-      document.addEventListener('mousedown', handleMouseDown);
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
+      return;
     }
 
-    return () => {
-      document.removeEventListener('mousedown', handleMouseDown);
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-      document.body.style.cursor = 'default';
-      document.body.style.userSelect = '';
-    };
-  }, [
-    isDragging,
-    camera,
-    setCameraImmediate,
-    dragStart,
-    contextMode,
-    isDraggingNode,
-    isResizingNode,
-    nodes,
-    showPromptCenter
-  ]);
+    // Same node: keep an open panel in step with its content while it streams,
+    // but never reopen one the user has closed. This effect re-runs whenever
+    // the camera moves, so an unconditional set made the close button useless.
+    setNodeDetails(prev => (prev && prev.id === currentNodeId ? currentNode : prev));
+  }, [currentNodeId, showPromptCenter, nodeMap, setCameraImmediate, camera.zoom]);
+
 
   // Layout optimization that preserves selections
   const applyLayoutOptimizationWithSelection = useCallback(() => {
@@ -470,15 +385,29 @@ const Graphible = () => {
     const modifierKey = event?.ctrlKey || event?.metaKey;
 
     // Handle context selection based on mode
-    handleNodeSelection(node.id, nodes, connections, modifierKey);
+    handleNodeSelection(node.id, nodes, connections);
 
     // Always update current node (except in manual mode with modifier key)
     if (!(contextMode === 'manual' && modifierKey)) {
       setCurrentNodeId(node.id);
       setNodeDetails(node);
-      setCameraImmediate(-node.worldX, -node.worldY, camera.zoom);
+      setCameraImmediate(
+        -node.worldX - focusOffsetForPanel(camera.zoom, true),
+        -node.worldY,
+        camera.zoom
+      );
     }
   }, [camera.zoom, handleNodeSelection, nodes, connections, contextMode, setCurrentNodeId, setNodeDetails, setCameraImmediate]);
+
+  // Branching from a quoted passage: the follow-up hangs off the node the
+  // passage came from, and carries the quote as its context.
+  const [pendingQuote, setPendingQuote] = useState(null);
+
+  const handleBranchFromQuote = useCallback((quote, sourceNode) => {
+    setPendingQuote({ quote, sourceNode });
+    setCurrentNodeId(sourceNode.id);
+    setIsTypingPrompt(true);
+  }, [setCurrentNodeId]);
 
   const handleFeedback = (nodeId, isPositive) => {
     setShowFeedbackModal({ nodeId, isPositive });
@@ -496,6 +425,8 @@ const Graphible = () => {
   const loadGraph = (graphData) => {
     resetGraph();
     graphData.nodes.forEach(node => addNode(node));
+    // useSaveLoad persists connections; without this they were dropped on load.
+    setConnections(graphData.connections || []);
     setCurrentNodeId(graphData.currentNodeId);
     setInitialPromptText(graphData.name);
     setShowPromptCenter(false);
@@ -503,14 +434,6 @@ const Graphible = () => {
     setNodeDetails(null);
     clearSelections();
 
-    setUiPersonality(prevUiPersonality => ({
-      ...prevUiPersonality,
-      theme: 'tech',
-      colorScheme: 'blue',
-      fontFamily: 'system',
-      customCSS: ''
-    }));
-    setAdaptivePrompts([]);
 
     setCameraImmediate(0, 0, 1.0);
   };
@@ -519,15 +442,25 @@ const Graphible = () => {
     if (!prompt.trim()) return;
 
     if (llmConnected !== 'connected') {
-      const isConnected = await testLLMConnection();
+      // interactive: the user has just asked for a generation, so this is an
+      // acceptable moment to ask about a download.
+      const isConnected = await testLLMConnection(currentModel, { interactive: true });
+
       if (!isConnected) {
+        // Declining the download is a decision, not a failure: say nothing and
+        // leave the user where they were.
+        if (/declined|consent/i.test(connectionErrorRef.current || '')) return;
+
         const modelType = currentModel.type === 'local' ? 'local model (Ollama)' :
           currentModel.type === 'webllm' ? 'browser model' : 'external API';
-        const proceed = window.confirm(
-          `Could not connect to ${modelType}. Would you like to try generating anyway? ` +
-          `(You can configure your model settings using the dropdown in the top-left)`
-        );
-        if (!proceed) return;
+
+        // Report it and carry on: the request may still succeed, and blocking
+        // the page on a native dialog to ask helped nobody.
+        setNotice({
+          title: `Could not reach the ${modelType}`,
+          detail: connectionErrorRef.current || undefined,
+          hint: 'Trying anyway. Pick a different model from the menu at the top left if this keeps failing.',
+        });
       }
     }
 
@@ -535,153 +468,25 @@ const Graphible = () => {
     clearSelections();
     setShowPromptCenter(false);
 
-    await generateGraphWithLLM(prompt, null, null, currentModel, null);
+    await generateGraphWithLLM(prompt, null, null, currentModel, null, responseMode);
   };
 
   const enhancedGenerateWithLLM = async (prompt, prevWorldX, prevWorldY) => {
-    return generateGraphWithLLM(prompt, prevWorldX, prevWorldY, currentModel, currentNodeId);
+    const finalPrompt = pendingQuote
+      ? buildQuotePrompt(pendingQuote.quote, prompt, pendingQuote.sourceNode?.label)
+      : prompt;
+    const source = pendingQuote?.sourceNode?.id ?? currentNodeId;
+    setPendingQuote(null);
+
+    return generateGraphWithLLM(finalPrompt, prevWorldX, prevWorldY, currentModel, source, responseMode);
   };
-
-  // Background drag handling
-  useEffect(() => {
-    const handleMouseDown = (e) => {
-      if (isDraggingNode !== null || isResizingNode !== null) return;
-
-      const clickedElement = e.target;
-      const isInteractiveClick =
-        clickedElement.closest('.node-component') ||
-        clickedElement.closest('.minimap-container') ||
-        clickedElement.closest('.details-panel') ||
-        clickedElement.closest('button') ||
-        clickedElement.closest('input') ||
-        clickedElement.closest('textarea') ||
-        clickedElement.closest('.modal') ||
-        clickedElement.closest('select') ||
-        clickedElement.closest('a');
-
-      if (isInteractiveClick) return;
-
-      setIsDragging(true);
-      setDragStart({ x: e.clientX, y: e.clientY });
-      document.body.style.cursor = 'grabbing';
-      document.body.style.userSelect = 'none';
-
-      e.preventDefault();
-    };
-
-    const handleMouseMove = (e) => {
-      if (!isDragging) return;
-
-      // Fixed camera movement calculation
-      const deltaX = e.clientX - dragStart.x;
-      const deltaY = e.clientY - dragStart.y;
-
-      // Apply delta in world space, accounting for zoom
-      setCameraImmediate(
-        camera.x + deltaX / camera.zoom,
-        camera.y + deltaY / camera.zoom,
-        camera.zoom
-      );
-
-      setDragStart({ x: e.clientX, y: e.clientY });
-      e.preventDefault();
-    };
-
-    const handleMouseUp = (e) => {
-      if (isDragging) {
-        setIsDragging(false);
-        document.body.style.cursor = 'default';
-        document.body.style.userSelect = '';
-        e.preventDefault();
-      }
-    };
-
-    document.addEventListener('mousedown', handleMouseDown);
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-
-    return () => {
-      document.removeEventListener('mousedown', handleMouseDown);
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-      document.body.style.cursor = 'default';
-      document.body.style.userSelect = '';
-    };
-  }, [
-    isDragging,
-    camera,
-    setCameraImmediate,
-    dragStart,
-    contextMode,
-    isDraggingNode,
-    isResizingNode
-  ]);
-
-  // Zoom handling
-  const handleWheel = useCallback((e) => {
-    if (showPromptCenter) return;
-    e.preventDefault();
-
-    const scaleAmount = 0.1;
-    const zoomFactor = e.deltaY < 0 ? (1 + scaleAmount) : (1 - scaleAmount);
-    const newZoom = Math.max(0.1, Math.min(camera.zoom * zoomFactor, 3.0));
-
-    setCameraImmediate(camera.x, camera.y, newZoom);
-  }, [showPromptCenter, camera, setCameraImmediate]);
-
-  useEffect(() => {
-    if (showPromptCenter) return;
-
-    const handleWheelEvent = (e) => handleWheel(e);
-    document.addEventListener('wheel', handleWheelEvent, { passive: false });
-
-    return () => {
-      document.removeEventListener('wheel', handleWheelEvent);
-    };
-  }, [handleWheel, showPromptCenter]);
-
-  // Apply adaptive body styles based on UI personality
-  useEffect(() => {
-    const applyGlobalStyles = () => {
-      if (uiPersonality.customCSS) {
-        let styleElement = document.getElementById('adaptive-styles');
-        if (!styleElement) {
-          styleElement = document.createElement('style');
-          styleElement.id = 'adaptive-styles';
-          document.head.appendChild(styleElement);
-        }
-        styleElement.textContent = uiPersonality.customCSS;
-      }
-
-      if (uiPersonality.typography?.fontFamily && uiPersonality.typography.fontFamily !== 'system') {
-        if (uiPersonality.typography.fontFamily.includes('bubble')) {
-          document.body.style.fontFamily = '"Comic Sans MS", cursive, sans-serif';
-        } else if (uiPersonality.typography.fontFamily.includes('mono')) {
-          document.body.style.fontFamily = '"Courier New", monospace';
-        } else if (uiPersonality.typography.fontFamily.includes('serif')) {
-          document.body.style.fontFamily = 'Georgia, serif';
-        }
-      } else {
-        document.body.style.fontFamily = '';
-      }
-    };
-
-    applyGlobalStyles();
-
-    return () => {
-      const styleElement = document.getElementById('adaptive-styles');
-      if (styleElement) {
-        styleElement.remove();
-      }
-      document.body.style.fontFamily = '';
-    };
-  }, [uiPersonality]);
 
   return (
     <div className="w-screen h-screen relative bg-gradient-to-br from-slate-50 to-slate-100 font-inter">
       <GenerationStatusBar
         generationStatus={generationStatus}
         streamingContent={streamingContent}
+        onCancel={cancelGeneration}
       />
 
       <CenteredPrompt
@@ -690,13 +495,15 @@ const Graphible = () => {
         llmConnected={llmConnected}
         onSubmit={handleInitialPromptSubmit}
         onShowSaveLoad={() => setShowSaveLoad(true)}
-        onShowInstallationGuide={handleShowSetupWizard}
+        onShowInstallationGuide={() => setShowInstallationGuide(true)}
         onShowSetupWizard={handleShowSetupWizard}
         currentModel={currentModel}
         onModelChange={handleModelChange}
         onTestConnection={testLLMConnection}
         webllmLoadingProgress={webllmLoadingProgress}
         webllmLoadState={webllmLoadState}
+        responseMode={responseMode}
+        onToggleResponseMode={toggleResponseMode}
         />
 
       {!showPromptCenter && (
@@ -733,9 +540,9 @@ const Graphible = () => {
                 <div className="flex bg-white border border-slate-200 rounded-lg p-1">
                   <button
                     onClick={() => {
-                      if (contextMode !== 'smart') toggleContextMode();
+                      setContextMode('auto');
                     }}
-                    className={`flex items-center gap-2 px-3 py-1 rounded-md text-sm transition-all duration-200 ${contextMode === 'smart'
+                    className={`flex items-center gap-2 px-3 py-1 rounded-md text-sm transition-all duration-200 ${contextMode === 'auto'
                       ? 'bg-slate-100 text-slate-800'
                       : 'text-slate-600 hover:text-slate-800'
                       }`}
@@ -747,11 +554,10 @@ const Graphible = () => {
                   <button
                     onClick={toggleContextMode}
                     className="flex items-center gap-2 px-3 py-1 rounded-md text-sm transition-all duration-200 bg-indigo-100 text-indigo-800"
-                    title={`Context: ${contextMode === 'smart' ? 'Smart (Ctrl+click to select)' :
-                      contextMode === 'branch' ? 'Branch (click subtree)' :
-                      'Batch (click generation)'}`}
+                    title={`Context: ${CONTEXT_MODE_LABELS[contextMode]?.title ?? contextMode}`}
                   >
-                    {contextMode === 'smart' && <><Circle size={14} />Smart</>}
+                    {contextMode === 'auto' && <><Circle size={14} />Auto</>}
+                    {contextMode === 'manual' && <><MousePointer size={14} />Manual</>}
                     {contextMode === 'branch' && <><Link size={14} />Branch</>}
                     {contextMode === 'batch' && <><Target size={14} />Batch</>}
                     {selectedCount > 0 && (
@@ -761,6 +567,22 @@ const Graphible = () => {
                     )}
                   </button>
                 </div>
+
+                {/* Response mode: split the reply into nodes, or keep it whole */}
+                <button
+                  onClick={toggleResponseMode}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-all duration-200 shadow-sm ${responseMode === RESPONSE_MODES.SINGLE
+                    ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                    }`}
+                  style={{ fontSize: '12px' }}
+                  title={`${RESPONSE_MODE_LABELS[responseMode].name}: ${RESPONSE_MODE_LABELS[responseMode].description}. Click to switch.`}
+                >
+                  {responseMode === RESPONSE_MODES.SINGLE
+                    ? <FileText size={16} />
+                    : <Waypoints size={16} />}
+                  {RESPONSE_MODE_LABELS[responseMode].name}
+                </button>
 
                 {/* Action buttons */}
                 <button
@@ -852,8 +674,10 @@ const Graphible = () => {
                 </defs>
 
                 {connections.map((conn, index) => {
-                  const fromNode = nodes[conn.from];
-                  const toNode = nodes[conn.to];
+                  // By id, not array position: ids stop matching indices
+                  // after any deletion.
+                  const fromNode = nodeMap.get(conn.from);
+                  const toNode = nodeMap.get(conn.to);
 
                   if (!fromNode || !toNode) return null;
 
@@ -937,13 +761,11 @@ const Graphible = () => {
                     isCurrent={node.id === currentNodeId}
                     isStreaming={currentStreamingNodeId === node.id}
                     isSelected={isNodeSelected(node.id)}
-                    contextMode={contextMode}
                     onClick={handleNodeClick}
                     onFeedback={handleFeedback}
                     colorScheme={currentScheme}
                     showPromptCenter={showPromptCenter}
                     generationStatus={generationStatus}
-                    uiPersonality={uiPersonality}
                     // Manipulation handlers
                     onStartDrag={startNodeDrag}
                     onStartResize={startNodeResize}
@@ -963,7 +785,10 @@ const Graphible = () => {
             nodeDetails={nodeDetails}
             onClose={() => setNodeDetails(null)}
             feedbackHistory={feedbackHistory}
-            uiPersonality={uiPersonality}
+            nodes={nodes}
+            connections={connections}
+            onBranchFromQuote={handleBranchFromQuote}
+            onNavigateToNode={(id) => setCurrentNodeId(id)}
           />
 
           <Minimap
@@ -971,7 +796,6 @@ const Graphible = () => {
             connections={connections}
             currentNodeId={currentNodeId}
             camera={camera}
-            colorScheme={currentScheme}
             onNavigateToNode={(nodeId) => {
               const node = nodes.find(n => n.id === nodeId);
               if (node) {
@@ -981,8 +805,6 @@ const Graphible = () => {
               }
             }}
             onCameraMove={setCameraTarget}
-            generateWithLLM={generateWithLLM}
-            currentModel={currentModel}
           />
         </>
       )}
@@ -992,27 +814,18 @@ const Graphible = () => {
         onClose={() => setShowFeedbackModal(null)}
         onSubmit={submitFeedback}
         getQuickFeedbackOptions={getQuickFeedbackOptions}
-        uiPersonality={uiPersonality}
-        setUiPersonality={setUiPersonality}
-        adaptivePrompts={adaptivePrompts}
-        setAdaptivePrompts={setAdaptivePrompts}
       />
 
       <NewPromptBox
-        initialPromptText={initialPromptText}
         currentNodeId={currentNodeId}
         nodeDetails={nodeDetails}
         generationStatus={generationStatus}
         onGenerate={enhancedGenerateWithLLM}
         isTypingPrompt={isTypingPrompt}
         setIsTypingPrompt={setIsTypingPrompt}
-        uiPersonality={uiPersonality}
-        setUiPersonality={setUiPersonality}
-        adaptivePrompts={adaptivePrompts}
-        setAdaptivePrompts={setAdaptivePrompts}
+        quotedPassage={pendingQuote?.quote}
         nodes={nodes}
         connections={connections}
-        setConnections={setConnections}
         selectedNodeIds={selectedNodeIds}
       />
 
@@ -1024,6 +837,8 @@ const Graphible = () => {
         onSave={saveCurrentGraph}
         onLoad={loadGraph}
         onDelete={deleteGraph}
+        onExport={exportGraph}
+        onImport={importGraph}
       />
 
       <InstallationGuide
@@ -1052,6 +867,13 @@ const Graphible = () => {
           onRemoveConnection={removeConnection}
         />
       )}
+
+      <Notice notice={notice} onDismiss={() => setNotice(null)} />
+
+      <ModelDownloadConsent
+        request={consentRequest}
+        onDecide={resolveConsentRequest}
+      />
 
       <SetupWizard
         isOpen={showSetupWizard}

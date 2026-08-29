@@ -1,5 +1,4 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { screenToWorld } from '../utils/coordinateUtils';
 
 export const useNodeSelection = () => {
   const [selectedNodeIds, setSelectedNodeIds] = useState(new Set());
@@ -170,11 +169,6 @@ export const useNodeSelection = () => {
     setSelectedNodeIds(new Set(batchNodeIds));
   }, []);
 
-  // Fixed coordinate conversion using the new coordinate system
-  const clientToWorldCoords = useCallback((clientX, clientY, camera) => {
-    return screenToWorld(clientX, clientY, camera);
-  }, []);
-
   // Direct node selection toggle for smart interaction
   const toggleNodeSelection = useCallback((nodeId) => {
     setSelectedNodeIds(prev => {
@@ -189,7 +183,7 @@ export const useNodeSelection = () => {
   }, []);
 
   // Node selection based on context mode and modifier keys
-  const handleNodeSelection = useCallback((nodeId, nodes, connections, modifierKey = false) => {
+  const handleNodeSelection = useCallback((nodeId, nodes, connections) => {
     if (contextMode === 'auto') {
       // In auto mode, allow both regular clicks and Ctrl/Cmd+click for individual node toggling
       toggleNodeSelection(nodeId);
@@ -274,6 +268,7 @@ export const useNodeSelection = () => {
 
     // Mode management
     toggleContextMode,
+    setContextMode,
 
     // Auto selection methods
     handleNodeSelection,

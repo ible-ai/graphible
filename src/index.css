@@ -70,6 +70,10 @@ body {
 /* Prose styling for markdown content */
 .prose {
   color: rgb(71, 85, 105);
+  /* Model output contains long URLs, identifiers and code. Without this the
+     panel scrolls sideways instead of wrapping. */
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 {
@@ -97,8 +101,16 @@ body {
   background-color: rgb(248, 250, 252);
   padding: 1rem;
   border-radius: 0.5rem;
-  overflow-x: auto;
   border: 1px solid rgb(226, 232, 240);
+  /* Wrap code rather than pushing the panel sideways. */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.prose table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
 }
 
 .prose ul, .prose ol {

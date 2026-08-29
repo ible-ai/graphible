@@ -1,8 +1,11 @@
 // Shows LLM generation progress
 
-import { Brain, Circle } from 'lucide-react';
+import { Brain, Circle, X } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import RemarkMathPlugin from 'remark-math';
+import RehypeKatex from 'rehype-katex';
 
-const GenerationStatusBar = ({ generationStatus, streamingContent }) => {
+const GenerationStatusBar = ({ generationStatus, streamingContent, onCancel }) => {
   if (!generationStatus.isGenerating) return null;
 
   const formatTime = (ms) => {
@@ -34,9 +37,33 @@ const GenerationStatusBar = ({ generationStatus, streamingContent }) => {
               Node: {generationStatus.currentNodeId}
             </div>
           )}
+          {onCancel && (
+            <button
+              onClick={onCancel}
+              className="flex items-center gap-1 px-2 py-1 rounded-md text-xs text-slate-600 hover:bg-rose-50 hover:text-rose-600 transition-colors"
+              title="Stop generating"
+            >
+              <X size={14} />
+              Stop
+            </button>
+          )}
         </div>
       </div>
 
+      {/* A live tail of the reply, rendered as Markdown while it streams.
+          Partial Markdown renders fine, and showing raw source until the last
+          token made a normal generation look broken. */}
+      {streamingContent && (
+        <div className="mt-3 pt-3 border-t border-slate-200/60">
+          <div className="text-xs text-slate-600 leading-relaxed max-h-28 overflow-hidden text-left prose prose-slate prose-sm max-w-none break-words">
+            <ReactMarkdown remarkPlugins={[RemarkMathPlugin]} rehypePlugins={[RehypeKatex]}>
+              {streamingContent.length > 500
+                ? '\u2026' + streamingContent.slice(-500)
+                : streamingContent}
+            </ReactMarkdown>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

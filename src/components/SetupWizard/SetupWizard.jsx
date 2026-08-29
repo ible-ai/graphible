@@ -9,7 +9,7 @@ import {
     MODEL_TYPES,
     DEMO_GRAPH_DATA,
 } from '../../constants/setupWizardConstants';
-import { DEFAULT_MODEL_CONFIGS } from '../../constants/graphConstants';
+import { DEFAULT_MODEL_CONFIGS, DEFAULT_WEBLLM_MODEL_INFO } from '../../constants/graphConstants';
 
 import {
     detectAvailableModels,
@@ -54,7 +54,7 @@ const SetupWizard = ({
     const [detectionResults, setDetectionResults] = useState(null);
 
     // NEW: Navigation and state management
-    const [navigationHistory, setNavigationHistory] = useState([SETUP_STEPS.WELCOME]);
+    const [, setNavigationHistory] = useState([SETUP_STEPS.WELCOME]);
     const [completedSteps, setCompletedSteps] = useState(new Set());
     const [stepData, setStepData] = useState({
         selectedOption: null,
@@ -79,20 +79,30 @@ const SetupWizard = ({
 
     const modalRef = useRef(null);
 
-    // Determine which steps are accessible based on current state
-    const getAccessibleSteps = useCallback(() => {
+    // Determine which steps are accessible based on current state.
+    //
+    // `pending` carries values chosen during the current event, before React
+    // has re-rendered with them. Every handler that picks an option, grants
+    // consent or produces a config navigates in the same tick, so without it
+    // the gate reads the previous render's state and refuses the move.
+    const getAccessibleSteps = useCallback((pending = {}) => {
+        const selected = pending.selectedOption ?? stepData.selectedOption;
+        const hasConsented = pending.hasConsented ?? consentData.hasConsented;
+        const chosenConfig = pending.config ?? stepData.config;
+        const results = pending.testResults ?? testResults;
+
         const accessible = [SETUP_STEPS.WELCOME, SETUP_STEPS.CHOICE];
 
-        if (stepData.selectedOption && stepData.selectedOption !== 'demo') {
+        if (selected && selected !== 'demo') {
             accessible.push(SETUP_STEPS.CONSENT);
 
-            if (consentData.hasConsented) {
+            if (hasConsented) {
                 accessible.push(SETUP_STEPS.SETUP);
 
-                if (stepData.config) {
+                if (chosenConfig) {
                     accessible.push(SETUP_STEPS.TESTING);
 
-                    if (testResults?.success) {
+                    if (results?.success) {
                         accessible.push(SETUP_STEPS.SUCCESS);
                     }
                 }
@@ -103,14 +113,13 @@ const SetupWizard = ({
     }, [stepData.selectedOption, consentData.hasConsented, stepData.config, testResults]);
 
     // NEW: Check if user can navigate to a specific step
-    const canNavigateToStep = useCallback((step) => {
-        const accessible = getAccessibleSteps();
-        return accessible.includes(step);
+    const canNavigateToStep = useCallback((step, pending) => {
+        return getAccessibleSteps(pending).includes(step);
     }, [getAccessibleSteps]);
 
     // NEW: Enhanced navigation with state preservation
-    const navigateToStep = useCallback((step, saveCurrentState = true) => {
-        if (!canNavigateToStep(step)) {
+    const navigateToStep = useCallback((step, saveCurrentState = true, pending) => {
+        if (!canNavigateToStep(step, pending)) {
             console.warn(`Cannot navigate to step: ${step}`);
             return false;
         }
@@ -255,7 +264,7 @@ const SetupWizard = ({
                     }
                     break;
 
-                case 'Tab':
+                case 'Tab': {
                     // Ensure tab navigation stays within modal
                     const focusableElements = modalRef.current?.querySelectorAll(
                         'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
@@ -280,6 +289,7 @@ const SetupWizard = ({
                         }
                     }
                     break;
+                }
 
                 default:
                     // Number keys for step navigation (1-6)
@@ -325,9 +335,12 @@ const SetupWizard = ({
         if (isOpen) {
             const saved = loadSetupConfig();
             if (saved.isComplete && saved.config) {
-                setCurrentStep(SETUP_STEPS.SUCCESS);
+                // Reopening is a request to change something, so land on the
+                // choice step. Landing on Success left no way to pick a
+                // different model without hunting for "Start Over".
                 setConfig(saved.config);
                 setCompletedSteps(new Set([SETUP_STEPS.SUCCESS]));
+                setCurrentStep(SETUP_STEPS.CHOICE);
             }
         }
     }, [isOpen]);
@@ -345,7 +358,7 @@ const SetupWizard = ({
     const prepareConsentInfo = useCallback((option) => {
         if (option === 'browser') {
             return {
-                downloadSize: '~2.2GB',
+                downloadSize: DEFAULT_WEBLLM_MODEL_INFO.size,
                 storageLocation: 'Your browser\'s local storage',
                 privacyInfo: {
                     dataStaysLocal: true,
@@ -426,7 +439,10 @@ const SetupWizard = ({
         }));
 
         if (option === 'demo') {
-            // Demo can complete immediately if user wants
+            // Demo can complete immediately if user wants. Recording it as a
+            // completed setup matters: without this the wizard reopened on
+            // every reload, in front of whatever the user was doing.
+            saveSetupConfig({ type: MODEL_TYPES.DEMO });
             onLoadDemoGraph(DEMO_GRAPH_DATA);
             onComplete({ type: MODEL_TYPES.DEMO });
             onClose();
@@ -441,8 +457,8 @@ const SetupWizard = ({
             hasConsented: false
         }));
 
-        // Move to consent step
-        navigateToStep(SETUP_STEPS.CONSENT);
+        // Move to consent step, passing the option chosen in this same event.
+        navigateToStep(SETUP_STEPS.CONSENT, true, { selectedOption: option });
     }, [prepareConsentInfo, onLoadDemoGraph, onComplete, onClose, navigateToStep]);
 
     // NEW: Enhanced consent decision with navigation flexibility
@@ -463,7 +479,7 @@ const SetupWizard = ({
             }));
 
             setCompletedSteps(prev => new Set([...prev, SETUP_STEPS.CONSENT]));
-            navigateToStep(SETUP_STEPS.SETUP);
+            navigateToStep(SETUP_STEPS.SETUP, true, { hasConsented: true });
         } else {
             // User declined - let them go back to choice step
             setError('Setup requires your consent to proceed. You can choose a different option or try the demo.');
@@ -517,7 +533,7 @@ const SetupWizard = ({
             setCompletedSteps(prev => new Set([...prev, SETUP_STEPS.SETUP]));
 
             // Move to testing
-            navigateToStep(SETUP_STEPS.TESTING);
+            navigateToStep(SETUP_STEPS.TESTING, true, { config: setupConfig, hasConsented: true });
 
             // Test the configuration
             setIsTesting(true);
@@ -528,7 +544,9 @@ const SetupWizard = ({
                 saveSetupConfig(setupConfig);
                 onModelChange(setupConfig);
                 setCompletedSteps(prev => new Set([...prev, SETUP_STEPS.TESTING, SETUP_STEPS.SUCCESS]));
-                navigateToStep(SETUP_STEPS.SUCCESS);
+                navigateToStep(SETUP_STEPS.SUCCESS, true, {
+                    config: setupConfig, hasConsented: true, testResults: results,
+                });
                 // Don't auto-complete - let user finish manually
             } else {
                 setError(results.error || 'Setup failed. Please check your configuration and try again.');
@@ -558,7 +576,7 @@ const SetupWizard = ({
         accessible.includes(allSteps[allSteps.indexOf(currentStep) + 1]);
 
     return (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[200] p-4">
             <div
                 ref={modalRef}
                 className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl border border-slate-200 max-h-[90vh] overflow-y-auto"
@@ -783,7 +801,7 @@ const SetupWizard = ({
 
             {/* Exit Confirmation Modal */}
             {showExitConfirm && (
-                <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-60">
+                <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[210]">
                     <div
                         className="bg-white rounded-xl p-6 max-w-md mx-4 shadow-2xl"
                         role="alertdialog"

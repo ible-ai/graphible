@@ -1,5 +1,7 @@
 // Shared types, constants, and configurations for the Setup Wizard
 
+import { GOOGLE_MODEL_LIST } from './graphConstants';
+
 export const SETUP_STEPS = {
     WELCOME: 'welcome',
     CHOICE: 'choice',
@@ -128,35 +130,14 @@ export const SETUP_MESSAGES = {
     }
 };
 
-export const WEBLLM_MODELS = {
-    'Llama-3.2-3B-Instruct-q4f32_1-MLC': {
-        name: 'Llama 3.2 3B',
-        description: 'Balanced performance and size, optimized for web browsers',
-        size: '~2GB',
-        recommended: true
-    }
-};
-
-export const GOOGLE_AI_MODELS = [
-    {
-        id: 'gemini-2.5-flash-lite',
-        name: 'Gemini 2.5 Flash Lite',
-        description: 'Fast and efficient for most tasks',
-        recommendation: 'Recommended',
-    },
-    {
-        id: 'gemini-2.5-flash',
-        name: 'Gemini 2.5 Flash',
-        description: 'Balanced performance and capability',
-        recommendation: null,
-    },
-    {
-        id: 'gemini-2.5-pro',
-        name: 'Gemini 2.5 Pro',
-        description: 'Maximum capability for complex tasks',
-        recommendation: null,
-    }
-];
+// Derived from LLM_CONFIG.EXTERNAL.GOOGLE.MODELS so the wizard cannot drift
+// from the list ModelSelector offers.
+export const GOOGLE_AI_MODELS = GOOGLE_MODEL_LIST.map(model => ({
+    id: model.id,
+    name: model.name,
+    description: model.description,
+    recommendation: model.recommended ? 'Recommended' : null,
+}));
 
 export const PRIVACY_NOTICE = {
     title: "Privacy & Security",
@@ -187,8 +168,7 @@ export const CONSENT_REQUIREMENTS = {
     [MODEL_TYPES.WEBLLM]: {
         required: true,
         category: CONSENT_CATEGORIES.MODEL_DOWNLOAD,
-        downloadSize: '~2.2GB',
-        reason: 'Large AI model download required for browser-based AI'
+        reason: 'AI model download required for browser-based AI'
     },
     [MODEL_TYPES.EXTERNAL]: {
         required: true,
@@ -213,7 +193,7 @@ export const CONSENT_REQUIREMENTS = {
 export const TROUBLESHOOTING_TIPS = {
     browser: [
         "Ensure you're using Chrome 113+, Firefox 141+, or Safari 26+",
-        "Allow the browser to download the AI model (2GB)",
+        "Allow the browser to download the AI model",
         "Make sure you have enough storage space available",
         "Try refreshing the page if the download gets stuck"
     ],

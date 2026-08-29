@@ -2,7 +2,15 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Brain, Download, CheckCircle, AlertTriangle } from 'lucide-react';
-import { WEBLLM_STATE } from '../constants/graphConstants';
+import { WEBLLM_STATE, LLM_CONFIG } from '../constants/graphConstants';
+
+// Sizes in LLM_CONFIG.WEBLLM are human strings like "0.6 GB" or "1.4GB".
+const sizeStringToMB = (size) => {
+    const match = /([\d.]+)\s*(GB|MB)/i.exec(size || '');
+    if (!match) return null;
+    const value = parseFloat(match[1]);
+    return match[2].toUpperCase() === 'GB' ? value * 1024 : value;
+};
 
 const WebLLMProgressTracker = ({
     webllmLoadState,
@@ -11,7 +19,7 @@ const WebLLMProgressTracker = ({
 }) => {
     const [currentPhase, setCurrentPhase] = useState('preparing');
     const [downloadedMB, setDownloadedMB] = useState(0);
-    const [totalMB] = useState(2048); // ~2GB model
+    const totalMB = sizeStringToMB(LLM_CONFIG.WEBLLM[modelName]?.size) ?? 2048;
     const [estimatedTimeLeft, setEstimatedTimeLeft] = useState(null);
     const [downloadSpeed, setDownloadSpeed] = useState(0);
 
@@ -109,7 +117,7 @@ const WebLLMProgressTracker = ({
     if (webllmLoadState == WEBLLM_STATE.NULL || webllmLoadState == WEBLLM_STATE.DONE) return null;
 
     return (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[200] p-4">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md border border-slate-200">
                 {/* Header */}
                 <div className="p-6 border-b border-slate-200">

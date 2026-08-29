@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { X, Package, Terminal, Key, ExternalLink, Copy, Check } from 'lucide-react';
+import { GOOGLE_MODEL_LIST } from '../constants/graphConstants';
 
 const InstallationGuide = ({ showGuide, onClose }) => {
   const [copiedText, setCopiedText] = useState('');
@@ -17,7 +18,7 @@ const InstallationGuide = ({ showGuide, onClose }) => {
   if (!showGuide) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[200] p-4">
       <div className="bg-gray-900 rounded-lg border border-gray-600 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-700">
@@ -74,8 +75,9 @@ const InstallationGuide = ({ showGuide, onClose }) => {
                   <h4 className="text-white font-medium mb-2">3. Pull a Model</h4>
                   <div className="space-y-2">
                     {[
-                      { cmd: 'ollama pull gemma3:4b', desc: 'Workhorse' },
-                      { cmd: 'ollama pull gemma3:270m', desc: 'Lightweight' },
+                      { cmd: 'ollama pull gemma3:4b', desc: 'Workhorse · 3.3GB · default' },
+                      { cmd: 'ollama pull gemma3:270m', desc: 'Lightweight · 292MB' },
+                      { cmd: 'ollama pull gemma4:e4b', desc: 'Newest · 7GB+ · multimodal' },
                     ].map((model, idx) => (
                       <div key={idx} className="flex items-center gap-2 bg-gray-900 p-3 rounded">
                         <code className="text-green-400 flex-1 font-mono text-sm">{model.cmd}</code>
@@ -124,30 +126,11 @@ const InstallationGuide = ({ showGuide, onClose }) => {
                 <div>
                   <h4 className="text-white font-medium mb-2">2. Available Models</h4>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    {[
-                      {
-                        name: 'Gemini 2.5 Flash Lite',
-                        id: 'gemini-2.5-flash-lite',
-                        desc: 'Fast, lightweight responses',
-                        tokens: '2K tokens'
-                      },
-                      {
-                        name: 'Gemini 2.5 Flash',
-                        id: 'gemini-2.5-flash',
-                        desc: 'Balanced performance',
-                        tokens: '8K tokens'
-                      },
-                      {
-                        name: 'Gemini 2.5 Pro',
-                        id: 'gemini-2.5-pro',
-                        desc: 'Maximum capability',
-                        tokens: '32K tokens'
-                      }
-                    ].map((model, idx) => (
-                      <div key={idx} className="bg-gray-900 p-4 rounded border border-gray-700">
+                    {GOOGLE_MODEL_LIST.map((model) => (
+                      <div key={model.id} className="bg-gray-900 p-4 rounded border border-gray-700">
                         <h5 className="text-purple-400 font-medium text-sm">{model.name}</h5>
-                        <p className="text-gray-400 text-xs mt-1">{model.desc}</p>
-                        <p className="text-gray-500 text-xs mt-2">{model.tokens}</p>
+                        <p className="text-gray-400 text-xs mt-1">{model.description}</p>
+                        <p className="text-gray-500 text-xs mt-2 font-mono">{model.id}</p>
                       </div>
                     ))}
                   </div>
