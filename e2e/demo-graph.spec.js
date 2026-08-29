@@ -14,6 +14,11 @@ async function loadDemoGraph(page) {
 // underneath close it first, the way a user would.
 async function closeDetailsPanel(page) {
   const panel = page.locator('.details-panel');
+  // The panel opens a tick after the nodes render, so checking visibility
+  // immediately raced it: the check said "not open", the helper skipped, and
+  // the panel then appeared over whatever the test clicked next.
+  await panel.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
+
   if (await panel.isVisible().catch(() => false)) {
     await page.getByRole('button', { name: 'Close details' }).click();
     await expect(panel).toBeHidden();
