@@ -138,6 +138,7 @@ const Graphible = () => {
     generationStatus,
     currentNodeId,
     currentStreamingNodeId,
+    nodeMap,
     setCurrentNodeId,
     addNode,
     resetGraph,
@@ -324,12 +325,12 @@ const Graphible = () => {
 
   // Node focusing
   useEffect(() => {
-    const currentNode = nodes[currentNodeId];
+    const currentNode = nodeMap.get(currentNodeId);
     if (currentNode && !showPromptCenter) {
       setNodeDetails(currentNode);
       setCameraImmediate(-currentNode.worldX, -currentNode.worldY);
     }
-  }, [currentNodeId, showPromptCenter, nodes, setCameraImmediate]);
+  }, [currentNodeId, showPromptCenter, nodeMap, setCameraImmediate]);
 
   // Handle node manipulation mouse events
   useEffect(() => {
@@ -752,8 +753,10 @@ const Graphible = () => {
                 </defs>
 
                 {connections.map((conn, index) => {
-                  const fromNode = nodes[conn.from];
-                  const toNode = nodes[conn.to];
+                  // By id, not array position: ids stop matching indices
+                  // after any deletion.
+                  const fromNode = nodeMap.get(conn.from);
+                  const toNode = nodeMap.get(conn.to);
 
                   if (!fromNode || !toNode) return null;
 

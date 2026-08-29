@@ -21,7 +21,7 @@ export const useKeyboardNavigation = ({
 
   useEffect(() => {
     const navigateToNextNode = () => {
-      const currentNode = nodes[currentNodeId];
+      const currentNode = nodes.find(n => n.id === currentNodeId);
       if (!currentNode) return;
 
       let targetNode = null;

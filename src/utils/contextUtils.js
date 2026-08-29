@@ -6,7 +6,9 @@ export const buildContextUpToNode = (targetNodeId, allNodes, connections) => {
     // Node 0 is the root, so guard on null/undefined rather than falsiness.
     if (targetNodeId === null || targetNodeId === undefined || !allNodes.length) return [];
 
-    const targetNode = allNodes[targetNodeId];
+    // Resolve by id: deletion filters the array without reindexing, so a
+    // node's id and its position diverge as soon as anything is removed.
+    const targetNode = allNodes.find(n => n.id === targetNodeId);
     if (!targetNode || !connections) return [];
 
     // Build a graph representation for efficient traversal

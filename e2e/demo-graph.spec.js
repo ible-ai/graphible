@@ -43,6 +43,22 @@ test.describe('demo graph', () => {
     await expect(page.locator('.node-component')).toHaveCount(3);
   });
 
+  test('keeps the surviving edges correct after a delete', async ({ page }) => {
+    await loadDemoGraph(page);
+
+    // Demo edges are 0->1, 0->2, 1->3, 2->3. Removing node 1 should drop the
+    // two edges touching it and leave 0->2 and 2->3.
+    const node = page.locator('.node-component').filter({ hasText: 'Basic Architecture' });
+    await node.hover();
+    await node.locator('button[title="Delete node"]').click();
+
+    await expect(page.locator('.node-component')).toHaveCount(3);
+    // Regression: edges were resolved as nodes[conn.from], an array index.
+    // Deletion filters without reindexing, so ids and positions diverge and
+    // surviving edges were dropped or drawn between the wrong pair.
+    await expect(page.locator('svg path[marker-end]')).toHaveCount(2);
+  });
+
   test('shows the graph chrome: minimap, details panel and header actions', async ({ page }) => {
     await loadDemoGraph(page);
 

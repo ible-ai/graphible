@@ -60,6 +60,16 @@ describe('buildContextUpToNode', () => {
     expect(buildContextUpToNode(0, [], connections)).toEqual([]);
   });
 
+  it('resolves nodes by id when ids no longer match array indices', () => {
+    // After a delete the array is filtered without reindexing, so id and
+    // position diverge. Anything indexing by id then reads the wrong node.
+    const afterDelete = [nodes[0], nodes[2], nodes[3]]; // ids 0, 2, 3
+    const edges = [{ from: 0, to: 2 }, { from: 2, to: 3 }];
+
+    expect(buildContextUpToNode(3, afterDelete, edges).map((n) => n.id)).toEqual([0, 2, 3]);
+    expect(buildContextUpToNode(2, afterDelete, edges).map((n) => n.id)).toEqual([0, 2]);
+  });
+
   it('does not hang on a cycle', () => {
     const cyclic = [{ from: 0, to: 1 }, { from: 1, to: 0 }];
     const labels = buildContextUpToNode(1, nodes.slice(0, 2), cyclic).map((n) => n.label);

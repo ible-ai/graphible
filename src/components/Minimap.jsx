@@ -52,6 +52,10 @@ const Minimap = ({
 
   const { clusters, showClusters } = clusterState;
 
+  // Edges reference node ids, which stop matching array positions after a
+  // deletion, so look them up rather than indexing.
+  const nodeById = useMemo(() => new Map(nodes.map(n => [n.id, n])), [nodes]);
+
   // Calculate zoomed bounds with memoization
   const zoomedBounds = useMemo(() => {
     if (nodes.length === 0) return { minX: 0, maxX: 0, minY: 0, maxY: 0 };
@@ -541,9 +545,8 @@ const Minimap = ({
 
           {/* Minimap connections */}
           {connections.map((conn, index) => {
-            if (conn.from >= nodes.length || conn.to >= nodes.length) return null;
-            const fromNode = nodes.at(conn.from);
-            const toNode = nodes.at(conn.to);
+            const fromNode = nodeById.get(conn.from);
+            const toNode = nodeById.get(conn.to);
             if (!fromNode || !toNode) return null;
 
             return (
