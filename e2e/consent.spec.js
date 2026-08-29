@@ -126,3 +126,55 @@ test.describe('stale consent', () => {
     await expect(page.getByRole('button', { name: /Try the demo/i })).toBeVisible();
   });
 });
+
+test.describe('skipping the wizard', () => {
+  // Reported: skip the wizard, choose the browser model, and no download
+  // prompt ever appears. The cause was geometry, not consent - see below.
+  const skipWizard = async (page) => {
+    await page.goto('/');
+    await page.getByTitle('Close setup').click();
+    await expect(page.getByRole('heading', { name: 'Welcome to Graphible' })).toBeHidden();
+  };
+
+  test('the model menu fits on screen, so it can actually be applied', async ({ page }) => {
+    await skipWizard(page);
+    await page.locator('button').filter({ hasText: /No model detected/ }).first().click();
+    await page.getByRole('button', { name: 'Browser', exact: true }).click();
+
+    const viewport = page.viewportSize();
+    const apply = await page.getByRole('button', { name: /Apply Settings/ }).boundingBox();
+
+    // The panel was 816px tall in a 720px viewport and the page does not
+    // scroll, so Apply sat ~150px below the fold, permanently unreachable.
+    expect(apply.y + apply.height).toBeLessThanOrEqual(viewport.height);
+  });
+
+  test('choosing the browser model asks to download it', async ({ page }) => {
+    await skipWizard(page);
+
+    await page.locator('button').filter({ hasText: /No model detected/ }).first().click();
+    await page.getByRole('button', { name: 'Browser', exact: true }).click();
+    await page.getByRole('button', { name: /Apply Settings/ }).click();
+
+    const dialog = page.getByRole('alertdialog');
+    await expect(dialog).toBeVisible({ timeout: 20000 });
+    await expect(dialog).toContainText('Gemma 3 270M');
+    await expect(dialog).toContainText('273 MB');
+  });
+
+  test('declining, then prompting, asks again rather than failing silently', async ({ page }) => {
+    await skipWizard(page);
+
+    await page.locator('button').filter({ hasText: /No model detected/ }).first().click();
+    await page.getByRole('button', { name: 'Browser', exact: true }).click();
+    await page.getByRole('button', { name: /Apply Settings/ }).click();
+    await expect(page.getByRole('alertdialog')).toBeVisible({ timeout: 20000 });
+    await page.getByRole('button', { name: /Not now/ }).click();
+
+    await page.locator('#main-prompt').fill('what is attention?');
+    await page.getByRole('button', { name: /Start Exploring/ }).click();
+
+    // Declining once must not record a permanent refusal.
+    await expect(page.getByRole('alertdialog')).toBeVisible({ timeout: 20000 });
+  });
+});

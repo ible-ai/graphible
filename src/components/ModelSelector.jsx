@@ -136,10 +136,14 @@ const ModelSelector = ({
             {/* Dropdown */}
             {isOpen && (
                 <div
-                    className="absolute top-full left-0 mt-2 w-96 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden"
+                    // Bounded to the viewport: the panel is taller than a
+                    // laptop screen, and the page itself does not scroll, so an
+                    // unbounded panel put "Apply Settings" permanently out of
+                    // reach and the chosen model could never be applied.
+                    className="absolute top-full left-0 mt-2 w-96 bg-white border border-slate-200 rounded-xl shadow-xl z-50 flex flex-col max-h-[calc(100vh-6rem)]"
                 >
                     {/* Tab Headers */}
-                    <div className="flex border-b border-slate-200">
+                    <div className="flex border-b border-slate-200 flex-shrink-0 rounded-t-xl overflow-hidden">
                         <button
                             onClick={() => setActiveTab('webllm')}
                             className={`flex-1 px-3 py-3 text-sm font-medium transition-all duration-200 relative ${activeTab === 'webllm'
@@ -190,7 +194,7 @@ const ModelSelector = ({
                     </div>
 
                     {/* Tab Content */}
-                    <div className="p-4">
+                    <div className="p-4 overflow-y-auto flex-1 min-h-0">
                         {activeTab === 'webllm' && (
                             <div className="space-y-4">
                                 <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mb-4">
@@ -442,7 +446,7 @@ const ModelSelector = ({
                         )}
 
                         {/* Action Buttons */}
-                        <div className="flex gap-3 pt-4 border-t border-gray-700 mt-4">
+                        <div className="flex gap-3 pt-4 border-t border-slate-200 mt-4 sticky bottom-0 bg-white pb-1">
                             <button
                                 onClick={handleSave}
                                 disabled={
