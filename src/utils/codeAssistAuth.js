@@ -80,7 +80,11 @@ export const signOut = () => {
 // storage rather than memory so the flow survives the user opening the link in
 // another tab and coming back.
 export const beginSignIn = async () => {
-  const verifier = randomVerifier();
+  // Reuse any verifier from an unfinished attempt. Generating a fresh one per
+  // click invalidates the code from a page the user already has open, which is
+  // easy to hit: click, miss the popup, click again, then paste the first
+  // page's code and get invalid_grant.
+  const verifier = readStored(VERIFIER_KEY) || randomVerifier();
   writeStored(VERIFIER_KEY, verifier);
 
   const params = new URLSearchParams({
@@ -106,6 +110,9 @@ const postToken = async (body) => {
 
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
+    // The raw pair is what actually identifies the failure; the friendly text
+    // alone made a 400 indistinguishable from any other 400.
+    console.error('Google token exchange failed:', data.error, data.error_description);
     throw new Error(describeTokenError(data));
   }
   return data;
@@ -163,17 +170,28 @@ export const getAccessToken = async () => {
   return session.token;
 };
 
+const safeDecode = (value) => {
+  if (!/%[0-9a-f]{2}/i.test(value)) return value;
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+};
+
 export const extractAuthCode = (pasted) => {
   const text = (pasted ?? '').trim();
   if (!text) return '';
 
   // A pasted URL, or a bare `code=...` pair.
   const match = text.match(/(?:^|[?&#])code=([^&\s]+)/);
-  if (match) return decodeURIComponent(match[1]);
+  if (match) return safeDecode(match[1]);
 
   // Otherwise assume the whole string is the code; Google's codes carry a
-  // slash and are never whitespace-separated.
-  return /\s/.test(text) ? '' : text;
+  // slash and are never whitespace-separated. Some surfaces show it
+  // percent-encoded (4%2F0...), which Google rejects if sent back as-is.
+  const bare = text.replace(/^["'`]+|["'`]+$/g, '');
+  return /\s/.test(bare) ? '' : safeDecode(bare);
 };
 
 // The id_token is only read to show which account is signed in. It is not
@@ -192,7 +210,8 @@ export const emailFromIdToken = (idToken) => {
 export const describeTokenError = (data) => {
   switch (data?.error) {
     case 'invalid_grant':
-      return 'That code was already used or has expired. Start the sign-in again.';
+      return 'Google rejected that code. Codes work once and expire after a few '
+        + 'minutes - click Sign in again and use the code from the new page.';
     case 'invalid_request':
       return 'That code was not accepted. Make sure you copied all of it.';
     default:

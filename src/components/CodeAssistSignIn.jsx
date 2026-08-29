@@ -13,14 +13,27 @@ const CodeAssistSignIn = ({ signedIn, onSignedInChange }) => {
   const [pasted, setPasted] = useState('');
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [blockedUrl, setBlockedUrl] = useState(null);
 
   const openGoogle = async () => {
     setError(null);
+    // The window must be opened synchronously, inside the click. beginSignIn
+    // awaits crypto.subtle.digest, and opening after that await has lost the
+    // user-gesture context - browsers block it as an unsolicited popup, so the
+    // user sees nothing, clicks again, and ends up pasting a code from a page
+    // whose challenge no longer matches.
+    const win = window.open('', '_blank');
     try {
       const url = await beginSignIn();
-      window.open(url, '_blank', 'noopener,noreferrer');
+      if (win) {
+        win.location = url;
+      } else {
+        // Blocked anyway. A link they can click themselves always works.
+        setBlockedUrl(url);
+      }
       setStage('awaiting-code');
     } catch (e) {
+      win?.close();
       setError(e.message);
     }
   };
@@ -76,6 +89,16 @@ const CodeAssistSignIn = ({ signedIn, onSignedInChange }) => {
         name <span className="font-medium">Gemini CLI</span> &mdash; that is the
         application you are granting access to.
       </p>
+
+      {blockedUrl && (
+        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2">
+          Your browser blocked the pop-up.{' '}
+          <a href={blockedUrl} target="_blank" rel="noreferrer" className="underline font-medium">
+            Open the Google sign-in page
+          </a>
+          .
+        </p>
+      )}
 
       {stage === 'awaiting-code' && (
         <div className="space-y-2 pt-1">

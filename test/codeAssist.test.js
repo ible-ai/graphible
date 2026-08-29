@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { textFromChunk, sseToEnvelope } from '../src/utils/codeAssist';
-import { extractAuthCode, emailFromIdToken, describeTokenError } from '../src/utils/codeAssistAuth';
+import { extractAuthCode, emailFromIdToken, describeTokenError, beginSignIn } from '../src/utils/codeAssistAuth';
 
 const drain = async (stream) => {
   const reader = stream.getReader();
@@ -112,8 +112,12 @@ describe('pasted authorization code', () => {
 });
 
 describe('sign-in error wording', () => {
-  it('explains a reused code, which is the common mistake', () => {
-    expect(describeTokenError({ error: 'invalid_grant' })).toMatch(/already used or has expired/i);
+  it('explains a reused or stale code, which is the common failure', () => {
+    const message = describeTokenError({ error: 'invalid_grant' });
+    expect(message).toMatch(/work once and expire/i);
+    // invalid_grant is what Google returns for a mismatched verifier too, so
+    // the wording has to point at the fix rather than diagnose.
+    expect(message).toMatch(/Sign in again/i);
   });
 
   it('falls back to Google wording rather than swallowing it', () => {
@@ -133,5 +137,44 @@ describe('account identification', () => {
   it('returns null for a malformed or absent token instead of throwing', () => {
     expect(emailFromIdToken(null)).toBe(null);
     expect(emailFromIdToken('not.a.jwt')).toBe(null);
+  });
+});
+
+describe('pasted code, awkward real-world forms', () => {
+  it('decodes a percent-encoded bare code', () => {
+    // Some surfaces show the code already escaped. Sent back as-is Google
+    // answers invalid_grant, which reads identically to an expired code.
+    expect(extractAuthCode('4%2F0AVMBsJ-abc')).toBe('4/0AVMBsJ-abc');
+  });
+
+  it('strips quotes picked up by a careless selection', () => {
+    expect(extractAuthCode('"4/0abc"')).toBe('4/0abc');
+    expect(extractAuthCode('`4/0abc`')).toBe('4/0abc');
+  });
+
+  it('leaves a code containing a literal percent alone', () => {
+    expect(extractAuthCode('4/0ab%zz')).toBe('4/0ab%zz');
+  });
+});
+
+describe('sign-in restarts', () => {
+  beforeEach(() => localStorage.clear());
+
+  it('keeps one verifier across repeated clicks', async () => {
+    // A fresh verifier per click invalidates the code from a page the user
+    // already has open - click, miss the popup, click again, paste the first
+    // code, invalid_grant.
+    const first = await beginSignIn();
+    const second = await beginSignIn();
+
+    const challengeOf = (url) => new URL(url).searchParams.get('code_challenge');
+    expect(challengeOf(first)).toBe(challengeOf(second));
+  });
+
+  it('asks for the scopes Code Assist needs, with S256', async () => {
+    const params = new URL(await beginSignIn()).searchParams;
+    expect(params.get('code_challenge_method')).toBe('S256');
+    expect(params.get('scope')).toContain('cloud-platform');
+    expect(params.get('redirect_uri')).toBe('https://codeassist.google.com/authcode');
   });
 });
