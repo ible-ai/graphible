@@ -5,7 +5,7 @@ import { NODE_SIZE, RESPONSE_MODES } from '../constants/graphConstants';
 import { applyForceDirectedLayout, calculateNodePosition } from '../utils/coordinateUtils';
 import { extractJsonFromLlmResponse, createFallbackNode, extractMultipleJsonFromResponse, resetStreamingParser, deriveHeadingFromText, deriveSummaryFromText } from '../utils/llmUtils';
 
-export const useGraphState = (generateWithLLM) => {
+export const useGraphState = (generateWithLLM, onError = null) => {
   const [nodes, setNodes] = useState([]);
   const [connections, setConnections] = useState([]);
   const [currentNodeId, setCurrentNodeId] = useState(null);
@@ -510,13 +510,14 @@ Generate 3-6 nodes total. Start now:`;
 
       updateGenerationStatus({ isGenerating: false, currentNodeId: null });
 
-      // More user-friendly error message
-      const errorMessage = error.name === 'AbortError' ?
-        'Generation was cancelled.' :
-        `Failed to generate graph: ${error.message}\n\nPlease check your model configuration and connection.`;
-
+      // Reported in-app rather than through window.alert, which froze the page
+      // and threw away the reason.
       if (error.name !== 'AbortError') {
-        alert(errorMessage);
+        onError?.({
+          title: 'Generation failed',
+          detail: error.message,
+          hint: 'Check the model in the menu at the top left, or try again.',
+        });
       }
     } finally {
       abortControllerRef.current = null;

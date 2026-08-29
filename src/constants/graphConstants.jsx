@@ -279,6 +279,17 @@ export const RESPONSE_MODE_LABELS = {
 };
 
 export const DEFAULT_RESPONSE_MODE = RESPONSE_MODES.GRAPH;
+
+// Graph mode asks for several strictly-formatted JSON objects. Models of this
+// size do not reliably produce that, and the reply then falls back to a single
+// node anyway - so single mode is both the honest default and the better
+// experience for them.
+export const RESPONSE_MODE_BY_BACKEND = {
+  webllm: RESPONSE_MODES.SINGLE,
+};
+
+export const preferredResponseModeFor = (modelConfig) =>
+  RESPONSE_MODE_BY_BACKEND[modelConfig?.type] ?? null;
 export const RESPONSE_MODE_STORAGE_KEY = 'graphible-response-mode';
 
 export const WEBLLM_STATE = {

@@ -1,6 +1,20 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('startup', () => {
+  // A module-level ordering mistake once left the bundle throwing "Cannot
+  // access 'x' before initialization" on load: #root stayed empty and every
+  // other test failed by timeout, thirty seconds at a time. This fails in a
+  // second and says what actually happened.
+  test('mounts without a module-level error', async ({ page }) => {
+    const errors = [];
+    page.on('pageerror', (e) => errors.push(e.message));
+
+    await page.goto('/');
+    await expect(page.locator('#root')).not.toBeEmpty();
+    await expect(page.locator('#loading')).toBeHidden();
+    expect(errors).toEqual([]);
+  });
+
   // Regression: the startup effect depends on loadSavedConfig,
   // handleModelChange and testLLMConnection, and its own work changes all
   // three identities - testLLMConnection depends on currentModel, which

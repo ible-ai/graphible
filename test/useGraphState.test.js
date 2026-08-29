@@ -450,3 +450,38 @@ describe('node identity', () => {
     expect(result.current.nodes[0].id).toBe(0);
   });
 });
+
+describe('failure reporting', () => {
+  it('reports a failed generation to the app instead of blocking on alert', async () => {
+    const onError = vi.fn();
+    const generate = vi.fn(async () => {
+      throw new Error('model unreachable');
+    });
+    const { result } = renderHook(() => useGraphState(generate, onError));
+
+    await act(async () => {
+      await result.current.generateWithLLM('topic', null, null, { type: 'demo' }, null);
+    });
+
+    expect(onError).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'Generation failed', detail: 'model unreachable' })
+    );
+  });
+
+  it('says nothing when the user cancelled', async () => {
+    const onError = vi.fn();
+    const generate = vi.fn(async () => {
+      const err = new Error('aborted');
+      err.name = 'AbortError';
+      throw err;
+    });
+    const { result } = renderHook(() => useGraphState(generate, onError));
+
+    await act(async () => {
+      await result.current.generateWithLLM('topic', null, null, { type: 'demo' }, null);
+    });
+
+    // Cancelling is a decision, not an error to report back.
+    expect(onError).not.toHaveBeenCalled();
+  });
+});

@@ -28,6 +28,7 @@ import DeletionStoreModal from './components/DeletionStoreModal';
 import ConnectionManager from './components/ConnectionManager';
 import SetupWizard from './components/SetupWizard/SetupWizard';
 import ModelDownloadConsent from './components/ModelDownloadConsent';
+import Notice from './components/Notice';
 
 // Import constants and utilities
 import {
@@ -35,7 +36,8 @@ import {
   RESPONSE_MODES,
   RESPONSE_MODE_LABELS,
   DEFAULT_RESPONSE_MODE,
-  RESPONSE_MODE_STORAGE_KEY
+  RESPONSE_MODE_STORAGE_KEY,
+  preferredResponseModeFor
 } from './constants/graphConstants';
 import { loadSetupConfig } from './utils/setupWizardUtils';
 import { focusOffsetForPanel } from './utils/panelLayout';
@@ -92,6 +94,8 @@ const Graphible = () => {
     });
   }, []);
 
+  const [notice, setNotice] = useState(null);
+
   // Guards the one-shot startup connection attempt (see the effect below).
   const hasInitializedConnection = useRef(false);
 
@@ -117,6 +121,23 @@ const Graphible = () => {
     connectionError,
   } = useLLMConnection();
 
+  // Switching to a backend that cannot do graph mode moves the user to single
+  // mode once, rather than letting them discover it through a degraded result.
+  const steeredBackendRef = useRef(null);
+  useEffect(() => {
+    const preferred = preferredResponseModeFor(currentModel);
+    if (!preferred || steeredBackendRef.current === currentModel?.type) return;
+
+    steeredBackendRef.current = currentModel?.type;
+    setResponseMode(preferred);
+    try {
+      localStorage.setItem(RESPONSE_MODE_STORAGE_KEY, preferred);
+    } catch {
+      // Storage may be unavailable; the mode still applies to this session.
+    }
+  }, [currentModel]);
+
+
   const {
     nodes,
     connections,
@@ -133,7 +154,7 @@ const Graphible = () => {
     cancelGeneration,
     setConnections,
     setNodes
-  } = useGraphState(generateWithLLM);
+  } = useGraphState(generateWithLLM, setNotice);
 
   // Node manipulation and selection hooks
   const {
@@ -517,12 +538,14 @@ const Graphible = () => {
 
         const modelType = currentModel.type === 'local' ? 'local model (Ollama)' :
           currentModel.type === 'webllm' ? 'browser model' : 'external API';
-        const reason = connectionErrorRef.current ? `\n\nReason: ${connectionErrorRef.current}` : '';
-        const proceed = window.confirm(
-          `Could not connect to the ${modelType}.${reason}\n\n` +
-          `Generate anyway? You can also pick a different model from the menu in the top-left.`
-        );
-        if (!proceed) return;
+
+        // Report it and carry on: the request may still succeed, and blocking
+        // the page on a native dialog to ask helped nobody.
+        setNotice({
+          title: `Could not reach the ${modelType}`,
+          detail: connectionErrorRef.current || undefined,
+          hint: 'Trying anyway. Pick a different model from the menu at the top left if this keeps failing.',
+        });
       }
     }
 
@@ -952,6 +975,8 @@ const Graphible = () => {
           onRemoveConnection={removeConnection}
         />
       )}
+
+      <Notice notice={notice} onDismiss={() => setNotice(null)} />
 
       <ModelDownloadConsent
         request={consentRequest}
