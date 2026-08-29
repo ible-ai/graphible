@@ -19,7 +19,7 @@ test.describe('setup wizard navigation', () => {
 
     await expect(page.getByRole('heading', { name: 'Review & Consent' })).toBeVisible();
     await expect(page.getByText(/One-time Download Required/i)).toBeVisible();
-    await expect(page.getByText('0.6 GB').first()).toBeVisible();
+    await expect(page.getByText('273 MB').first()).toBeVisible();
 
     await page.getByRole('button', { name: /Proceed/ }).click();
     await expect(page.getByRole('heading', { name: 'Quick Setup' })).toBeVisible();

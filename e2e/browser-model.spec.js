@@ -19,7 +19,7 @@ test.describe('browser model path', () => {
 
     const option = page.getByRole('button', { name: /AI in your browser/ });
     await expect(option).toBeVisible();
-    await expect(option).toContainText('0.6 GB');
+    await expect(option).toContainText('273 MB');
   });
 
   test('reaches consent, quoting that same size, before anything downloads', async ({ page }) => {
@@ -29,7 +29,7 @@ test.describe('browser model path', () => {
 
     // Consent is required before any download begins.
     await expect(page.getByText(/One-time Download Required/i)).toBeVisible();
-    await expect(page.getByText('0.6 GB')).toBeVisible();
+    await expect(page.getByText('273 MB')).toBeVisible();
     await expect(page.getByRole('button', { name: /Proceed/ })).toBeVisible();
   });
 

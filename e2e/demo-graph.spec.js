@@ -174,9 +174,9 @@ test.describe('setup wizard', () => {
     await page.goto('/');
     await page.getByRole('button', { name: 'Get Started', exact: true }).click();
 
-    // Regression: this advertised "Llama 3.2 3B ... 2GB" while
-    // DEFAULT_MODEL_CONFIGS.WEBLLM pointed at Qwen3-0.6B-ONNX.
-    await expect(page.getByRole('button', { name: /AI in your browser/ })).toContainText('0.6 GB');
+    // Regression: this advertised a model the app never downloads, at a size
+    // that was the parameter count rather than the actual transfer.
+    await expect(page.getByRole('button', { name: /AI in your browser/ })).toContainText('273 MB');
   });
 
   test('offers the Gemini models the config declares', async ({ page }) => {

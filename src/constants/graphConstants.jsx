@@ -121,37 +121,46 @@ export const LLM_CONFIG = {
 
   // See https://mlc.ai/models and
   // https://huggingface.co/models?pipeline_tag=text-generation&library=transformers.js
+  // Browser models. `size` is the actual download at the listed dtype, summed
+  // over the ONNX graph and its external .onnx_data weights - not the
+  // parameter count. WebLLMProgressTracker parses it for its progress maths,
+  // and the wizard quotes it for consent, so it has to be the real figure.
   WEBLLM: {
-    "onnx-community/Qwen3-0.6B-ONNX": {
-      name: 'Qwen3 0.6B (4-bit)',
-      description: 'Small, fast, and mighty.',
-      size: '0.6 GB',
-      dtype: 'fp16',
-      performance: 'Low-Medium',
+    "onnx-community/gemma-3-270m-it-ONNX": {
+      name: 'Gemma 3 270M',
+      description: 'Smallest and quickest to download.',
+      params: '270M',
+      size: '273 MB',
+      dtype: 'q4f16',
+      performance: 'Low',
       recommended: true
     },
-    "onnx-community/Qwen3-1.7B-ONNX": {
-      name: 'Qwen3 1.7B (4-bit)',
-      description: 'Well-balanced.',
-      size: '1.4GB',
+    "onnx-community/Qwen3-0.6B-ONNX": {
+      name: 'Qwen3 0.6B',
+      description: 'A step up in quality for a modest download.',
+      params: '0.6B',
+      size: '570 MB',
+      dtype: 'q4f16',
+      performance: 'Low-Medium',
+      recommended: false
+    },
+    "onnx-community/gemma-3-1b-it-ONNX": {
+      name: 'Gemma 3 1B',
+      description: 'Best quality of the browser options.',
+      params: '1B',
+      size: '764 MB',
       dtype: 'q4f16',
       performance: 'Medium',
       recommended: false
-    }, 'Llama-3.2-3B-Instruct-q4f16_1-MLC': {
-      name: 'Llama 3.2 3B (4-bit)',
-      description: 'Balanced performance and size',
-      size: '2.2GB',
+    },
+    'gemma3-1b-it-q4f16_1-MLC': {
+      name: 'Gemma 3 1B (MLC)',
+      description: 'Same model through the WebLLM runtime.',
+      params: '1B',
+      size: '711 MB',
       dtype: 'q4f16',
       performance: 'Medium',
       recommended: false
-      // },
-      // "onnx-community/Qwen3-4B-ONNX": {
-      //   name: 'Qwen3 4B (4-bit)',
-      //   description: 'Makes computer hot. Nice.',
-      //   size: '4GB',
-      //   dtype: 'q4f16',
-      //   performance: 'Medium-High',
-      //   recommended: false
     }
   },
 
@@ -215,8 +224,8 @@ export const DEFAULT_MODEL_CONFIGS = {
   },
   WEBLLM: {
     type: 'webllm',
-    model: 'onnx-community/Qwen3-0.6B-ONNX',
-    dtype: 'fp16'
+    model: 'onnx-community/gemma-3-270m-it-ONNX',
+    dtype: 'q4f16'
   }
 };
 
@@ -273,10 +282,10 @@ export const BROWSER_LLM_PROVIDERS = {
 };
 
 export const BROWSER_LLM_TO_PROVIDER = new Map([
-  ["Llama-3.2-3B-Instruct-q4f16_1-MLC", `${BROWSER_LLM_PROVIDERS.MLC_AI__WEB_LLM}`],
-  // ["onnx-community/Qwen3-4B-ONNX", `${BROWSER_LLM_PROVIDERS.TRANSFORMERS_JS}`],
-  ["onnx-community/Qwen3-1.7B-ONNX", `${BROWSER_LLM_PROVIDERS.TRANSFORMERS_JS}`],
-  ["onnx-community/Qwen3-0.6B-ONNX", `${BROWSER_LLM_PROVIDERS.TRANSFORMERS_JS}`]
+  ['gemma3-1b-it-q4f16_1-MLC', BROWSER_LLM_PROVIDERS.MLC_AI__WEB_LLM],
+  ['onnx-community/gemma-3-270m-it-ONNX', BROWSER_LLM_PROVIDERS.TRANSFORMERS_JS],
+  ['onnx-community/Qwen3-0.6B-ONNX', BROWSER_LLM_PROVIDERS.TRANSFORMERS_JS],
+  ['onnx-community/gemma-3-1b-it-ONNX', BROWSER_LLM_PROVIDERS.TRANSFORMERS_JS]
 ]);
 
 // The browser model the setup wizard actually configures, for UI copy.
