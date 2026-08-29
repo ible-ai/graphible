@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { ChevronDown, Settings, Globe, Server, Compass, CheckCircle, AlertCircle } from 'lucide-react';
-import { LLM_CONFIG, DEFAULT_MODEL_CONFIGS, WEBLLM_STATE, DEFAULT_MODEL_CONFIG, GOOGLE_MODEL_LIST } from '../constants/graphConstants';
+import { LLM_CONFIG, DEFAULT_MODEL_CONFIGS, WEBLLM_STATE, DEFAULT_MODEL_CONFIG, GOOGLE_MODEL_LIST, CODE_ASSIST_MODEL_LIST, CODE_ASSIST_MODELS, DEFAULT_CODE_ASSIST_MODEL } from '../constants/graphConstants';
 import WebLLMProgressTracker from '../components/WebLLMProgressTracker';
 import { Z } from '../constants/zLayers';
 import { isGoogleSignInConfigured, isSignedIn, signIn } from '../utils/googleAuth';
@@ -20,6 +20,9 @@ const ModelSelector = ({
     const signInAvailable = isGoogleSignInConfigured();
     const [authMethod, setAuthMethod] = useState('code-assist');
     const [caReady, setCaReady] = useState(() => caSignedIn() || hasStoredGrant());
+    // Kept apart from externalConfig.model: the two backends do not accept the
+    // same ids, so carrying one across would send a name the other rejects.
+    const [caModel, setCaModel] = useState(DEFAULT_CODE_ASSIST_MODEL);
     const [signInBusy, setSignInBusy] = useState(false);
     const [signInError, setSignInError] = useState(null);
     const [signedIn, setSignedIn] = useState(() => isSignedIn());
@@ -92,6 +95,12 @@ const ModelSelector = ({
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
+    // Which model list the External tab is currently editing.
+    const selectedModel = authMethod === 'code-assist' ? caModel : externalConfig.model;
+    const selectModel = (id) => (authMethod === 'code-assist'
+        ? setCaModel(id)
+        : setExternalConfig(prev => ({ ...prev, model: id })));
+
     const handleGoogleSignIn = async () => {
         setSignInBusy(true);
         setSignInError(null);
@@ -115,7 +124,7 @@ const ModelSelector = ({
             // Signed-in Google and a pasted key are different backends, not
             // two settings of one: they authenticate and bill differently.
             if (authMethod === 'code-assist') {
-                config = { type: 'code-assist', provider: 'google', model: externalConfig.model };
+                config = { type: 'code-assist', provider: 'google', model: caModel };
             } else if (authMethod === 'oauth') {
                 config = { type: 'google-oauth', provider: 'google', model: externalConfig.model, projectId: externalConfig.projectId?.trim() || '' };
             } else {
@@ -444,10 +453,10 @@ const ModelSelector = ({
                                         Model
                                     </label>
                                     <div className="space-y-2">
-                                        {GOOGLE_MODEL_LIST.map((model) => (
+                                        {(authMethod === 'code-assist' ? CODE_ASSIST_MODEL_LIST : GOOGLE_MODEL_LIST).map((model) => (
                                             <label
                                                 key={model.id}
-                                                className={`flex items-center p-3 border rounded cursor-pointer transition-all duration-200 group ${externalConfig.model === model.id
+                                                className={`flex items-center p-3 border rounded cursor-pointer transition-all duration-200 group ${selectedModel === model.id
                                                     ? 'border-purple-500 bg-purple-500/10 text-purple-300'
                                                     : 'border-gray-600 hover:border-purple-400 hover:bg-purple-500/5'
                                                     }`}
@@ -466,19 +475,19 @@ const ModelSelector = ({
                                                     type="radio"
                                                     name="model"
                                                     value={model.id}
-                                                    checked={externalConfig.model === model.id}
-                                                    onChange={(e) => setExternalConfig(prev => ({ ...prev, model: e.target.value }))}
+                                                    checked={selectedModel === model.id}
+                                                    onChange={(e) => selectModel(e.target.value)}
                                                     className="sr-only"
                                                 />
                                                 <div className="flex-1">
                                                     <div className="font-medium text-sm">{model.name}</div>
                                                     <div className="text-xs text-gray-400">{model.description}</div>
                                                 </div>
-                                                <div className={`w-4 h-4 border-2 rounded-full transition-all duration-200 ${externalConfig.model === model.id
+                                                <div className={`w-4 h-4 border-2 rounded-full transition-all duration-200 ${selectedModel === model.id
                                                     ? 'border-purple-500 bg-purple-500'
                                                     : 'border-gray-400'
                                                     }`}>
-                                                    {externalConfig.model === model.id && (
+                                                    {selectedModel === model.id && (
                                                         <div className="w-2 h-2 bg-white rounded-full m-0.5" />
                                                     )}
                                                 </div>

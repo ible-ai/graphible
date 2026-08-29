@@ -28,6 +28,11 @@ const describeError = async (response) => {
   if (response.status === 401) {
     return 'Your Google sign-in expired. Sign in again to continue.';
   }
+  if (response.status === 404 || /not be found|was not found/i.test(message)) {
+    // Code Assist and the Developer API do not share a model vocabulary, and
+    // Google names neither the entity nor the field it objected to.
+    return 'Code Assist does not offer that model. Pick another in the model menu.';
+  }
   if (response.status === 403) {
     // Most often an account whose tier is not served by this API.
     return message || 'Google declined this request for your account.';

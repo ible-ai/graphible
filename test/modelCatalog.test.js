@@ -8,6 +8,9 @@ import {
   BROWSER_LLM_PROVIDERS,
   RECOMMENDED_GOOGLE_MODEL,
   migrateModelConfig,
+  CODE_ASSIST_MODELS,
+  CODE_ASSIST_MODEL_LIST,
+  DEFAULT_CODE_ASSIST_MODEL,
 } from '../src/constants/graphConstants';
 
 // The catalogs used to be duplicated across ModelSelector, the wizard
@@ -128,5 +131,35 @@ describe('migrateModelConfig', () => {
   it('survives a malformed saved blob', () => {
     expect(migrateModelConfig(null)).toBe(null);
     expect(migrateModelConfig({})).toEqual({});
+  });
+});
+
+// Code Assist and the Gemini Developer API do not share a model vocabulary.
+// Sending a Developer-API id to Code Assist returns "Requested entity was not
+// found", which names neither the entity nor the field at fault.
+describe('code assist model catalog', () => {
+  it('defaults to a model Code Assist actually offers', () => {
+    expect(CODE_ASSIST_MODELS[DEFAULT_CODE_ASSIST_MODEL]).toBeDefined();
+  });
+
+  it('does not default to a Developer-API-only id', () => {
+    // gemini-3.5-flash-lite is the Developer API default and does not exist on
+    // Code Assist; using it here is exactly the bug this guards.
+    expect(LLM_CONFIG.EXTERNAL.GOOGLE.MODELS[DEFAULT_CODE_ASSIST_MODEL]).toBeUndefined();
+  });
+
+  it('recommends exactly one model, and names every one', () => {
+    expect(CODE_ASSIST_MODEL_LIST.filter((m) => m.recommended)).toHaveLength(1);
+    for (const m of CODE_ASSIST_MODEL_LIST) {
+      expect(m.name, m.id).toBeTruthy();
+      expect(m.description, m.id).toBeTruthy();
+    }
+  });
+
+  it('leaves code-assist configs untouched when migrating', () => {
+    // The migration rewrites unknown *Developer API* ids. A Code Assist id is
+    // unknown to that catalog by design and must not be rewritten into one.
+    const config = { type: 'code-assist', provider: 'google', model: DEFAULT_CODE_ASSIST_MODEL };
+    expect(migrateModelConfig(config)).toBe(config);
   });
 });
