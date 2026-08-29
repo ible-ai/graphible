@@ -11,11 +11,28 @@ npm run dev        # Vite dev server on https://localhost:3000 (host: true)
 npm run build      # Production build -> dist/ (sourcemaps on)
 npm run preview    # Serve the production build
 npm run lint       # ESLint (flat config)
+npm run test       # Vitest unit suite (jsdom)
+npm run test:watch # Vitest in watch mode
+npm run test:e2e   # Playwright against a production build in headless Chromium
+npm run test:all   # unit then e2e
 npm run deploy     # build + gh-pages -d dist
-npm run test-build # build + preview
 ```
 
-No test suite, no test runner, no TypeScript — `.js`/`.jsx` only. Node >= 18.
+No TypeScript — `.js`/`.jsx` only. Node >= 18.
+
+**Testing.** `test/` holds Vitest unit tests over the pure logic: the streaming
+JSON parser, context building, coordinates, clustering, and the shared backend
+envelope via the demo model. `e2e/` holds Playwright tests that drive a real
+build in headless Chromium through the demo backend, which needs no Ollama, API
+key or WebGPU — so the graph, camera, node controls and wizard are all
+exercisable offline. `vite.config.e2e.js` exists because the main config
+requires TLS certificates from the gitignored `.env/`; it drops the
+server/preview/dev blocks so the suite can serve over plain HTTP (`mergeConfig`
+keeps a base value when an override is `undefined`, so they must be omitted
+rather than overridden). Interaction bugs here live in the wiring between
+listeners and camera state, which unit tests do not reach — three such bugs were
+found by the first e2e run alone. Prefer adding an e2e case for anything
+involving the pointer, the camera, or node controls.
 
 **`npm run dev` requires local TLS certs** at `.env/localhost+2-key.pem` and `.env/localhost+2.pem`. `.env/` is gitignored, so a fresh clone cannot start the dev server until you generate them (`mkcert localhost 127.0.0.1 ::1`). Vite declares HTTPS in three places (`server`, `preview`, and a non-standard `dev` block). HTTPS matters because WebGPU/WebLLM and the local Ollama fetches expect a secure context.
 
