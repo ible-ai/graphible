@@ -12,6 +12,7 @@ import { useFeedback } from './hooks/useFeedback';
 import { useSaveLoad } from './hooks/useSaveLoad';
 import { useNodeManipulation } from './hooks/useNodeManipulation';
 import { useNodeSelection } from './hooks/useNodeSelection';
+import { useCanvasInteraction } from './hooks/useCanvasInteraction';
 
 // Import components
 import CenteredPrompt from './components/CenteredPrompt';
@@ -60,8 +61,6 @@ const Graphible = () => {
     nodeSize: 'medium'
   });
 
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [nodeDetails, setNodeDetails] = useState(null);
   const [showPromptCenter, setShowPromptCenter] = useState(true);
   const [initialPromptText, setInitialPromptText] = useState('');
@@ -200,6 +199,13 @@ const Graphible = () => {
     exportGraph,
     importGraph
   } = useSaveLoad(nodes, connections, currentNodeId, initialPromptText);
+
+  useCanvasInteraction({
+    camera,
+    setCameraImmediate,
+    enabled: !showPromptCenter,
+    isManipulatingNode: draggingNodeId !== null || isResizingNodeId !== null,
+  });
 
   useKeyboardNavigation({
     nodes,
@@ -357,97 +363,6 @@ const Graphible = () => {
     setNodeDetails(prev => (prev && prev.id === currentNodeId ? currentNode : prev));
   }, [currentNodeId, showPromptCenter, nodeMap, setCameraImmediate, camera.zoom]);
 
-  // Handle node manipulation mouse events
-  useEffect(() => {
-    const handleMouseDown = (e) => {
-      // Don't interfere with node manipulation
-      if (draggingNodeId !== null || isResizingNodeId !== null) return;
-
-      const clickedElement = e.target;
-      const isInteractiveClick =
-        clickedElement.closest('.node-component') ||
-        clickedElement.closest('.minimap-container') ||
-        clickedElement.closest('.details-panel') ||
-        clickedElement.closest('button') ||
-        clickedElement.closest('input') ||
-        clickedElement.closest('textarea') ||
-        clickedElement.closest('.modal') ||
-        clickedElement.closest('select') ||
-        clickedElement.closest('a') ||
-        clickedElement.closest('.node-controls') ||
-        clickedElement.closest('.resize-handle');
-
-      if (isInteractiveClick) return;
-
-      if (e.shiftKey && clickedElement.closest('.node-component')) return;
-
-      // Start camera dragging
-      setIsDragging(true);
-      setDragStart({ x: e.clientX, y: e.clientY });
-      document.body.style.cursor = 'grabbing';
-      document.body.style.userSelect = 'none';
-
-      e.preventDefault();
-    };
-
-    const handleMouseMove = (e) => {
-      if (draggingNodeId !== null || isResizingNodeId !== null) return;
-
-      // Handle camera dragging
-      if (!isDragging) return;
-
-      const deltaX = e.clientX - dragStart.x;
-      const deltaY = e.clientY - dragStart.y;
-
-      // Apply camera movement
-      setCameraImmediate(
-        camera.x + deltaX / camera.zoom,
-        camera.y + deltaY / camera.zoom,
-        camera.zoom
-      );
-
-      // Update drag start for next frame
-      setDragStart({ x: e.clientX, y: e.clientY });
-      e.preventDefault();
-    };
-
-    const handleMouseUp = (e) => {
-      if (draggingNodeId !== null || isResizingNodeId !== null) return;
-
-      if (isDragging) {
-        setIsDragging(false);
-        document.body.style.cursor = 'default';
-        document.body.style.userSelect = '';
-      }
-
-      e.preventDefault();
-    };
-
-    // Only add listeners when not in prompt center mode
-    if (!showPromptCenter) {
-      document.addEventListener('mousedown', handleMouseDown);
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleMouseDown);
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-      document.body.style.cursor = 'default';
-      document.body.style.userSelect = '';
-    };
-  }, [
-    isDragging,
-    camera,
-    setCameraImmediate,
-    dragStart,
-    contextMode,
-    draggingNodeId,
-    isResizingNodeId,
-    nodes,
-    showPromptCenter
-  ]);
 
   // Layout optimization that preserves selections
   const applyLayoutOptimizationWithSelection = useCallback(() => {
@@ -565,29 +480,6 @@ const Graphible = () => {
 
     return generateGraphWithLLM(finalPrompt, prevWorldX, prevWorldY, currentModel, source, responseMode);
   };
-
-  // Zoom handling
-  const handleWheel = useCallback((e) => {
-    if (showPromptCenter) return;
-    e.preventDefault();
-
-    const scaleAmount = 0.1;
-    const zoomFactor = e.deltaY < 0 ? (1 + scaleAmount) : (1 - scaleAmount);
-    const newZoom = Math.max(0.1, Math.min(camera.zoom * zoomFactor, 3.0));
-
-    setCameraImmediate(camera.x, camera.y, newZoom);
-  }, [showPromptCenter, camera, setCameraImmediate]);
-
-  useEffect(() => {
-    if (showPromptCenter) return;
-
-    const handleWheelEvent = (e) => handleWheel(e);
-    document.addEventListener('wheel', handleWheelEvent, { passive: false });
-
-    return () => {
-      document.removeEventListener('wheel', handleWheelEvent);
-    };
-  }, [handleWheel, showPromptCenter]);
 
   return (
     <div className="w-screen h-screen relative bg-gradient-to-br from-slate-50 to-slate-100 font-inter">

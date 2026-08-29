@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { NODE_SIZE, RESPONSE_MODES } from '../constants/graphConstants';
 import { applyForceDirectedLayout, calculateNodePosition } from '../utils/coordinateUtils';
 import { extractJsonFromLlmResponse, createFallbackNode, extractMultipleJsonFromResponse, resetStreamingParser, deriveHeadingFromText, deriveSummaryFromText } from '../utils/llmUtils';
+import { hasAssembledContext } from '../utils/contextUtils';
 
 export const useGraphState = (generateWithLLM, onError = null) => {
   const [nodes, setNodes] = useState([]);
@@ -302,8 +303,9 @@ export const useGraphState = (generateWithLLM, onError = null) => {
     precedingNodeIdRef.current = null;
 
     try {
-      // Check if this looks like a context-aware prompt (contains "CONTEXT:" or "SELECTED NODES")
-      const isContextAware = prompt.includes('CONTEXT:') || prompt.includes('SELECTED NODES');
+      // composePrompt in contextUtils writes these markers; that is the other
+      // half of this handshake.
+      const isContextAware = hasAssembledContext(prompt);
       const singleNode = responseMode === RESPONSE_MODES.SINGLE;
 
       // Single mode asks for a normal answer and keeps it whole; the graph is

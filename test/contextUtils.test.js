@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
+  composePrompt,
+  hasAssembledContext,
+  CONTEXT_MARKER,
+  SELECTION_MARKER,
   buildContextUpToNode,
   buildContextString,
   buildContextSummaryString,
@@ -115,5 +119,68 @@ describe('buildSelectedNodesContext', () => {
   it('returns empty for an empty or missing selection', () => {
     expect(buildSelectedNodesContext(new Set(), nodes)).toBe('');
     expect(buildSelectedNodesContext(null, nodes)).toBe('');
+  });
+});
+
+describe('composePrompt', () => {
+  it('returns the request untouched when there is nothing to add', () => {
+    expect(composePrompt({ request: 'plain question', nodes, connections })).toBe('plain question');
+  });
+
+  it('writes the markers useGraphState routes on', () => {
+    const out = composePrompt({
+      request: 'more please',
+      targetNodeId: 3,
+      nodes,
+      connections,
+    });
+
+    // Both halves of this handshake now live in one file, so they cannot drift.
+    expect(hasAssembledContext(out)).toBe(true);
+    expect(out).toContain(CONTEXT_MARKER);
+    expect(out).toContain('NEW REQUEST: more please');
+  });
+
+  it('lists what has already been covered, so it is not repeated', () => {
+    const out = composePrompt({ request: 'go on', targetNodeId: 3, nodes, connections });
+
+    expect(out).toContain('"Root"');
+    expect(out).toContain('"Alpha"');
+    expect(out).not.toContain('"Beta"');
+  });
+
+  it('adds the selected nodes as background, separately from the path', () => {
+    const out = composePrompt({
+      request: 'compare these',
+      targetNodeId: 3,
+      nodes,
+      connections,
+      selectedNodeIds: new Set([1, 2]),
+    });
+
+    expect(out).toContain(SELECTION_MARKER);
+    expect(out).toContain('Beta');
+    expect(out).toContain('BACKGROUND CONTEXT');
+  });
+
+  it('honours the include flags', () => {
+    const noContext = composePrompt({
+      request: 'q', targetNodeId: 3, nodes, connections, includeContext: false,
+    });
+    expect(noContext).toBe('q');
+
+    const noSelection = composePrompt({
+      request: 'q',
+      targetNodeId: null,
+      nodes,
+      connections,
+      selectedNodeIds: new Set([1]),
+      includeSelection: false,
+    });
+    expect(noSelection).toBe('q');
+  });
+
+  it('treats a plain request as carrying no context', () => {
+    expect(hasAssembledContext('just a question')).toBe(false);
   });
 });
