@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { ChevronDown, Settings, Globe, Server, Compass, CheckCircle, AlertCircle } from 'lucide-react';
 import { LLM_CONFIG, DEFAULT_MODEL_CONFIGS, WEBLLM_STATE, DEFAULT_MODEL_CONFIG, GOOGLE_MODEL_LIST } from '../constants/graphConstants';
 import WebLLMProgressTracker from '../components/WebLLMProgressTracker';
+import { Z } from '../constants/zLayers';
 import { isGoogleSignInConfigured, isSignedIn, signIn } from '../utils/googleAuth';
 import CodeAssistSignIn from './CodeAssistSignIn';
 import { isSignedIn as caSignedIn, hasStoredGrant } from '../utils/codeAssistAuth';
@@ -13,6 +14,7 @@ const ModelSelector = ({
     onTestConnection,
     webllmLoadingProgress,
     webllmLoadState,
+    onOpenChange,
 }) => {
     const [isOpen, setIsOpen] = useState(false);
     const signInAvailable = isGoogleSignInConfigured();
@@ -71,6 +73,12 @@ const ModelSelector = ({
             setExternalConfig(prev => ({ ...prev, apiKey: savedApiKey }));
         }
     }, [externalConfig.apiKey]);
+
+    // The menu cannot escape its own stacking context, so whoever renders this
+    // has to raise the container while it is open.
+    useEffect(() => {
+        onOpenChange?.(isOpen);
+    }, [isOpen, onOpenChange]);
 
     // Close dropdown when clicking outside
     useEffect(() => {
@@ -158,7 +166,7 @@ const ModelSelector = ({
     const DisplayIcon = getDisplayIcon();
 
     return (
-        <div className="relative font-inter" ref={dropdownRef}>
+        <div className="relative font-inter" ref={dropdownRef} style={{ zIndex: isOpen ? Z.DROPDOWN : undefined }}>
             {/* Main Button */}
             <button
                 onClick={() => setIsOpen(!isOpen)}
@@ -192,7 +200,8 @@ const ModelSelector = ({
                     // laptop screen, and the page itself does not scroll, so an
                     // unbounded panel put "Apply Settings" permanently out of
                     // reach and the chosen model could never be applied.
-                    className="absolute top-full left-0 mt-2 w-96 bg-white border border-slate-200 rounded-xl shadow-xl z-50 flex flex-col max-h-[calc(100vh-6rem)]"
+                    className="absolute top-full left-0 mt-2 w-96 bg-white border border-slate-200 rounded-xl shadow-xl flex flex-col max-h-[calc(100vh-6rem)]"
+                    style={{ zIndex: Z.DROPDOWN }}
                 >
                     {/* Tab Headers */}
                     <div className="flex border-b border-slate-200 flex-shrink-0 rounded-t-xl overflow-hidden">
