@@ -20,11 +20,11 @@ npm run deploy     # build + gh-pages -d dist
 
 No TypeScript — `.js`/`.jsx` only. Node >= 18.
 
-**Testing.** `test/` holds 103 Vitest unit tests: the streaming JSON parser, context
+**Testing.** `test/` holds 192 Vitest unit tests: the streaming JSON parser, context
 building, coordinates, clustering, the generation pipeline in `useGraphState`
 (driven with a fake backend emitting the real envelope), the selection and
 manipulation hooks, `BrowserLLMEngine`'s provider dispatch, and the shared
-backend envelope via the demo model. `e2e/` holds 21 Playwright tests that drive a real build in
+backend envelope via the demo model. `e2e/` holds 56 Playwright tests that drive a real build in
 headless Chromium through the demo backend, which needs no Ollama, API key or
 WebGPU — so the graph, camera, node controls and wizard are all exercisable
 offline. Chromium launches with WebGPU enabled, and the browser-model capability
@@ -111,10 +111,15 @@ In `graph` mode it wraps the user prompt in one of two hard-coded templates; the
 
 **Node shape**: `{ id, label, type: 'root'|'concept'|'example'|'detail', description, content, context, worldX, worldY, width, height?, batchId, parentNodeId, depth, createdAt }`. **Connections**: `{ from, to }` holding node ids.
 
+**Ids come from a monotonic counter** in `useGraphState`, never from array
+position. It resets with the graph and is raised past any ids adopted from a
+loaded or demo graph. Everything resolves nodes by id — `nodeMap`, or
+`find(n => n.id === …)` — never by index.
+
 Two structural facts worth knowing before touching graph code:
 
 - **`id` is the index into the `nodes` array** (`uniqueNodeId = nodes.length + nodeCount`). Much of the app depends on it: `App.jsx` draws edges via `nodes[conn.from]`, `useKeyboardNavigation` reads `nodes[currentNodeId]`, `Minimap` uses `nodes.at(conn.from)`, `buildContextUpToNode` does `allNodes[targetNodeId]`. Deletion filters the array without reindexing, so afterwards index-based and id-based lookups disagree. This is the single most load-bearing invariant in the codebase.
-- **New nodes are chained, not treed.** Within a batch, the first node connects to `sourceNodeId` (the node you prompted from) and every subsequent node connects to the *previous* node in the stream. `parentNodeId` is derived from that same condition, so it always names the node the edge actually points from.
+- **New nodes are chained, not treed.** Within a batch, the first node connects to `sourceNodeId` (the node you prompted from) and every subsequent node connects to the *previous* node created. `parentNodeId` is derived from that same condition, so it always names the node the edge actually points from.
 
 `currNodeDepth` increments once per completed generation, and depth is what rotates the layout direction (below). `cleanupOrphanedConnections` runs automatically whenever `nodes` changes.
 
@@ -207,6 +212,21 @@ Tailwind v4 via `@tailwindcss/vite`; there is **no `tailwind.config.js`**. Globa
 
 `index.html` paints a dark full-screen `#loading` spinner that `main.jsx` hides once React mounts, and inlines its own scrollbar/body CSS. It also has duplicated `<meta charset>`/`viewport` tags and links two favicon PNGs (`favicon-32x32.png`, `favicon-16x16.png`) that don't exist in `public/` — only `favicon.svg` and `brain-icon.svg` do. `src/App.css` is untouched Vite-template boilerplate imported nowhere.
 
+## Layout and layering
+
+`src/constants/zLayers.js` is the stacking order. These were ad hoc numbers
+scattered across components and they collided twice: the details panel sat below
+the minimap it overlaps, and raising it then hid modals behind it. Anything that
+floats belongs in that scale.
+
+The details panel opens at half the viewport, docked right, and focusing a node
+offsets the camera by half the panel width (`panelLayout.js`) so the node is not
+parked behind the panel describing it.
+
+Panels must fit the viewport: `body` and `#root` both set `overflow: hidden`, so
+anything taller than the window has content that literally cannot be reached.
+The model dropdown shipped that way and its Apply button was unclickable.
+
 ## Known issues
 
 Verified by reading and by test runs. `git log` has what was fixed and why.
@@ -214,40 +234,32 @@ Verified by reading and by test runs. `git log` has what was fixed and why.
 **Still open**
 - `useKeyboardNavigation`'s snap navigation and `NewPromptBox`/`CenteredPrompt`'s
   global alphanumeric listeners are registered even while their components are
-  hidden, because the hooks run before the early return. Typing anywhere can
-  open a prompt box.
-- `NewPromptBox` inlines its own `CONTEXT:` / `SELECTED NODES CONTEXT:` strings
-  and `useGraphState` sniffs for those exact markers. The richer builders in
-  `contextUtils.js` are exported but unused, and the file ends with ~200 lines
-  of commented-out helpers.
+  hidden, because the hooks run before the early return.
 - `calculateNodePosition` measures the live DOM through
-  `getCurrentElementDimensions`, so layout depends on what is already rendered;
-  there is a standing TODO to cache dimensions on the node. It also uses
-  `NODE_SPACING.x` for both axes, which may or may not be deliberate.
+  `getCurrentElementDimensions`, so layout depends on what is already rendered.
+  It also uses `NODE_SPACING.x` for both axes, which may or may not be deliberate.
 - `worldToScreen`/`screenToWorld` read `window.innerWidth/innerHeight` directly
   while `App.jsx` re-derives the same transform inline in a style attribute.
 - `useNodeSelection` exports `cleanupInvalidSelections`/`scheduleCleanup`;
-  `App.jsx` never calls them, so selections can point at deleted nodes.
+  nothing calls them, so selections can point at deleted nodes.
 - `NodeComponent` syncs width/height from props inside a `useMemo` used as an
   effect.
-- 4 `react-hooks/exhaustive-deps` warnings: `FeedbackModal`'s two submit
-  callbacks omit the functions they call, and `SetupWizard` has an unnecessary
-  `allSteps` dep plus a ref-in-cleanup warning.
-- `LLM_CONFIG` still carries a flat backwards-compatibility block (`BASE_URL`,
-  `MODEL`, `LW_MODEL`, …). Nothing reads it now.
-- `setupWizardConstants.jsx` exports `SETUP_MESSAGES`, `CONSENT_CATEGORIES`,
-  `CONSENT_REQUIREMENTS`, `DOWNLOAD_SIZE_THRESHOLDS` and `TROUBLESHOOTING_TIPS`
-  that nothing imports; the wizard hardcodes equivalent copy inline.
-- Saved graphs live in `sessionStorage`, so they do not survive a restart.
-- The browser-model download path itself is still untested: the capability check
-  is covered, but nothing exercises a real model load, which would pull hundreds
-  of megabytes.
+- 2 `react-hooks/exhaustive-deps` warnings in `SetupWizard`.
+- `LLM_CONFIG` still carries a flat backwards-compatibility block that nothing
+  reads, and `setupWizardConstants.jsx` exports several unused objects.
+- `App.jsx` is still ~890 lines. The pointer layer is extracted; the model and
+  modal orchestration are the next seams.
+- The browser-model download path is still unverified end to end: consent,
+  capability detection and dispatch are tested, but nothing exercises a real
+  model load, which would pull hundreds of megabytes.
 
-**A pattern worth knowing**
+**Two patterns worth suspecting first**
 
-Several bugs here came from state read in the same event that set it — the
-wizard refused every transition this way — and several more from `id` being
-treated as an array index. Node ids are assigned `nodes.length + n`, so the two
-coincide until something is deleted, then diverge permanently. Both classes are
-now covered by tests; suspect them first when something behaves as though it is
-one step behind or pointing at the wrong node.
+Most bugs here were one of two kinds. **State read in the same event that set
+it** — the wizard refused every transition this way, the WebLLM engine was
+invisible to the caller that had just created it, and consent decisions raced
+their own storage. **Positional identity** — ids treated as array indices, which
+holds until something is deleted and then diverges permanently.
+
+Both are now covered by tests. When something behaves as though it is one step
+behind, or points at the wrong node, look there first.
