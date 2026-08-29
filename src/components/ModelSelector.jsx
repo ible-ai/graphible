@@ -522,7 +522,8 @@ const ModelSelector = ({
                                                 />
                                             </label>
                                             <p className="text-xs text-slate-500">
-                                                Usage is billed to this project&apos;s Gemini quota.
+                                                Required. Usage is billed to this project&apos;s Gemini quota,
+                                                and its free tier applies.
                                             </p>
                                         </div>
                                     )}
@@ -553,7 +554,7 @@ const ModelSelector = ({
                                 onClick={handleSave}
                                 disabled={
                                     (activeTab === 'external' && authMethod === 'apikey' && !externalConfig.apiKey.trim()) ||
-                                    (activeTab === 'external' && authMethod === 'oauth' && !signedIn) ||
+                                    (activeTab === 'external' && authMethod === 'oauth' && (!signedIn || !externalConfig.projectId?.trim())) ||
                                     (activeTab === 'local' && (!localConfig.address.trim() || !localConfig.model.trim())) ||
                                     (activeTab === 'webllm' && !webllmConfig.model)
                                 }

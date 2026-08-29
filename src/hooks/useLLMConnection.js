@@ -44,16 +44,27 @@ const geminiRequestBody = (prompt) => JSON.stringify({
   generationConfig: LLM_CONFIG.EXTERNAL.GOOGLE.DEFAULT_CONFIG,
 });
 
-const geminiHeaders = (token, config) => {
-  const headers = {
-    Authorization: `Bearer ${token}`,
-    'Content-Type': 'application/json',
-  };
-  // Only sent when the user has named a project; otherwise Google bills
-  // whichever project the OAuth client belongs to.
-  if (config?.projectId) headers['x-goog-user-project'] = config.projectId;
-  return headers;
+// Without x-goog-user-project, Google bills the project that owns the OAuth
+// client - which is whoever deployed Graphible, not the person prompting. That
+// default is wrong in the expensive direction, so a request without a project
+// is refused rather than sent.
+const requireQuotaProject = (config) => {
+  const projectId = config?.projectId?.trim();
+  if (!projectId) {
+    throw new Error(
+      'Add your Google Cloud project ID in the model menu. Google bills Gemini '
+      + 'usage to a project, and without one it would charge this site rather '
+      + 'than your own account.'
+    );
+  }
+  return projectId;
 };
+
+const geminiHeaders = (token, config) => ({
+  Authorization: `Bearer ${token}`,
+  'Content-Type': 'application/json',
+  'x-goog-user-project': requireQuotaProject(config),
+});
 
 // Flattens one Gemini response chunk to text, across every candidate and part.
 const textFromChunk = (chunk) =>

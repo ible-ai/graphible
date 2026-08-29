@@ -39,7 +39,9 @@ const sseStream = (chunks, { splitAt } = {}) => {
   });
 };
 
-const OAUTH_CONFIG = { type: 'google-oauth', provider: 'google', model: 'gemini-3.5-flash-lite' };
+const OAUTH_CONFIG = {
+  type: 'google-oauth', provider: 'google', model: 'gemini-3.5-flash-lite', projectId: 'proj-1',
+};
 
 describe('useLLMConnection, google-oauth backend', () => {
   beforeEach(() => {
@@ -76,16 +78,28 @@ describe('useLLMConnection, google-oauth backend', () => {
     expect(url).toContain('alt=sse');
   });
 
-  it('omits the quota-project header until a project is named', async () => {
+  it('always names a quota project, so the bill follows the user', async () => {
     const fetchMock = vi.fn(async () => ({ ok: true, body: sseStream(['x']) }));
     vi.stubGlobal('fetch', fetchMock);
     const { result } = renderHook(() => useLLMConnection());
 
     await result.current.generateWithLLM('p', true, OAUTH_CONFIG);
-    expect(fetchMock.mock.calls[0][1].headers['x-goog-user-project']).toBeUndefined();
+    expect(fetchMock.mock.calls[0][1].headers['x-goog-user-project']).toBe('proj-1');
+  });
 
-    await result.current.generateWithLLM('p', true, { ...OAUTH_CONFIG, projectId: 'proj-1' });
-    expect(fetchMock.mock.calls[1][1].headers['x-goog-user-project']).toBe('proj-1');
+  it('refuses to send a request with no project rather than billing the host', async () => {
+    // Google falls back to the OAuth client's own project, which belongs to
+    // whoever deployed Graphible. Sending is the expensive failure mode, so
+    // the request never leaves.
+    const fetchMock = vi.fn(async () => ({ ok: true, body: sseStream(['x']) }));
+    vi.stubGlobal('fetch', fetchMock);
+    const { result } = renderHook(() => useLLMConnection());
+
+    const { projectId: _dropped, ...noProject } = OAUTH_CONFIG;
+    await expect(
+      result.current.generateWithLLM('p', true, noProject)
+    ).rejects.toThrow(/project/i);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it('reassembles text across chunks, including a chunk split mid-line', async () => {
