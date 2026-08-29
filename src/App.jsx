@@ -1,6 +1,6 @@
 // Main application
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { RotateCcw, Save, Circle, MousePointer, Link, Trash2, Target, CircleQuestionMark } from 'lucide-react';
 
 // Import custom hooks
@@ -116,6 +116,9 @@ const Graphible = () => {
   const [showConnectionManager, setShowConnectionManager] = useState(false);
   const [showSetupWizard, setShowSetupWizard] = useState(false);
   const [isFirstRun, setIsFirstRun] = useState(false);
+
+  // Guards the one-shot startup connection attempt (see the effect below).
+  const hasInitializedConnection = useRef(false);
 
   // Custom hooks
   const { camera, setCameraImmediate, setCameraTarget } = useCamera();
@@ -257,7 +260,12 @@ const Graphible = () => {
       }
     };
 
-    if (!isFirstRun) {
+    // Run once. loadSavedConfig/handleModelChange/testLLMConnection all change
+    // identity as a result of what this effect does - testLLMConnection depends
+    // on currentModel, which handleModelChange sets - so keeping them as
+    // dependencies re-fires the effect forever.
+    if (!isFirstRun && !hasInitializedConnection.current) {
+      hasInitializedConnection.current = true;
       initializeConnection();
     }
   }, [loadSavedConfig, handleModelChange, testLLMConnection, hasTestedInitially, isFirstRun, showSetupWizard]);
