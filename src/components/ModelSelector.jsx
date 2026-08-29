@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { ChevronDown, Settings, Globe, Server, Compass, CheckCircle, AlertCircle } from 'lucide-react';
 import { LLM_CONFIG, DEFAULT_MODEL_CONFIGS, WEBLLM_STATE, DEFAULT_MODEL_CONFIG, GOOGLE_MODEL_LIST } from '../constants/graphConstants';
 import WebLLMProgressTracker from '../components/WebLLMProgressTracker';
+import { isGoogleSignInConfigured, isSignedIn, signIn } from '../utils/googleAuth';
 
 const ModelSelector = ({
     currentModel,
@@ -12,7 +13,15 @@ const ModelSelector = ({
     webllmLoadState,
 }) => {
     const [isOpen, setIsOpen] = useState(false);
-    const [activeTab, setActiveTab] = useState(currentModel.type || 'webllm');
+    const signInAvailable = isGoogleSignInConfigured();
+    const [authMethod, setAuthMethod] = useState(signInAvailable ? 'oauth' : 'apikey');
+    const [signInBusy, setSignInBusy] = useState(false);
+    const [signInError, setSignInError] = useState(null);
+    const [signedIn, setSignedIn] = useState(() => isSignedIn());
+    // google-oauth lives under the External tab; it is a way of authenticating to
+    // Google, not a separate place to configure.
+    const tabForType = (type) => (type === 'google-oauth' ? 'external' : type);
+    const [activeTab, setActiveTab] = useState(tabForType(currentModel.type) || 'webllm');
     const dropdownRef = useRef(null);
 
     const shouldShowProgressTracker = (webllmState) => {
@@ -45,11 +54,11 @@ const ModelSelector = ({
     // has already mounted, so seeding at first render is not enough on its own.
     useEffect(() => {
         if (currentModel?.type === 'local') setLocalConfig(prev => ({ ...prev, ...currentModel }));
-        if (currentModel?.type === 'external') setExternalConfig(prev => ({ ...prev, ...currentModel }));
+        if (currentModel?.type === 'external' || currentModel?.type === 'google-oauth') setExternalConfig(prev => ({ ...prev, ...currentModel }));
         if (currentModel?.type === 'webllm') setWebllmConfig(prev => ({ ...prev, ...currentModel }));
         // Only while closed - switching the tab under an open panel would move
         // the controls out from under the user.
-        if (!isOpen && currentModel?.type) setActiveTab(currentModel.type);
+        if (!isOpen && currentModel?.type) setActiveTab(tabForType(currentModel.type));
     }, [currentModel, isOpen]);
 
     // Load saved API key on component mount
@@ -72,13 +81,31 @@ const ModelSelector = ({
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
+    const handleGoogleSignIn = async () => {
+        setSignInBusy(true);
+        setSignInError(null);
+        try {
+            await signIn();
+            setSignedIn(true);
+        } catch (error) {
+            setSignInError(error.message);
+            setSignedIn(false);
+        } finally {
+            setSignInBusy(false);
+        }
+    };
+
     const handleSave = () => {
         let config;
 
         if (activeTab === 'local') {
             config = { type: 'local', ...localConfig };
         } else if (activeTab === 'external') {
-            config = { type: 'external', ...externalConfig };
+            // Signed-in Google and a pasted key are different backends, not
+            // two settings of one: they authenticate and bill differently.
+            config = authMethod === 'oauth'
+                ? { type: 'google-oauth', provider: 'google', model: externalConfig.model, projectId: externalConfig.projectId?.trim() || '' }
+                : { type: 'external', ...externalConfig };
         } else if (activeTab === 'webllm') {
             config = { type: 'webllm', ...webllmConfig };
         }
@@ -105,7 +132,7 @@ const ModelSelector = ({
     };
 
     const getDisplayName = () => {
-        if (currentModel.type === 'external') {
+        if (currentModel.type === 'external' || currentModel.type === 'google-oauth') {
             const model = GOOGLE_MODEL_LIST.find(m => m.id === currentModel.model);
             return model ? model.name : currentModel.model;
         } else if (currentModel.type === 'webllm') {
@@ -116,7 +143,7 @@ const ModelSelector = ({
     };
 
     const getDisplayIcon = useCallback(() => {
-        if (currentModel.type === 'external') return Globe;
+        if (currentModel.type === 'external' || currentModel.type === 'google-oauth') return Globe;
         if (currentModel.type === 'webllm') return Compass;
         return Server;
     }, [currentModel.type]);
@@ -135,7 +162,7 @@ const ModelSelector = ({
             >
                 <div className="flex items-center gap-2">
                     <DisplayIcon size={16} className={
-                        currentModel.type === 'external' ? 'text-indigo-600' :
+                        (currentModel.type === 'external' || currentModel.type === 'google-oauth') ? 'text-indigo-600' :
                             currentModel.type === 'webllm' ? 'text-purple-600' :
                                 'text-slate-600'
                     } />
@@ -444,7 +471,64 @@ const ModelSelector = ({
                                     </div>
                                 </div>
 
-                                <div>
+                                <div className="space-y-3">
+                                    <div className="flex rounded-lg border border-slate-300 overflow-hidden text-sm">
+                                        {signInAvailable && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setAuthMethod('oauth')}
+                                                className={`flex-1 px-3 py-2 transition-colors ${authMethod === 'oauth'
+                                                    ? 'bg-indigo-600 text-white'
+                                                    : 'bg-white text-slate-600 hover:bg-slate-50'}`}
+                                            >
+                                                Sign in with Google
+                                            </button>
+                                        )}
+                                        <button
+                                            type="button"
+                                            onClick={() => setAuthMethod('apikey')}
+                                            className={`flex-1 px-3 py-2 transition-colors ${authMethod === 'apikey'
+                                                ? 'bg-indigo-600 text-white'
+                                                : 'bg-white text-slate-600 hover:bg-slate-50'}`}
+                                        >
+                                            Use an API key
+                                        </button>
+                                    </div>
+
+                                    {authMethod === 'oauth' && (
+                                        <div className="space-y-2">
+                                            <button
+                                                type="button"
+                                                onClick={handleGoogleSignIn}
+                                                disabled={signInBusy}
+                                                className="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-slate-700 font-medium hover:bg-slate-50 disabled:opacity-60 transition-colors"
+                                            >
+                                                {signInBusy
+                                                    ? 'Opening Google\u2026'
+                                                    : signedIn ? 'Signed in \u2713  \u00b7  Switch account' : 'Continue with Google'}
+                                            </button>
+                                            {signInError && (
+                                                <p className="text-xs text-rose-600">{signInError}</p>
+                                            )}
+                                            <label className="block text-xs font-medium text-slate-600">
+                                                Google Cloud project ID
+                                                <input
+                                                    type="text"
+                                                    value={externalConfig.projectId || ''}
+                                                    onChange={(e) => setExternalConfig(prev => ({ ...prev, projectId: e.target.value }))}
+                                                    onKeyDown={(e) => e.stopPropagation()}
+                                                    placeholder="my-project-123456"
+                                                    className="mt-1 w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 placeholder-slate-400 focus:border-indigo-500 focus:outline-none"
+                                                />
+                                            </label>
+                                            <p className="text-xs text-slate-500">
+                                                Usage is billed to this project&apos;s Gemini quota.
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className={authMethod === 'apikey' ? '' : 'hidden'}>
                                     <label className="block text-sm font-medium text-slate-700 mb-2">
                                         API Key
                                     </label>
@@ -468,7 +552,8 @@ const ModelSelector = ({
                             <button
                                 onClick={handleSave}
                                 disabled={
-                                    (activeTab === 'external' && !externalConfig.apiKey.trim()) ||
+                                    (activeTab === 'external' && authMethod === 'apikey' && !externalConfig.apiKey.trim()) ||
+                                    (activeTab === 'external' && authMethod === 'oauth' && !signedIn) ||
                                     (activeTab === 'local' && (!localConfig.address.trim() || !localConfig.model.trim())) ||
                                     (activeTab === 'webllm' && !webllmConfig.model)
                                 }

@@ -5,6 +5,62 @@ import { GoogleGenAI } from '@google/genai';
 import { WEBLLM_STATE, DEFAULT_WEBLLM_MODEL_INFO, LLM_CONFIG, ERROR_MESSAGES, migrateModelConfig } from '../constants/graphConstants';
 import { BrowserLLMEngine } from './useBrowserLLMEngine';
 import { getModelConsent, setModelConsent, clearModelConsent, isModelCached } from '../utils/modelConsent';
+import { getAccessToken, clearSession, isSignedIn } from '../utils/googleAuth';
+
+const GEMINI_REST = 'https://generativelanguage.googleapis.com/v1beta';
+
+// Google answers a retired model id with 404 and an empty body, and an
+// out-of-scope token with a 403 whose useful part is a header. Neither says
+// anything a user can act on, so they are translated here.
+const describeGeminiError = async (response) => {
+  const raw = await response.text().catch(() => '');
+  let message = '';
+  try {
+    message = JSON.parse(raw)?.error?.message ?? '';
+  } catch {
+    message = raw.slice(0, 200);
+  }
+
+  if (response.status === 404) {
+    return 'That Gemini model is no longer available. Pick another in the model menu.';
+  }
+  if (response.status === 401) {
+    return 'Your Google sign-in expired. Sign in again to continue.';
+  }
+  if (response.status === 403 && /quota project|x-goog-user-project/i.test(message)) {
+    return 'Google needs a Cloud project to bill this request to. Add one in the model menu.';
+  }
+  if (response.status === 429) {
+    return "You've hit Google's rate limit for this account. Try again in a minute.";
+  }
+  return message || `Gemini request failed: ${response.status}`;
+};
+
+// The REST API takes generation settings as `generationConfig`. Note this is
+// the opposite of the @google/genai SDK, which ignores that field and reads
+// `config` - the two paths are not interchangeable.
+const geminiRequestBody = (prompt) => JSON.stringify({
+  contents: [{ role: 'user', parts: [{ text: prompt }] }],
+  generationConfig: LLM_CONFIG.EXTERNAL.GOOGLE.DEFAULT_CONFIG,
+});
+
+const geminiHeaders = (token, config) => {
+  const headers = {
+    Authorization: `Bearer ${token}`,
+    'Content-Type': 'application/json',
+  };
+  // Only sent when the user has named a project; otherwise Google bills
+  // whichever project the OAuth client belongs to.
+  if (config?.projectId) headers['x-goog-user-project'] = config.projectId;
+  return headers;
+};
+
+// Flattens one Gemini response chunk to text, across every candidate and part.
+const textFromChunk = (chunk) =>
+  (chunk?.candidates ?? [])
+    .flatMap((candidate) => candidate?.content?.parts ?? [])
+    .map((part) => part?.text ?? '')
+    .join('');
 
 
 
@@ -64,6 +120,22 @@ export const useLLMConnection = () => {
       }
       return false;
     }
+  };
+
+  // Confirms the signed-in user can actually reach the model. ListModels costs
+  // no tokens, so a passing test does not consume anyone's quota.
+  const testGoogleOAuthConnection = async (config, { interactive = false } = {}) => {
+    // A background check must never open a sign-in popup; only a deliberate
+    // action gets to do that.
+    if (!interactive && !isSignedIn()) return false;
+
+    const token = await getAccessToken();
+    const response = await fetch(`${GEMINI_REST}/models/${config.model}`, {
+      headers: geminiHeaders(token, config),
+    });
+
+    if (!response.ok) throw new Error(await describeGeminiError(response));
+    return true;
   };
 
   const initializeWebLLMWithConsent = useCallback(async (config, granted = hasUserConsent) => {
@@ -196,6 +268,8 @@ export const useLLMConnection = () => {
         isConnected = await testLocalConnection(config);
       } else if (config.type === 'external') {
         isConnected = await testExternalConnection(config);
+      } else if (config.type === 'google-oauth') {
+        isConnected = await testGoogleOAuthConnection(config, { interactive });
       } else if (config.type === 'webllm') {
         isConnected = await testWebLLMConnection(config, { interactive });
       } else if (config.type === 'demo') {
@@ -238,6 +312,8 @@ export const useLLMConnection = () => {
       return generateWithLocalLLM(prompt, stream, modelToUse);
     } else if (modelToUse.type === 'external') {
       return generateWithExternalLLM(prompt, stream, modelToUse);
+    } else if (modelToUse.type === 'google-oauth') {
+      return generateWithGoogleOAuth(prompt, stream, modelToUse);
     } else if (modelToUse.type === 'webllm') {
       return generateWithWebLLM(prompt, stream, modelToUse);
     }
@@ -375,6 +451,69 @@ export const useLLMConnection = () => {
     throw new Error('Unsupported external provider');
   };
 
+  // Gemini as the signed-in Google user, over REST rather than @google/genai:
+  // the SDK takes an API key, and there is no browser-side way to hand it a
+  // bearer token. Both shapes are re-wrapped into the app's standard envelope.
+  const generateWithGoogleOAuth = async (prompt, stream = true, config = currentModel) => {
+    const token = await getAccessToken();
+
+    if (!stream) {
+      const response = await fetch(`${GEMINI_REST}/models/${config.model}:generateContent`, {
+        method: 'POST',
+        headers: geminiHeaders(token, config),
+        body: geminiRequestBody(prompt),
+      });
+      if (!response.ok) throw new Error(await describeGeminiError(response));
+
+      const data = await response.json();
+      return { ok: true, status: 200, json: async () => ({ response: textFromChunk(data) }) };
+    }
+
+    // alt=sse gives one JSON object per `data:` line. Without it the endpoint
+    // streams a single growing JSON array, which cannot be parsed incrementally.
+    const response = await fetch(
+      `${GEMINI_REST}/models/${config.model}:streamGenerateContent?alt=sse`,
+      { method: 'POST', headers: geminiHeaders(token, config), body: geminiRequestBody(prompt) }
+    );
+    if (!response.ok) throw new Error(await describeGeminiError(response));
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    const encoder = new TextEncoder();
+
+    const readableStream = new ReadableStream({
+      async start(controller) {
+        let buffer = '';
+        try {
+          for (;;) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+
+            // A chunk can split mid-line, so the trailing partial is kept back.
+            const lines = buffer.split('\n');
+            buffer = lines.pop() ?? '';
+
+            for (const line of lines) {
+              if (!line.startsWith('data:')) continue;
+              const payload = line.slice(5).trim();
+              if (!payload || payload === '[DONE]') continue;
+
+              const text = textFromChunk(JSON.parse(payload));
+              if (text) controller.enqueue(encoder.encode(JSON.stringify({ response: text }) + '\n'));
+            }
+          }
+          controller.close();
+        } catch (error) {
+          console.error('Gemini OAuth streaming error:', error);
+          controller.error(error);
+        }
+      },
+    });
+
+    return { ok: true, status: 200, body: readableStream };
+  };
+
   const generateWithWebLLM = async (prompt, stream = true, config = currentModel) => {
     // The user has asked for something that needs the model, so this is the
     // right moment to ask for the download - not on page load, and not by
@@ -427,6 +566,12 @@ export const useLLMConnection = () => {
     // Save API key separately for external models
     if (newConfig.type === 'external' && newConfig.apiKey) {
       localStorage.setItem('graphible-google-api-key', newConfig.apiKey);
+    }
+
+    // Drop the Google token when leaving that backend, so the next sign-in is
+    // a deliberate act rather than a token quietly outliving its use.
+    if (newConfig.type !== 'google-oauth') {
+      clearSession();
     }
 
     // Reset WebLLM engine if switching away from WebLLM
