@@ -109,6 +109,14 @@ const NodeComponent = memo(({
   const handleMouseDown = useCallback((e) => {
     e.stopPropagation();
 
+    // Let the hover controls and the resize grip handle their own presses.
+    // Focusing the node re-centres the camera, which slides the node out from
+    // under the pointer, so mouseup lands elsewhere and the button never sees
+    // a click at all.
+    if (e.target.closest('.node-controls') || e.target.closest('.resize-handle')) {
+      return;
+    }
+
     // Ctrl/Cmd+click toggles selection
     if (e.ctrlKey || e.metaKey) {
       onToggleSelection?.(node.id);

@@ -287,6 +287,7 @@ const Graphible = () => {
     // Load the demo graph data
     resetGraph();
     demoData.nodes.forEach(node => addNode(node));
+    setConnections(demoData.connections || []);
     setCurrentNodeId(demoData.currentNodeId);
     setInitialPromptText(demoData.name);
     setShowPromptCenter(false);
@@ -304,7 +305,7 @@ const Graphible = () => {
     setAdaptivePrompts([]);
 
     setCameraImmediate(0, 0, 1.0);
-  }, [resetGraph, addNode, setCurrentNodeId, setInitialPromptText, setShowPromptCenter,
+  }, [resetGraph, addNode, setConnections, setCurrentNodeId, setInitialPromptText, setShowPromptCenter,
     setNodeDetails, clearSelections, setUiPersonality, setAdaptivePrompts, setCameraImmediate]);
 
   const handleShowSetupWizard = useCallback(() => {
@@ -469,6 +470,8 @@ const Graphible = () => {
   const loadGraph = (graphData) => {
     resetGraph();
     graphData.nodes.forEach(node => addNode(node));
+    // useSaveLoad persists connections; without this they were dropped on load.
+    setConnections(graphData.connections || []);
     setCurrentNodeId(graphData.currentNodeId);
     setInitialPromptText(graphData.name);
     setShowPromptCenter(false);
