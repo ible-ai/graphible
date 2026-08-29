@@ -74,7 +74,8 @@ const ModelSelector = ({
         console.log(config);
         setIsOpen(false);
         // Test the connection with new config
-        setTimeout(() => onTestConnection(config), 100);
+        // Applying a model is deliberate, so this test may prompt to download.
+        setTimeout(() => onTestConnection(config, { interactive: true }), 100);
     };
 
     const getStatusColor = () => {

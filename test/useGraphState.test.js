@@ -153,6 +153,23 @@ describe('useGraphState generation', () => {
     expect(result.current.generationStatus.tokensGenerated).toBeGreaterThan(0);
   });
 
+  it('keeps a long unparseable reply as a node instead of leaving an empty graph', async () => {
+    // A model that ignores the JSON format streams to completion and yields
+    // nothing the parser recognises. Dropping it silently leaves the user
+    // staring at an empty canvas after a full generation.
+    const prose = 'Attention is a mechanism that lets each token attend to others. '.repeat(40);
+    const generate = vi.fn(async () => streamOf([prose]));
+    vi.spyOn(window, 'alert').mockImplementation(() => {});
+    const { result } = renderGraph(generate);
+
+    await act(async () => {
+      await result.current.generateWithLLM('topic', null, null, { type: 'demo' }, null);
+    });
+
+    await waitFor(() => expect(result.current.nodes.length).toBeGreaterThan(0));
+    expect(result.current.nodes[0].content).toContain('Attention is a mechanism');
+  });
+
   it('falls back to a node built from prose rather than losing the response', async () => {
     const generate = vi.fn(async () => ({
       ok: true,

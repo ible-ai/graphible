@@ -386,6 +386,24 @@ Generate 3-6 nodes total. Start now:`;
             newNodeCount++;
           }
 
+          // A model that ignores the JSON format streams to completion and
+          // parses to nothing. Keeping the reply as one node is far better
+          // than returning the user to an empty canvas.
+          if (newNodeCount === 0 && rawResponseBuffer.trim().length > 0) {
+            console.warn('No JSON nodes parsed; keeping the reply as a single node');
+            await processNewNode(
+              {
+                label: deriveHeadingFromText(rawResponseBuffer, prompt),
+                type: sourceNodeId === null ? 'root' : 'concept',
+                description: deriveSummaryFromText(rawResponseBuffer),
+                content: rawResponseBuffer,
+              },
+              0, currentBatch, prevWorldX, prevWorldY, preceedingSiblingNodes, sourceNodeId
+            );
+            newNodeCount++;
+            fallbackNodeCount++;
+          }
+
           updateGenerationStatus({ isGenerating: false });
           setStreamingContent('');
           setCurrentStreamingNodeId(null);

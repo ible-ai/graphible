@@ -2,7 +2,7 @@
 
 import { Brain, Circle, X } from 'lucide-react';
 
-const GenerationStatusBar = ({ generationStatus, onCancel }) => {
+const GenerationStatusBar = ({ generationStatus, streamingContent, onCancel }) => {
   if (!generationStatus.isGenerating) return null;
 
   const formatTime = (ms) => {
@@ -47,6 +47,20 @@ const GenerationStatusBar = ({ generationStatus, onCancel }) => {
         </div>
       </div>
 
+      {/* A live tail of the reply. Without this a long generation shows only a
+          rising token count, with no sign of what the model is producing. */}
+      {streamingContent && (
+        <div className="mt-3 pt-3 border-t border-slate-200/60">
+          <div
+            className="text-xs text-slate-500 font-mono leading-relaxed max-h-24 overflow-hidden text-left"
+            style={{ direction: 'ltr' }}
+          >
+            {streamingContent.length > 400
+              ? '\u2026' + streamingContent.slice(-400)
+              : streamingContent}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

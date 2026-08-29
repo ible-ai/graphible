@@ -27,6 +27,7 @@ import InstallationGuide from './components/InstallationGuide';
 import DeletionStoreModal from './components/DeletionStoreModal';
 import ConnectionManager from './components/ConnectionManager';
 import SetupWizard from './components/SetupWizard/SetupWizard';
+import ModelDownloadConsent from './components/ModelDownloadConsent';
 
 // Import constants and utilities
 import {
@@ -161,12 +162,15 @@ const Graphible = () => {
     hasTestedInitially,
     webllmLoadingProgress,
     webllmLoadState,
+    consentRequest,
+    resolveConsentRequest,
   } = useLLMConnection();
 
   const {
     nodes,
     connections,
     generationStatus,
+    streamingContent,
     currentNodeId,
     currentStreamingNodeId,
     nodeMap,
@@ -304,8 +308,8 @@ const Graphible = () => {
 
     if (config.type !== 'demo') {
       handleModelChange(config);
-      // Test the connection
-      setTimeout(() => testLLMConnection(config), 500);
+      // Finishing the wizard is an explicit choice, so this test may download.
+      setTimeout(() => testLLMConnection(config, { interactive: true }), 500);
     }
   }, [handleModelChange, testLLMConnection]);
 
@@ -532,7 +536,9 @@ const Graphible = () => {
     if (!prompt.trim()) return;
 
     if (llmConnected !== 'connected') {
-      const isConnected = await testLLMConnection();
+      // interactive: the user has just asked for a generation, so this is an
+      // acceptable moment to ask about a download.
+      const isConnected = await testLLMConnection(currentModel, { interactive: true });
       if (!isConnected) {
         const modelType = currentModel.type === 'local' ? 'local model (Ollama)' :
           currentModel.type === 'webllm' ? 'browser model' : 'external API';
@@ -619,6 +625,7 @@ const Graphible = () => {
     <div className="w-screen h-screen relative bg-gradient-to-br from-slate-50 to-slate-100 font-inter">
       <GenerationStatusBar
         generationStatus={generationStatus}
+        streamingContent={streamingContent}
         onCancel={cancelGeneration}
       />
 
@@ -998,6 +1005,11 @@ const Graphible = () => {
           onRemoveConnection={removeConnection}
         />
       )}
+
+      <ModelDownloadConsent
+        request={consentRequest}
+        onDecide={resolveConsentRequest}
+      />
 
       <SetupWizard
         isOpen={showSetupWizard}

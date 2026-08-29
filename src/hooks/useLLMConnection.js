@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { GoogleGenAI } from '@google/genai';
-import { WEBLLM_STATE, DEFAULT_WEBLLM_MODEL_INFO, LLM_CONFIG } from '../constants/graphConstants';
+import { WEBLLM_STATE, DEFAULT_WEBLLM_MODEL_INFO, LLM_CONFIG, ERROR_MESSAGES } from '../constants/graphConstants';
 import { BrowserLLMEngine } from './useBrowserLLMEngine';
 
 
@@ -14,10 +14,18 @@ export const useLLMConnection = () => {
   const [failureCount, setFailureCount] = useState(0);
   const [hasTestedInitially, setHasTestedInitially] = useState(false);
   const [webllmEngine, setWebllmEngine] = useState(null);
+  // State updates are not visible to the async caller that just triggered the
+  // load, so the engine is mirrored into a ref.
+  const engineRef = useRef(null);
   const [webllmLoadingProgress, setWebllmLoadingProgress] = useState(null);
   const [webllmLoadState, setWebllmLoadState] = useState(WEBLLM_STATE.NULL);
   const [hasUserConsent, setHasUserConsent] = useState(false);
   const [consentRequested, setConsentRequested] = useState(false);
+
+  // A pending download request, surfaced as a modal. Held as a promise so the
+  // caller that needs the model can await the user's decision.
+  const [consentRequest, setConsentRequest] = useState(null);
+  const consentResolverRef = useRef(null);
 
   const lastTestTime = useRef(0);
   const maxFailures = 3;
@@ -57,9 +65,10 @@ export const useLLMConnection = () => {
     }
   };
 
-  const initializeWebLLMWithConsent = useCallback(async (config) => {
-    // Check if user has given consent
-    if (!hasUserConsent) {
+  const initializeWebLLMWithConsent = useCallback(async (config, granted = hasUserConsent) => {
+    // setHasUserConsent has not necessarily re-rendered by the time the
+    // awaiting caller resumes, so the decision is passed in explicitly.
+    if (!granted) {
       console.log('WebLLM initialization blocked - no user consent');
       return false;
     }
@@ -86,6 +95,7 @@ export const useLLMConnection = () => {
       await engine.load();
       console.log('Successfully loaded BrowserLLMEngine.');
 
+      engineRef.current = engine;
       setWebllmEngine(engine);
       setWebllmLoadingProgress(null);
       setWebllmLoadState(WEBLLM_STATE.DONE);
@@ -93,40 +103,38 @@ export const useLLMConnection = () => {
     } catch (error) {
       console.error('WebLLM connection test failed:', error);
       setWebllmLoadingProgress(null);
+      engineRef.current = null;
       setWebllmEngine(null);
       setWebllmLoadState(WEBLLM_STATE.NULL);
       throw error;
     }
   }, [webllmEngine, hasUserConsent]);
 
-  // Request consent for WebLLM download
-  const requestWebLLMConsent = useCallback(async () => {
-    if (consentRequested) return hasUserConsent;
+  // Request consent for a model download. Resolves when the user answers the
+  // modal; never blocks the page the way window.confirm did.
+  const requestWebLLMConsent = useCallback((modelId) => {
+    if (hasUserConsent) return Promise.resolve(true);
 
-    setConsentRequested(true);
-
-    // Show consent dialog (this would be handled by the setup wizard or a dedicated component)
-    const userConsented = await new Promise((resolve) => {
-      // This would typically be handled by a modal component
-      // For now, using a confirm dialog
-      const consent = window.confirm(
-        `This will download a ${DEFAULT_WEBLLM_MODEL_INFO.size} AI model to your browser ` +
-        'for private, offline use. The model will be stored locally and never shared. Continue?'
-      );
-      resolve(consent);
+    return new Promise((resolve) => {
+      consentResolverRef.current = resolve;
+      setConsentRequest({ modelId, info: LLM_CONFIG.WEBLLM[modelId] });
     });
+  }, [hasUserConsent]);
 
-    setHasUserConsent(userConsented);
+  const resolveConsentRequest = useCallback((granted) => {
+    setConsentRequest(null);
+    setConsentRequested(true);
+    setHasUserConsent(granted);
 
-    // Store consent decision
-    if (userConsented) {
-      localStorage.setItem('graphible-webllm-consent', 'granted');
-    } else {
-      localStorage.setItem('graphible-webllm-consent', 'denied');
+    try {
+      localStorage.setItem('graphible-webllm-consent', granted ? 'granted' : 'denied');
+    } catch {
+      // Private windows can refuse storage; the decision still applies here.
     }
 
-    return userConsented;
-  }, [consentRequested, hasUserConsent]);
+    consentResolverRef.current?.(granted);
+    consentResolverRef.current = null;
+  }, []);
 
   // Load saved consent on initialization
   useEffect(() => {
@@ -139,40 +147,38 @@ export const useLLMConnection = () => {
     setConsentRequested(savedConsent !== null);
   }, []);
 
-  const testWebLLMConnection = useCallback(async (config) => {
-    try {
-      // Check WebGPU support first (no consent needed for capability check)
-      if (!navigator.gpu) {
-        throw new Error('WebGPU not supported - please use Chrome/Edge 113+ or Firefox 141+');
-      }
-
-      const adapter = await navigator.gpu.requestAdapter();
-      if (!adapter) {
-        throw new Error('WebGPU adapter not available');
-      }
-
-      // If we already have an engine, we're good
-      if (webllmEngine && webllmEngine.modelId === config.model) {
-        return true;
-      }
-
-      // For actual initialization, we need consent
-      if (!hasUserConsent) {
-        const consentGranted = await requestWebLLMConsent();
-        if (!consentGranted) {
-          throw new Error('User declined model download');
-        }
-      }
-
-      // Now initialize with consent
-      return await initializeWebLLMWithConsent(config);
-    } catch (error) {
-      console.error('WebLLM connection test failed:', error);
-      throw error;
+  // Reports whether the browser *could* run a model. Never downloads and never
+  // prompts: startup calls this, and a page load must not trigger either.
+  const checkWebGPUSupport = useCallback(async () => {
+    if (!navigator.gpu) {
+      throw new Error('WebGPU not supported - please use Chrome/Edge 113+ or Firefox 141+');
     }
-  }, [webllmEngine, hasUserConsent, requestWebLLMConsent, initializeWebLLMWithConsent]);
+    const adapter = await navigator.gpu.requestAdapter();
+    if (!adapter) {
+      throw new Error('WebGPU adapter not available');
+    }
+    return true;
+  }, []);
 
-  const testLLMConnection = useCallback(async (config = currentModel) => {
+  const testWebLLMConnection = useCallback(async (config, { interactive = false } = {}) => {
+    await checkWebGPUSupport();
+
+    // Already loaded for this model.
+    if (webllmEngine && webllmEngine.modelId === config.model) return true;
+
+    // Startup and background checks stop here: the browser can run a model, but
+    // nothing is downloaded until the user asks for something that needs it.
+    if (!interactive) return false;
+
+    const granted = await requestWebLLMConsent(config.model);
+    if (!granted) {
+      throw new Error(ERROR_MESSAGES.USER_DECLINED_DOWNLOAD);
+    }
+
+    return await initializeWebLLMWithConsent(config, granted);
+  }, [webllmEngine, checkWebGPUSupport, requestWebLLMConsent, initializeWebLLMWithConsent]);
+
+  const testLLMConnection = useCallback(async (config = currentModel, { interactive = false } = {}) => {
     const now = Date.now();
     if (testingInProgress || (now - lastTestTime.current < cooldownPeriod && failureCount >= maxFailures)) {
       console.log('Connection test throttled - too many recent failures or test in progress');
@@ -190,7 +196,7 @@ export const useLLMConnection = () => {
       } else if (config.type === 'external') {
         isConnected = await testExternalConnection(config);
       } else if (config.type === 'webllm') {
-        isConnected = await testWebLLMConnection(config);
+        isConnected = await testWebLLMConnection(config, { interactive });
       } else if (config.type === 'demo') {
         // Demo mode is always "connected"
         isConnected = true;
@@ -231,7 +237,7 @@ export const useLLMConnection = () => {
     } else if (modelToUse.type === 'external') {
       return generateWithExternalLLM(prompt, stream, modelToUse);
     } else if (modelToUse.type === 'webllm') {
-      return generateWithWebLLM(prompt, stream);
+      return generateWithWebLLM(prompt, stream, modelToUse);
     }
     throw new Error('Unknown model type');
   };
@@ -367,14 +373,23 @@ export const useLLMConnection = () => {
     throw new Error('Unsupported external provider');
   };
 
-  const generateWithWebLLM = async (prompt, stream = true) => {
-    if (!webllmEngine) {
-      throw new Error('WebLLM engine not initialized. Please wait for model loading to complete.');
+  const generateWithWebLLM = async (prompt, stream = true, config = currentModel) => {
+    // The user has asked for something that needs the model, so this is the
+    // right moment to ask for the download - not on page load, and not by
+    // refusing the request and leaving them with an empty graph.
+    let engine = webllmEngine;
+    if (!engine || engine.modelId !== config.model) {
+      await testWebLLMConnection(config, { interactive: true });
+      engine = engineRef.current;
+    }
+
+    if (!engine) {
+      throw new Error('Browser model is not ready. Choose another model or try again.');
     }
 
     try {
       if (stream) {
-        const readableStream = await webllmEngine.stream(prompt);
+        const readableStream = await engine.stream(prompt);
 
         return {
           ok: true,
@@ -382,7 +397,7 @@ export const useLLMConnection = () => {
           status: 200
         };
       } else {
-        const response = await webllmEngine.generate(prompt);
+        const response = await engine.generate(prompt);
 
         return {
           ok: true,
@@ -410,6 +425,7 @@ export const useLLMConnection = () => {
 
     // Reset WebLLM engine if switching away from WebLLM
     if (newConfig.type !== 'webllm' && webllmEngine) {
+      engineRef.current = null;
       setWebllmEngine(null);
       setWebllmLoadingProgress(null);
       setWebllmLoadState(WEBLLM_STATE.NULL);
@@ -443,5 +459,7 @@ export const useLLMConnection = () => {
     webllmLoadState,
     hasUserConsent,
     requestWebLLMConsent,
+    consentRequest,
+    resolveConsentRequest,
   };
 };
