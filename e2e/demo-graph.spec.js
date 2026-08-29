@@ -9,6 +9,17 @@ async function loadDemoGraph(page) {
   await expect(page.locator('.node-component').first()).toBeVisible();
 }
 
+// The details panel is docked to the right at half the viewport, so nodes to
+// the right of the focused one sit behind it. Tests that need the canvas
+// underneath close it first, the way a user would.
+async function closeDetailsPanel(page) {
+  const panel = page.locator('.details-panel');
+  if (await panel.isVisible().catch(() => false)) {
+    await page.getByRole('button', { name: 'Close details' }).click();
+    await expect(panel).toBeHidden();
+  }
+}
+
 test.describe('demo graph', () => {
   test('boots and renders the demo graph without page errors', async ({ page }) => {
     const errors = [];
@@ -33,6 +44,7 @@ test.describe('demo graph', () => {
 
   test('deletes the root node, whose id is 0', async ({ page }) => {
     await loadDemoGraph(page);
+    await closeDetailsPanel(page);
 
     // Regression: the lookup was `n && n.id && n.id === nodeId`, and 0 is
     // falsy, so the root node could never be found and delete silently no-oped.
@@ -45,6 +57,7 @@ test.describe('demo graph', () => {
 
   test('keeps the surviving edges correct after a delete', async ({ page }) => {
     await loadDemoGraph(page);
+    await closeDetailsPanel(page);
 
     // Demo edges are 0->1, 0->2, 1->3, 2->3. Removing node 1 should drop the
     // two edges touching it and leave 0->2 and 2->3.
@@ -77,6 +90,33 @@ test.describe('demo graph', () => {
     await expect(page.locator('.details-panel')).toContainText('ReLU');
   });
 
+  test('opens the details panel at about half the viewport, wrapping its text', async ({ page }) => {
+    await loadDemoGraph(page);
+    await page.locator('.node-component').filter({ hasText: 'Neural Networks Overview' }).click();
+
+    const viewport = page.viewportSize();
+    const panel = await page.locator('.details-panel').boundingBox();
+    // Was a fixed 384px column for the one thing the user is actually reading.
+    expect(panel.width / viewport.width).toBeGreaterThan(0.4);
+    expect(panel.width).toBeLessThanOrEqual(viewport.width);
+
+    // The scroll container used to be display:flex, so the prose could not wrap
+    // and the panel scrolled sideways instead.
+    const fits = await page.locator('.details-panel .prose').evaluate(
+      (el) => el.scrollWidth <= el.clientWidth + 1
+    );
+    expect(fits).toBe(true);
+  });
+
+  test('renders the node body as formatted Markdown', async ({ page }) => {
+    await loadDemoGraph(page);
+    await page.locator('.node-component').filter({ hasText: 'Neural Networks Overview' }).click();
+
+    const panel = page.locator('.details-panel');
+    await expect(panel.locator('strong').first()).toBeVisible();
+    await expect(panel.locator('li').first()).toBeVisible();
+  });
+
   test('renders a context-mode label', async ({ page }) => {
     await loadDemoGraph(page);
 
@@ -88,6 +128,7 @@ test.describe('demo graph', () => {
 
   test('offers feedback controls on a node', async ({ page }) => {
     await loadDemoGraph(page);
+    await closeDetailsPanel(page);
 
     const node = page.locator('.node-component').first();
     await node.hover();
@@ -103,6 +144,7 @@ test.describe('demo graph', () => {
 
   test('deletes a node into the deletion store and restores it', async ({ page }) => {
     await loadDemoGraph(page);
+    await closeDetailsPanel(page);
 
     const node = page.locator('.node-component').filter({ hasText: 'Training Process' });
     await node.hover();
@@ -120,6 +162,7 @@ test.describe('demo graph', () => {
 test.describe('camera', () => {
   test('pans the canvas by the distance dragged, exactly once', async ({ page }) => {
     await loadDemoGraph(page);
+    await closeDetailsPanel(page);
 
     const node = page.locator('.node-component').first();
     const before = await node.boundingBox();
@@ -127,9 +170,9 @@ test.describe('camera', () => {
     const DX = 120;
     const DY = 60;
     // Drag from an empty patch of canvas, away from nodes and the minimap.
-    await page.mouse.move(650, 200);
+    await page.mouse.move(180, 640);
     await page.mouse.down();
-    await page.mouse.move(650 + DX, 200 + DY, { steps: 12 });
+    await page.mouse.move(180 + DX, 640 + DY, { steps: 12 });
     await page.mouse.up();
 
     const after = await node.boundingBox();
@@ -145,6 +188,7 @@ test.describe('camera', () => {
 
   test('does not pan the canvas while dragging a node', async ({ page }) => {
     await loadDemoGraph(page);
+    await closeDetailsPanel(page);
 
     const nodes = page.locator('.node-component');
     const target = nodes.filter({ hasText: 'Basic Architecture' });
@@ -191,5 +235,38 @@ test.describe('setup wizard', () => {
       await expect(page.getByText(id, { exact: true })).toBeVisible();
     }
     await expect(page.getByText(/Gemini 2\.5/)).toHaveCount(0);
+  });
+});
+
+test.describe('details panel', () => {
+  test('stays closed once closed', async ({ page }) => {
+    await loadDemoGraph(page);
+    await expect(page.locator('.details-panel')).toBeVisible();
+
+    await page.getByRole('button', { name: 'Close details' }).click();
+    await expect(page.locator('.details-panel')).toBeHidden();
+
+    // Regression: the focus effect re-ran on every camera change and set the
+    // panel again unconditionally, so the close button did nothing that stuck.
+    await page.mouse.move(200, 620);
+    await page.mouse.down();
+    await page.mouse.move(320, 660, { steps: 8 });
+    await page.mouse.up();
+    await page.waitForTimeout(400);
+
+    await expect(page.locator('.details-panel')).toBeHidden();
+  });
+
+  test('keeps the focused node clear of the panel', async ({ page }) => {
+    await loadDemoGraph(page);
+
+    const panel = await page.locator('.details-panel').boundingBox();
+    const focused = await page
+      .locator('.node-component')
+      .filter({ hasText: 'Neural Networks Overview' })
+      .boundingBox();
+
+    // Centring the node behind the panel that describes it would be perverse.
+    expect(focused.x + focused.width / 2).toBeLessThan(panel.x);
   });
 });

@@ -1,6 +1,9 @@
 // Shows LLM generation progress
 
 import { Brain, Circle, X } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import RemarkMathPlugin from 'remark-math';
+import RehypeKatex from 'rehype-katex';
 
 const GenerationStatusBar = ({ generationStatus, streamingContent, onCancel }) => {
   if (!generationStatus.isGenerating) return null;
@@ -47,17 +50,17 @@ const GenerationStatusBar = ({ generationStatus, streamingContent, onCancel }) =
         </div>
       </div>
 
-      {/* A live tail of the reply. Without this a long generation shows only a
-          rising token count, with no sign of what the model is producing. */}
+      {/* A live tail of the reply, rendered as Markdown while it streams.
+          Partial Markdown renders fine, and showing raw source until the last
+          token made a normal generation look broken. */}
       {streamingContent && (
         <div className="mt-3 pt-3 border-t border-slate-200/60">
-          <div
-            className="text-xs text-slate-500 font-mono leading-relaxed max-h-24 overflow-hidden text-left"
-            style={{ direction: 'ltr' }}
-          >
-            {streamingContent.length > 400
-              ? '\u2026' + streamingContent.slice(-400)
-              : streamingContent}
+          <div className="text-xs text-slate-600 leading-relaxed max-h-28 overflow-hidden text-left prose prose-slate prose-sm max-w-none break-words">
+            <ReactMarkdown remarkPlugins={[RemarkMathPlugin]} rehypePlugins={[RehypeKatex]}>
+              {streamingContent.length > 500
+                ? '\u2026' + streamingContent.slice(-500)
+                : streamingContent}
+            </ReactMarkdown>
           </div>
         </div>
       )}

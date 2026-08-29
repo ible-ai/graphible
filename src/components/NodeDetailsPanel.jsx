@@ -3,13 +3,14 @@
 import { useState, useRef, useEffect } from 'react';
 import { X, Move } from 'lucide-react';
 import ReactMarkdown from "react-markdown";
+import { defaultPanelSize, defaultPanelPosition } from '../utils/panelLayout';
 import RemarkMathPlugin from 'remark-math';
 import RehypeKatex from 'rehype-katex';
 
 
 const NodeDetailsPanel = ({ nodeDetails, onClose, feedbackHistory }) => {
-  const [position, setPosition] = useState({ x: 24, y: 120 });
-  const [size, setSize] = useState({ width: 450, height: 500 });
+  const [size, setSize] = useState(defaultPanelSize);
+  const [position, setPosition] = useState(() => defaultPanelPosition(defaultPanelSize()));
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
@@ -17,13 +18,17 @@ const NodeDetailsPanel = ({ nodeDetails, onClose, feedbackHistory }) => {
   const [initialPosition, setInitialPosition] = useState({ x: 0, y: 0 });
   const panelRef = useRef(null);
 
-  // Reset position and size when a new node is selected
+  // Reset only when a *different* node is opened. Keying this on the whole
+  // object reset the panel on every streamed chunk, undoing any resize the
+  // user had just made.
+  const nodeId = nodeDetails?.id;
   useEffect(() => {
-    if (nodeDetails) {
-      setPosition({ x: 24, y: 120 });
-      setSize({ width: 384, height: 500 });
+    if (nodeId !== undefined && nodeId !== null) {
+      const next = defaultPanelSize();
+      setSize(next);
+      setPosition(defaultPanelPosition(next));
     }
-  }, [nodeDetails]);
+  }, [nodeId]);
 
   const handleMouseDown = (e, action) => {
     e.preventDefault();
@@ -106,6 +111,8 @@ const NodeDetailsPanel = ({ nodeDetails, onClose, feedbackHistory }) => {
         </div>
         <button
           onClick={onClose}
+          aria-label="Close details"
+          title="Close details"
           className="text-slate-400 hover:text-slate-600 transition-colors p-1 rounded-lg hover:bg-slate-100"
         >
           <X size={18} />
@@ -115,10 +122,10 @@ const NodeDetailsPanel = ({ nodeDetails, onClose, feedbackHistory }) => {
       {/* Content */}
       <div className="flex flex-col h-full">
         <div
-          className="flex overflow-y-auto p-4"
+          className="block overflow-y-auto overflow-x-hidden p-4"
           style={{ height: size.height - 90 }}
         >
-          <div className="text-slate-700 text-sm leading-relaxed prose prose-slate max-w-none">
+          <div className="text-slate-700 text-sm leading-relaxed prose prose-slate max-w-none break-words">
             <ReactMarkdown
               remarkPlugins={[RemarkMathPlugin]}
               rehypePlugins={[RehypeKatex]}

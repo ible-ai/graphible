@@ -38,6 +38,7 @@ import {
   RESPONSE_MODE_STORAGE_KEY
 } from './constants/graphConstants';
 import { loadSetupConfig } from './utils/setupWizardUtils';
+import { focusOffsetForPanel } from './utils/panelLayout';
 
 // Must stay in sync with the modes useNodeSelection cycles through.
 const CONTEXT_MODE_LABELS = {
@@ -372,14 +373,30 @@ const Graphible = () => {
     connectionErrorRef.current = connectionError;
   }, [connectionError]);
 
-  // Node focusing
+  // Node focusing. The details panel follows the node as it streams, so this
+  // runs on every chunk - but the camera only moves when the focused node
+  // actually changes, otherwise the canvas jitters throughout a generation.
+  const focusedNodeIdRef = useRef(null);
   useEffect(() => {
     const currentNode = nodeMap.get(currentNodeId);
-    if (currentNode && !showPromptCenter) {
+    if (!currentNode || showPromptCenter) return;
+
+    if (focusedNodeIdRef.current !== currentNodeId) {
+      focusedNodeIdRef.current = currentNodeId;
       setNodeDetails(currentNode);
-      setCameraImmediate(-currentNode.worldX, -currentNode.worldY);
+      // Shift left by half the panel so the node lands in the visible half.
+      setCameraImmediate(
+        -currentNode.worldX - focusOffsetForPanel(camera.zoom, true),
+        -currentNode.worldY
+      );
+      return;
     }
-  }, [currentNodeId, showPromptCenter, nodeMap, setCameraImmediate]);
+
+    // Same node: keep an open panel in step with its content while it streams,
+    // but never reopen one the user has closed. This effect re-runs whenever
+    // the camera moves, so an unconditional set made the close button useless.
+    setNodeDetails(prev => (prev && prev.id === currentNodeId ? currentNode : prev));
+  }, [currentNodeId, showPromptCenter, nodeMap, setCameraImmediate, camera.zoom]);
 
   // Handle node manipulation mouse events
   useEffect(() => {
@@ -500,7 +517,11 @@ const Graphible = () => {
     if (!(contextMode === 'manual' && modifierKey)) {
       setCurrentNodeId(node.id);
       setNodeDetails(node);
-      setCameraImmediate(-node.worldX, -node.worldY, camera.zoom);
+      setCameraImmediate(
+        -node.worldX - focusOffsetForPanel(camera.zoom, true),
+        -node.worldY,
+        camera.zoom
+      );
     }
   }, [camera.zoom, handleNodeSelection, nodes, connections, contextMode, setCurrentNodeId, setNodeDetails, setCameraImmediate]);
 
