@@ -163,7 +163,7 @@ class StreamingJsonParser {
   cleanJsonString(jsonString) {
     return jsonString
       .replace(/^[^{]*/, '') // Remove everything before first {
-      .replace(/[^}]*$/, '}') // Ensure it ends with }
+      .replace(/[^}]*$/, '') // Drop any trailing junk after the last }
       .replace(/([{,]\s*)(\w+):/g, '$1"$2":') // Quote unquoted keys
       .replace(/:\s*'([^']*)'/g, ': "$1"') // Convert single quotes to double
       .replace(/,(\s*[}\]])/g, '$1') // Remove trailing commas
