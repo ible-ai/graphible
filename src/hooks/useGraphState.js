@@ -1,9 +1,9 @@
 // Program graph state
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { NODE_SIZE } from '../constants/graphConstants';
+import { NODE_SIZE, RESPONSE_MODES } from '../constants/graphConstants';
 import { applyForceDirectedLayout, calculateNodePosition } from '../utils/coordinateUtils';
-import { extractJsonFromLlmResponse, createFallbackNode, extractMultipleJsonFromResponse, resetStreamingParser } from '../utils/llmUtils';
+import { extractJsonFromLlmResponse, createFallbackNode, extractMultipleJsonFromResponse, resetStreamingParser, deriveHeadingFromText, deriveSummaryFromText } from '../utils/llmUtils';
 
 export const useGraphState = (generateWithLLM) => {
   const [nodes, setNodes] = useState([]);
@@ -232,7 +232,20 @@ export const useGraphState = (generateWithLLM) => {
     });
   }, []);
 
-  const generateGraphWithLLM = async (prompt, prevWorldX = null, prevWorldY = null, modelConfig, sourceNodeId = null) => {
+  // Replaces a node in place. Nodes are frozen, so single-response streaming
+  // swaps the object rather than mutating it.
+  const updateNode = useCallback((nodeId, changes) => {
+    setNodes(prev => prev.map(n => (n.id === nodeId ? Object.freeze({ ...n, ...changes }) : n)));
+  }, []);
+
+  const generateGraphWithLLM = async (
+    prompt,
+    prevWorldX = null,
+    prevWorldY = null,
+    modelConfig,
+    sourceNodeId = null,
+    responseMode = RESPONSE_MODES.GRAPH
+  ) => {
     console.log('generateGraphWithLLM starting with prompt:', prompt);
     console.log('Using model config:', modelConfig);
 
@@ -260,12 +273,22 @@ export const useGraphState = (generateWithLLM) => {
     let rawResponseBuffer = '';
     let fallbackNodeCount = 0;
     let newNodeCount = 0;
+    let singleNodeId = null;
 
     try {
       // Check if this looks like a context-aware prompt (contains "CONTEXT:" or "SELECTED NODES")
       const isContextAware = prompt.includes('CONTEXT:') || prompt.includes('SELECTED NODES');
+      const singleNode = responseMode === RESPONSE_MODES.SINGLE;
 
-      const fullPrompt = isContextAware ?
+      // Single mode asks for a normal answer and keeps it whole; the graph is
+      // then built by branching, not by splitting one reply.
+      const fullPrompt = singleNode ?
+        `${prompt}
+
+Answer directly and completely in Markdown. Do not split the answer into
+separate documents or JSON objects.` :
+
+        isContextAware ?
         // Context-aware prompt - be more explicit about generating NEW content
         `${prompt}
 
@@ -336,6 +359,25 @@ Generate 3-6 nodes total. Start now:`;
         if (done) {
           console.log('Stream finished');
 
+          if (singleNode) {
+            // Title and summary can only be derived once the answer is whole.
+            if (singleNodeId !== null) {
+              updateNode(singleNodeId, {
+                label: deriveHeadingFromText(rawResponseBuffer, prompt),
+                description: deriveSummaryFromText(rawResponseBuffer),
+                content: rawResponseBuffer,
+              });
+              newNodeCount = 1;
+            }
+
+            updateGenerationStatus({ isGenerating: false });
+            setStreamingContent('');
+            setCurrentStreamingNodeId(null);
+            setCurrNodeDepth(prev => (prev + 1));
+            console.log(`Generation complete: ${newNodeCount} node (single response)`);
+            break;
+          }
+
           // Process any remaining buffered content
           const finalResult = extractMultipleJsonFromResponse(rawResponseBuffer);
 
@@ -365,6 +407,26 @@ Generate 3-6 nodes total. Start now:`;
 
         rawResponseBuffer += chunk;
         setStreamingContent(rawResponseBuffer);
+
+        if (singleNode) {
+          // Create the node on the first real content, then grow it in place so
+          // the answer streams into the graph as it arrives.
+          if (singleNodeId === null) {
+            singleNodeId = nodes.length;
+            await processNewNode(
+              {
+                label: deriveHeadingFromText('', prompt),
+                type: sourceNodeId === null ? 'root' : 'concept',
+                description: '',
+                content: rawResponseBuffer,
+              },
+              0, currentBatch, prevWorldX, prevWorldY, preceedingSiblingNodes, sourceNodeId
+            );
+          } else {
+            updateNode(singleNodeId, { content: rawResponseBuffer });
+          }
+          continue;
+        }
 
         // Use streaming parser to extract JSON
         const [parsedData, newRawResponseBuffer] = extractJsonFromLlmResponse(rawResponseBuffer);

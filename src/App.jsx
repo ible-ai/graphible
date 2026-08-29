@@ -1,7 +1,7 @@
 // Main application
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { RotateCcw, Save, Circle, MousePointer, Link, Trash2, Target, CircleQuestionMark } from 'lucide-react';
+import { RotateCcw, Save, Circle, MousePointer, Link, Trash2, Target, CircleQuestionMark, FileText, Waypoints } from 'lucide-react';
 
 // Import custom hooks
 import { useCamera } from './hooks/useCamera';
@@ -29,7 +29,13 @@ import ConnectionManager from './components/ConnectionManager';
 import SetupWizard from './components/SetupWizard/SetupWizard';
 
 // Import constants and utilities
-import { colorSchemes } from './constants/graphConstants';
+import {
+  colorSchemes,
+  RESPONSE_MODES,
+  RESPONSE_MODE_LABELS,
+  DEFAULT_RESPONSE_MODE,
+  RESPONSE_MODE_STORAGE_KEY
+} from './constants/graphConstants';
 import { loadSetupConfig } from './utils/setupWizardUtils';
 
 // Must stay in sync with the modes useNodeSelection cycles through.
@@ -116,6 +122,28 @@ const Graphible = () => {
   const [showConnectionManager, setShowConnectionManager] = useState(false);
   const [showSetupWizard, setShowSetupWizard] = useState(false);
   const [isFirstRun, setIsFirstRun] = useState(false);
+
+  // Whether a reply is split into several nodes or kept whole in one.
+  const [responseMode, setResponseMode] = useState(() => {
+    try {
+      const saved = localStorage.getItem(RESPONSE_MODE_STORAGE_KEY);
+      return Object.values(RESPONSE_MODES).includes(saved) ? saved : DEFAULT_RESPONSE_MODE;
+    } catch {
+      return DEFAULT_RESPONSE_MODE;
+    }
+  });
+
+  const toggleResponseMode = useCallback(() => {
+    setResponseMode(prev => {
+      const next = prev === RESPONSE_MODES.GRAPH ? RESPONSE_MODES.SINGLE : RESPONSE_MODES.GRAPH;
+      try {
+        localStorage.setItem(RESPONSE_MODE_STORAGE_KEY, next);
+      } catch {
+        // Storage can be unavailable in private windows; the mode still applies.
+      }
+      return next;
+    });
+  }, []);
 
   // Guards the one-shot startup connection attempt (see the effect below).
   const hasInitializedConnection = useRef(false);
@@ -520,11 +548,11 @@ const Graphible = () => {
     clearSelections();
     setShowPromptCenter(false);
 
-    await generateGraphWithLLM(prompt, null, null, currentModel, null);
+    await generateGraphWithLLM(prompt, null, null, currentModel, null, responseMode);
   };
 
   const enhancedGenerateWithLLM = async (prompt, prevWorldX, prevWorldY) => {
-    return generateGraphWithLLM(prompt, prevWorldX, prevWorldY, currentModel, currentNodeId);
+    return generateGraphWithLLM(prompt, prevWorldX, prevWorldY, currentModel, currentNodeId, responseMode);
   };
 
   // Zoom handling
@@ -607,6 +635,8 @@ const Graphible = () => {
         onTestConnection={testLLMConnection}
         webllmLoadingProgress={webllmLoadingProgress}
         webllmLoadState={webllmLoadState}
+        responseMode={responseMode}
+        onToggleResponseMode={toggleResponseMode}
         />
 
       {!showPromptCenter && (
@@ -670,6 +700,22 @@ const Graphible = () => {
                     )}
                   </button>
                 </div>
+
+                {/* Response mode: split the reply into nodes, or keep it whole */}
+                <button
+                  onClick={toggleResponseMode}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-all duration-200 shadow-sm ${responseMode === RESPONSE_MODES.SINGLE
+                    ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                    }`}
+                  style={{ fontSize: '12px' }}
+                  title={`${RESPONSE_MODE_LABELS[responseMode].name}: ${RESPONSE_MODE_LABELS[responseMode].description}. Click to switch.`}
+                >
+                  {responseMode === RESPONSE_MODES.SINGLE
+                    ? <FileText size={16} />
+                    : <Waypoints size={16} />}
+                  {RESPONSE_MODE_LABELS[responseMode].name}
+                </button>
 
                 {/* Action buttons */}
                 <button

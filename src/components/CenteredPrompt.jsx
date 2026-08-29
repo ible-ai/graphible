@@ -1,8 +1,9 @@
 // Initial prompt interface
 
 import { useEffect, useState, useCallback } from 'react';
-import { Waypoints, FolderOpen, Zap, Settings } from 'lucide-react';
+import { Waypoints, FolderOpen, Zap, Settings, FileText } from 'lucide-react';
 import ModelSelector from './ModelSelector';
+import { RESPONSE_MODES, RESPONSE_MODE_LABELS } from '../constants/graphConstants';
 
 const CenteredPrompt = ({
   showPromptCenter,
@@ -17,6 +18,8 @@ const CenteredPrompt = ({
   onShowSetupWizard,
   webllmLoadingProgress,
   webllmLoadState,
+  responseMode,
+  onToggleResponseMode,
 }) => {
   const [inputPrompt, setInputPrompt] = useState(
     'I want to understand the transformer architecture.'
@@ -204,6 +207,26 @@ const CenteredPrompt = ({
               Setup
             </button>
           </div>
+
+          {onToggleResponseMode && (
+            <div className="flex items-center justify-center gap-2 mb-6 text-sm">
+              <span className="text-slate-500">Answers:</span>
+              <button
+                onClick={onToggleResponseMode}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all duration-200 ${responseMode === RESPONSE_MODES.SINGLE
+                  ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                  : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                  }`}
+                title="Click to switch"
+              >
+                {responseMode === RESPONSE_MODES.SINGLE ? <FileText size={14} /> : <Waypoints size={14} />}
+                {RESPONSE_MODE_LABELS[responseMode]?.name}
+              </button>
+              <span className="text-slate-400">
+                {RESPONSE_MODE_LABELS[responseMode]?.description}
+              </span>
+            </div>
+          )}
 
           {/* Connection Status */}
           {llmConnected === 'disconnected' && (

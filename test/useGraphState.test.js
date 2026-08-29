@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useGraphState } from '../src/hooks/useGraphState';
+import { RESPONSE_MODES } from '../src/constants/graphConstants';
 
 const NODE_FIELDS = {
   type: 'concept',
@@ -227,5 +228,121 @@ describe('useGraphState graph operations', () => {
     });
 
     await waitFor(() => expect(result.current.connections).toEqual([]));
+  });
+});
+
+describe('single-response mode', () => {
+  const answer = '# Transformer attention\n\nAttention lets each token weigh every other token. ' +
+    'It is the core of the architecture.';
+
+  const single = (chunks) =>
+    vi.fn(async () => streamOf(chunks));
+
+  it('keeps a whole reply in one node instead of splitting it', async () => {
+    const generate = single([answer]);
+    const { result } = renderGraph(generate);
+
+    await act(async () => {
+      await result.current.generateWithLLM(
+        'explain attention', null, null, { type: 'demo' }, null, RESPONSE_MODES.SINGLE
+      );
+    });
+
+    await waitFor(() => expect(result.current.nodes).toHaveLength(1));
+    expect(result.current.nodes[0].content).toBe(answer);
+  });
+
+  it('asks the model for a normal answer, not for JSON node objects', async () => {
+    const generate = single([answer]);
+    const { result } = renderGraph(generate);
+
+    await act(async () => {
+      await result.current.generateWithLLM(
+        'explain attention', null, null, { type: 'demo' }, null, RESPONSE_MODES.SINGLE
+      );
+    });
+
+    const sent = generate.mock.calls[0][0];
+    expect(sent).toContain('explain attention');
+    expect(sent).not.toContain('Separate each JSON object');
+    expect(sent).toMatch(/Markdown/i);
+  });
+
+  it('titles the node from the reply\'s heading', async () => {
+    const generate = single([answer]);
+    const { result } = renderGraph(generate);
+
+    await act(async () => {
+      await result.current.generateWithLLM(
+        'explain attention', null, null, { type: 'demo' }, null, RESPONSE_MODES.SINGLE
+      );
+    });
+
+    await waitFor(() => expect(result.current.nodes).toHaveLength(1));
+    expect(result.current.nodes[0].label).toBe('Transformer attention');
+    expect(result.current.nodes[0].description).toContain('Attention lets each token');
+  });
+
+  it('grows the node as chunks arrive, rather than waiting for the end', async () => {
+    const generate = single(['# Part\n\nfirst ', 'second ', 'third']);
+    const { result } = renderGraph(generate);
+
+    await act(async () => {
+      await result.current.generateWithLLM(
+        'q', null, null, { type: 'demo' }, null, RESPONSE_MODES.SINGLE
+      );
+    });
+
+    await waitFor(() => expect(result.current.nodes).toHaveLength(1));
+    expect(result.current.nodes[0].content).toBe('# Part\n\nfirst second third');
+  });
+
+  it('marks the first node root, and later ones concept', async () => {
+    const generate = vi.fn()
+      .mockResolvedValueOnce(streamOf([answer]))
+      .mockResolvedValueOnce(streamOf(['A follow-up answer.']));
+    const { result } = renderGraph(generate);
+
+    await act(async () => {
+      await result.current.generateWithLLM(
+        'first', null, null, { type: 'demo' }, null, RESPONSE_MODES.SINGLE
+      );
+    });
+    await waitFor(() => expect(result.current.nodes).toHaveLength(1));
+    expect(result.current.nodes[0].type).toBe('root');
+
+    await act(async () => {
+      await result.current.generateWithLLM(
+        'second', 0, 0, { type: 'demo' }, 0, RESPONSE_MODES.SINGLE
+      );
+    });
+    await waitFor(() => expect(result.current.nodes).toHaveLength(2));
+    expect(result.current.nodes[1].type).toBe('concept');
+    // Branching is the whole point of this mode: the reply hangs off its parent.
+    expect(result.current.connections).toContainEqual({ from: 0, to: 1 });
+  });
+
+  it('still splits into several nodes in graph mode', async () => {
+    const generate = vi.fn(async () => streamOf([nodesAsText(['A', 'B', 'C'])]));
+    const { result } = renderGraph(generate);
+
+    await act(async () => {
+      await result.current.generateWithLLM(
+        'topic', null, null, { type: 'demo' }, null, RESPONSE_MODES.GRAPH
+      );
+    });
+
+    await waitFor(() => expect(result.current.nodes).toHaveLength(3));
+  });
+
+  it('defaults to graph mode when no mode is passed', async () => {
+    const generate = vi.fn(async () => streamOf([nodesAsText(['A', 'B'])]));
+    const { result } = renderGraph(generate);
+
+    await act(async () => {
+      await result.current.generateWithLLM('topic', null, null, { type: 'demo' }, null);
+    });
+
+    await waitFor(() => expect(result.current.nodes).toHaveLength(2));
   });
 });

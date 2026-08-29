@@ -255,6 +255,32 @@ export const ERROR_MESSAGES = {
   MODEL_DOWNLOAD_BLOCKED: 'Model download blocked - consent not granted.'
 };
 
+// How a model's answer becomes nodes.
+//
+//   graph  - ask for several JSON node objects and lay each one out as its own
+//            node, the original behaviour.
+//   single - let the model answer normally and keep the whole reply in one
+//            node. Branching and navigation then come from the graph rather
+//            than from decomposing a single reply.
+export const RESPONSE_MODES = {
+  GRAPH: 'graph',
+  SINGLE: 'single'
+};
+
+export const RESPONSE_MODE_LABELS = {
+  [RESPONSE_MODES.GRAPH]: {
+    name: 'Graph',
+    description: 'Break the answer into connected nodes'
+  },
+  [RESPONSE_MODES.SINGLE]: {
+    name: 'Single',
+    description: 'Keep the whole answer in one node'
+  }
+};
+
+export const DEFAULT_RESPONSE_MODE = RESPONSE_MODES.GRAPH;
+export const RESPONSE_MODE_STORAGE_KEY = 'graphible-response-mode';
+
 export const WEBLLM_STATE = {
   NULL: '',
   DOWNLOADING: 'downloading',
