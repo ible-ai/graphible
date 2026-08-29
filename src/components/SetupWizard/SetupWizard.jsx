@@ -335,9 +335,12 @@ const SetupWizard = ({
         if (isOpen) {
             const saved = loadSetupConfig();
             if (saved.isComplete && saved.config) {
-                setCurrentStep(SETUP_STEPS.SUCCESS);
+                // Reopening is a request to change something, so land on the
+                // choice step. Landing on Success left no way to pick a
+                // different model without hunting for "Start Over".
                 setConfig(saved.config);
                 setCompletedSteps(new Set([SETUP_STEPS.SUCCESS]));
+                setCurrentStep(SETUP_STEPS.CHOICE);
             }
         }
     }, [isOpen]);

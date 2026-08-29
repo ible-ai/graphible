@@ -4,6 +4,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { GoogleGenAI } from '@google/genai';
 import { WEBLLM_STATE, DEFAULT_WEBLLM_MODEL_INFO, LLM_CONFIG, ERROR_MESSAGES } from '../constants/graphConstants';
 import { BrowserLLMEngine } from './useBrowserLLMEngine';
+import { getModelConsent, setModelConsent, clearModelConsent, isModelCached } from '../utils/modelConsent';
 
 
 
@@ -25,6 +26,7 @@ export const useLLMConnection = () => {
   // A pending download request, surfaced as a modal. Held as a promise so the
   // caller that needs the model can await the user's decision.
   const [consentRequest, setConsentRequest] = useState(null);
+  const [connectionError, setConnectionError] = useState(null);
   const consentResolverRef = useRef(null);
 
   const lastTestTime = useRef(0);
@@ -106,45 +108,39 @@ export const useLLMConnection = () => {
       engineRef.current = null;
       setWebllmEngine(null);
       setWebllmLoadState(WEBLLM_STATE.NULL);
+      // Otherwise the recorded grant suppresses the prompt on the next attempt
+      // while no model is present, and the user can never get back to it.
+      clearModelConsent(config.model);
       throw error;
     }
   }, [webllmEngine, hasUserConsent]);
 
-  // Request consent for a model download. Resolves when the user answers the
-  // modal; never blocks the page the way window.confirm did.
-  const requestWebLLMConsent = useCallback((modelId) => {
-    if (hasUserConsent) return Promise.resolve(true);
+  // Request consent for a model download, for this specific model.
+  // Resolves immediately when this model was already approved, or when its
+  // weights are already cached in the browser and there is nothing to fetch.
+  const requestWebLLMConsent = useCallback(async (modelId) => {
+    if (getModelConsent(modelId) === true) return true;
+    if (await isModelCached(modelId)) {
+      setModelConsent(modelId, true);
+      return true;
+    }
 
     return new Promise((resolve) => {
       consentResolverRef.current = resolve;
       setConsentRequest({ modelId, info: LLM_CONFIG.WEBLLM[modelId] });
     });
-  }, [hasUserConsent]);
+  }, []);
 
   const resolveConsentRequest = useCallback((granted) => {
-    setConsentRequest(null);
+    setConsentRequest(prev => {
+      if (prev) setModelConsent(prev.modelId, granted);
+      return null;
+    });
     setConsentRequested(true);
     setHasUserConsent(granted);
 
-    try {
-      localStorage.setItem('graphible-webllm-consent', granted ? 'granted' : 'denied');
-    } catch {
-      // Private windows can refuse storage; the decision still applies here.
-    }
-
     consentResolverRef.current?.(granted);
     consentResolverRef.current = null;
-  }, []);
-
-  // Load saved consent on initialization
-  useEffect(() => {
-    const savedConsent = localStorage.getItem('graphible-webllm-consent');
-    if (savedConsent === 'granted') {
-      setHasUserConsent(true);
-    } else if (savedConsent === 'denied') {
-      setHasUserConsent(false);
-    }
-    setConsentRequested(savedConsent !== null);
   }, []);
 
   // Reports whether the browser *could* run a model. Never downloads and never
@@ -180,12 +176,19 @@ export const useLLMConnection = () => {
 
   const testLLMConnection = useCallback(async (config = currentModel, { interactive = false } = {}) => {
     const now = Date.now();
-    if (testingInProgress || (now - lastTestTime.current < cooldownPeriod && failureCount >= maxFailures)) {
+    // The cooldown exists to stop background retries hammering a dead endpoint.
+    // A user-initiated attempt is never throttled, or a deliberate retry after
+    // three failures would do nothing at all.
+    const throttled = !interactive
+      && (testingInProgress || (now - lastTestTime.current < cooldownPeriod && failureCount >= maxFailures));
+
+    if (throttled) {
       console.log('Connection test throttled - too many recent failures or test in progress');
       return llmConnected === 'connected';
     }
 
     setTestingInProgress(true);
+    setConnectionError(null);
     setLlmConnected('pending');
     lastTestTime.current = now;
 
@@ -215,6 +218,7 @@ export const useLLMConnection = () => {
       return isConnected;
     } catch (error) {
       console.error('Connection test failed:', error);
+      setConnectionError(error?.message || String(error));
       setLlmConnected('disconnected');
       setFailureCount(prev => prev + 1);
       setHasTestedInitially(true);
@@ -461,5 +465,6 @@ export const useLLMConnection = () => {
     requestWebLLMConsent,
     consentRequest,
     resolveConsentRequest,
+    connectionError,
   };
 };

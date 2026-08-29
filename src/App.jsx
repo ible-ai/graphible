@@ -149,6 +149,10 @@ const Graphible = () => {
   // Guards the one-shot startup connection attempt (see the effect below).
   const hasInitializedConnection = useRef(false);
 
+  // Mirrors connectionError so the submit handler can read the reason set
+  // during the await it just made, without waiting for a re-render.
+  const connectionErrorRef = useRef(null);
+
   // Custom hooks
   const { camera, setCameraImmediate, setCameraTarget } = useCamera();
 
@@ -164,6 +168,7 @@ const Graphible = () => {
     webllmLoadState,
     consentRequest,
     resolveConsentRequest,
+    connectionError,
   } = useLLMConnection();
 
   const {
@@ -363,6 +368,10 @@ const Graphible = () => {
   // Use UI personality color scheme, fall back to preferences, then default
   const currentScheme = colorSchemes[uiPersonality.colorScheme || preferences.colorScheme || 'default'];
 
+  useEffect(() => {
+    connectionErrorRef.current = connectionError;
+  }, [connectionError]);
+
   // Node focusing
   useEffect(() => {
     const currentNode = nodeMap.get(currentNodeId);
@@ -539,12 +548,18 @@ const Graphible = () => {
       // interactive: the user has just asked for a generation, so this is an
       // acceptable moment to ask about a download.
       const isConnected = await testLLMConnection(currentModel, { interactive: true });
+
       if (!isConnected) {
+        // Declining the download is a decision, not a failure: say nothing and
+        // leave the user where they were.
+        if (/declined|consent/i.test(connectionErrorRef.current || '')) return;
+
         const modelType = currentModel.type === 'local' ? 'local model (Ollama)' :
           currentModel.type === 'webllm' ? 'browser model' : 'external API';
+        const reason = connectionErrorRef.current ? `\n\nReason: ${connectionErrorRef.current}` : '';
         const proceed = window.confirm(
-          `Could not connect to ${modelType}. Would you like to try generating anyway? ` +
-          `(You can configure your model settings using the dropdown in the top-left)`
+          `Could not connect to the ${modelType}.${reason}\n\n` +
+          `Generate anyway? You can also pick a different model from the menu in the top-left.`
         );
         if (!proceed) return;
       }
