@@ -20,12 +20,15 @@ npm run deploy     # build + gh-pages -d dist
 
 No TypeScript — `.js`/`.jsx` only. Node >= 18.
 
-**Testing.** `test/` holds Vitest unit tests over the pure logic: the streaming
-JSON parser, context building, coordinates, clustering, and the shared backend
-envelope via the demo model. `e2e/` holds Playwright tests that drive a real
-build in headless Chromium through the demo backend, which needs no Ollama, API
-key or WebGPU — so the graph, camera, node controls and wizard are all
-exercisable offline. `vite.config.e2e.js` exists because the main config
+**Testing.** `test/` holds 103 Vitest unit tests: the streaming JSON parser, context
+building, coordinates, clustering, the generation pipeline in `useGraphState`
+(driven with a fake backend emitting the real envelope), the selection and
+manipulation hooks, `BrowserLLMEngine`'s provider dispatch, and the shared
+backend envelope via the demo model. `e2e/` holds 21 Playwright tests that drive a real build in
+headless Chromium through the demo backend, which needs no Ollama, API key or
+WebGPU — so the graph, camera, node controls and wizard are all exercisable
+offline. Chromium launches with WebGPU enabled, and the browser-model capability
+test skips itself where no adapter exists. `vite.config.e2e.js` exists because the main config
 requires TLS certificates from the gitignored `.env/`; it drops the
 server/preview/dev blocks so the suite can serve over plain HTTP (`mergeConfig`
 keeps a base value when an override is `undefined`, so they must be omitted
@@ -193,20 +196,45 @@ Tailwind v4 via `@tailwindcss/vite`; there is **no `tailwind.config.js`**. Globa
 
 ## Known issues
 
-Verified by reading the tree. The list below is what remains after the fix branch; see `git log` for what was addressed and why.
+Verified by reading and by test runs. `git log` has what was fixed and why.
 
 **Still open**
-- `useKeyboardNavigation`'s snap navigation and `NewPromptBox`/`CenteredPrompt`'s global alphanumeric listeners are registered even while their components are hidden, because the hooks run before the early return. Typing anywhere can open a prompt box.
-- `NewPromptBox` inlines its own `CONTEXT:` / `SELECTED NODES CONTEXT:` strings, and `useGraphState` sniffs for those exact markers to pick a prompt template. The richer builders in `contextUtils.js` (`buildContextString`, `buildContextSummaryString`, `buildSelectedNodesContext`) are exported but unused, and the file ends with ~200 lines of commented-out helpers.
-- `calculateNodePosition` measures the live DOM through `getCurrentElementDimensions`, so layout depends on what is already rendered; there is a standing TODO to cache dimensions on the node. It also uses `NODE_SPACING.x` for both axes, which may or may not be deliberate.
-- `worldToScreen`/`screenToWorld` read `window.innerWidth/innerHeight` directly while `App.jsx` re-derives the same transform inline in a style attribute — two implementations of one mapping.
-- `useNodeSelection` exports `cleanupInvalidSelections`/`scheduleCleanup` to drop selections pointing at deleted nodes; `App.jsx` never calls them.
-- `NodeComponent` syncs width/height from props inside a `useMemo` used as an effect.
-- 4 `react-hooks/exhaustive-deps` warnings: `FeedbackModal`'s two submit callbacks omit the functions they call, and `SetupWizard` has an unnecessary `allSteps` dep plus a ref-in-cleanup warning.
-- `LLM_CONFIG` still carries a flat backwards-compatibility block (`BASE_URL`, `MODEL`, `LW_MODEL`, …) alongside the structured `LOCAL`/`WEBLLM`/`EXTERNAL` sections. Nothing reads the flat one now.
-- `setupWizardConstants.jsx` exports `SETUP_MESSAGES`, `CONSENT_CATEGORIES`, `CONSENT_REQUIREMENTS`, `DOWNLOAD_SIZE_THRESHOLDS` and `TROUBLESHOOTING_TIPS` that nothing imports; the wizard hardcodes equivalent copy inline.
-- Saved graphs live in `sessionStorage`, so they do not survive a browser restart.
+- `useKeyboardNavigation`'s snap navigation and `NewPromptBox`/`CenteredPrompt`'s
+  global alphanumeric listeners are registered even while their components are
+  hidden, because the hooks run before the early return. Typing anywhere can
+  open a prompt box.
+- `NewPromptBox` inlines its own `CONTEXT:` / `SELECTED NODES CONTEXT:` strings
+  and `useGraphState` sniffs for those exact markers. The richer builders in
+  `contextUtils.js` are exported but unused, and the file ends with ~200 lines
+  of commented-out helpers.
+- `calculateNodePosition` measures the live DOM through
+  `getCurrentElementDimensions`, so layout depends on what is already rendered;
+  there is a standing TODO to cache dimensions on the node. It also uses
+  `NODE_SPACING.x` for both axes, which may or may not be deliberate.
+- `worldToScreen`/`screenToWorld` read `window.innerWidth/innerHeight` directly
+  while `App.jsx` re-derives the same transform inline in a style attribute.
+- `useNodeSelection` exports `cleanupInvalidSelections`/`scheduleCleanup`;
+  `App.jsx` never calls them, so selections can point at deleted nodes.
+- `NodeComponent` syncs width/height from props inside a `useMemo` used as an
+  effect.
+- 4 `react-hooks/exhaustive-deps` warnings: `FeedbackModal`'s two submit
+  callbacks omit the functions they call, and `SetupWizard` has an unnecessary
+  `allSteps` dep plus a ref-in-cleanup warning.
+- `LLM_CONFIG` still carries a flat backwards-compatibility block (`BASE_URL`,
+  `MODEL`, `LW_MODEL`, …). Nothing reads it now.
+- `setupWizardConstants.jsx` exports `SETUP_MESSAGES`, `CONSENT_CATEGORIES`,
+  `CONSENT_REQUIREMENTS`, `DOWNLOAD_SIZE_THRESHOLDS` and `TROUBLESHOOTING_TIPS`
+  that nothing imports; the wizard hardcodes equivalent copy inline.
+- Saved graphs live in `sessionStorage`, so they do not survive a restart.
+- The browser-model download path itself is still untested: the capability check
+  is covered, but nothing exercises a real model load, which would pull hundreds
+  of megabytes.
 
-**The load-bearing invariant**
+**A pattern worth knowing**
 
-`id` is the index into the `nodes` array, and deletion filters the array without reindexing. After any delete, `nodes[conn.from]` (used by `App.jsx` and `Minimap`) and id-keyed lookups disagree. Nothing in this branch changed that; treat it as the first thing to check when graph rendering goes strange.
+Several bugs here came from state read in the same event that set it — the
+wizard refused every transition this way — and several more from `id` being
+treated as an array index. Node ids are assigned `nodes.length + n`, so the two
+coincide until something is deleted, then diverge permanently. Both classes are
+now covered by tests; suspect them first when something behaves as though it is
+one step behind or pointing at the wrong node.
