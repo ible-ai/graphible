@@ -86,7 +86,20 @@ WebLLM consent flow, in order: `testWebLLMConnection` first checks `navigator.gp
 
 ### 2. Generation — `useGraphState(generateWithLLM)`
 
-Wraps the user prompt in one of two hard-coded templates; the *context-aware* variant is chosen when the prompt contains `CONTEXT:` or `SELECTED NODES`. Both instruct the model to emit one JSON object per node separated by exactly four newlines. Then:
+**Two response modes**, chosen by the caller's `responseMode` argument and
+surfaced as a header toggle plus a control on the start screen
+(`RESPONSE_MODES` in `graphConstants.jsx`, persisted under
+`graphible-response-mode`):
+
+- `graph` (default) — the original behaviour below: ask for several JSON node
+  objects and lay each out as its own node.
+- `single` — send the prompt through essentially unchanged and keep the whole
+  reply in one node, streaming into it as chunks arrive. The node is titled from
+  the reply's own Markdown heading (`deriveHeadingFromText`), falling back to its
+  first sentence and then the prompt. Branching, not decomposition, builds the
+  graph: a follow-up hangs off the node it was asked from.
+
+In `graph` mode it wraps the user prompt in one of two hard-coded templates; the *context-aware* variant is chosen when the prompt contains `CONTEXT:` or `SELECTED NODES`. Both instruct the model to emit one JSON object per node separated by exactly four newlines. Then:
 
 1. Each decoded chunk goes to `extractJsonFromLlmResponse` (`src/utils/llmUtils.js`). It tries **static extraction** first — fenced ```json block → whole-string parse → brace matching — and falls back to a module-level `StreamingJsonParser`, a string/escape-aware brace matcher that pulls complete objects out of a growing buffer and returns `[node, remainingBuffer]`.
 2. That parser is a **stateful singleton**. `resetStreamingParser()` must run at the start of each generation; `useGraphState` does it, other callers don't (see Known issues).
