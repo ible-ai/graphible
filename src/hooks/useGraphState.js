@@ -29,6 +29,28 @@ export const useGraphState = (generateWithLLM) => {
   const intervalRef = useRef(null);
   const abortControllerRef = useRef(null);
 
+  // Ids must never be reused. They were derived from the array length, so
+  // deleting two nodes and generating three could mint an id that already
+  // existed - silent corruption, since edges, selection, the deletion store and
+  // saved graphs all key on id. A counter only ever moves forward.
+  const nextNodeIdRef = useRef(0);
+  // The last node created within the current batch, for chaining.
+  const precedingNodeIdRef = useRef(null);
+
+  const claimNodeId = useCallback(() => {
+    const id = nextNodeIdRef.current;
+    nextNodeIdRef.current += 1;
+    return id;
+  }, []);
+
+  // Loading a graph adopts ids that were assigned elsewhere, so the counter has
+  // to clear the highest of them.
+  const reserveNodeId = useCallback((id) => {
+    if (Number.isFinite(id) && id >= nextNodeIdRef.current) {
+      nextNodeIdRef.current = id + 1;
+    }
+  }, []);
+
   useEffect(() => {
     return () => {
       if (intervalRef.current) {
@@ -103,6 +125,7 @@ export const useGraphState = (generateWithLLM) => {
   }, []);
 
   const addNode = useCallback((nodeData) => {
+    reserveNodeId(nodeData?.id);
     setNodes(prev => {
       // Prevent duplicate nodes
       if (prev.some(node => node.id === nodeData.id)) {
@@ -111,7 +134,7 @@ export const useGraphState = (generateWithLLM) => {
       }
       return [...prev, nodeData];
     });
-  }, []);
+  }, [reserveNodeId]);
 
   // Enhanced reset with proper cleanup
   const resetGraph = useCallback(() => {
@@ -135,6 +158,7 @@ export const useGraphState = (generateWithLLM) => {
     setCurrentStreamingNodeId(null);
     setGenerationBatch(0);
     setCurrNodeDepth(0);
+    nextNodeIdRef.current = 0;
 
     const resetStatus = {
       isGenerating: false,
@@ -177,8 +201,9 @@ export const useGraphState = (generateWithLLM) => {
   };
 
   const processNewNode = async (parsedData, nodeCount, currentBatch, prevWorldX, prevWorldY, preceedingSiblingNodes, sourceNodeId = null) => {
-    const uniqueNodeId = nodes.length + nodeCount;
-    const previousNodeId = uniqueNodeId > 0 ? uniqueNodeId - 1 : null;
+    const uniqueNodeId = claimNodeId();
+    const previousNodeId = precedingNodeIdRef.current;
+    precedingNodeIdRef.current = uniqueNodeId;
     const nodeDepth = currNodeDepth;
 
     // Mirror the edge created below, so parentNodeId always names the node
@@ -215,10 +240,10 @@ export const useGraphState = (generateWithLLM) => {
         from: sourceNodeId,
         to: uniqueNodeId
       }]);
-    } else if (nodeCount > 0) {
-      // Subsequent nodes connect to the previous node in the sequence
+    } else if (nodeCount > 0 && previousNodeId !== null) {
+      // Subsequent nodes chain to the previous node created in this batch.
       setConnections(prevConnections => [...prevConnections, {
-        from: uniqueNodeId - 1,
+        from: previousNodeId,
         to: uniqueNodeId
       }]);
     }
@@ -274,6 +299,7 @@ export const useGraphState = (generateWithLLM) => {
     let fallbackNodeCount = 0;
     let newNodeCount = 0;
     let singleNodeId = null;
+    precedingNodeIdRef.current = null;
 
     try {
       // Check if this looks like a context-aware prompt (contains "CONTEXT:" or "SELECTED NODES")
@@ -430,7 +456,7 @@ Generate 3-6 nodes total. Start now:`;
           // Create the node on the first real content, then grow it in place so
           // the answer streams into the graph as it arrives.
           if (singleNodeId === null) {
-            singleNodeId = nodes.length;
+            singleNodeId = nextNodeIdRef.current;
             await processNewNode(
               {
                 label: deriveHeadingFromText('', prompt),

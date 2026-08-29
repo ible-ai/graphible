@@ -363,3 +363,90 @@ describe('single-response mode', () => {
     await waitFor(() => expect(result.current.nodes).toHaveLength(2));
   });
 });
+
+describe('node identity', () => {
+  it('never reuses an id after deletions', async () => {
+    const generate = vi.fn()
+      .mockResolvedValueOnce(streamOf([nodesAsText(['A', 'B', 'C'])]))
+      .mockResolvedValueOnce(streamOf([nodesAsText(['D', 'E', 'F'])]));
+    const { result } = renderGraph(generate);
+
+    await act(async () => {
+      await result.current.generateWithLLM('one', null, null, { type: 'demo' }, null);
+    });
+    await waitFor(() => expect(result.current.nodes).toHaveLength(3));
+
+    // Drop two, the way the deletion store does.
+    act(() => result.current.setNodes((prev) => prev.filter((n) => n.id === 0)));
+    await waitFor(() => expect(result.current.nodes).toHaveLength(1));
+
+    await act(async () => {
+      await result.current.generateWithLLM('two', null, null, { type: 'demo' }, null);
+    });
+    await waitFor(() => expect(result.current.nodes).toHaveLength(4));
+
+    // Ids were nodes.length + n, so this batch would have reissued 1 and 2.
+    const ids = result.current.nodes.map((n) => n.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(ids).toEqual([0, 3, 4, 5]);
+  });
+
+  it('chains edges to the node actually created before, not id arithmetic', async () => {
+    const generate = vi.fn()
+      .mockResolvedValueOnce(streamOf([nodesAsText(['A', 'B'])]))
+      .mockResolvedValueOnce(streamOf([nodesAsText(['C', 'D'])]));
+    const { result } = renderGraph(generate);
+
+    await act(async () => {
+      await result.current.generateWithLLM('one', null, null, { type: 'demo' }, null);
+    });
+    await waitFor(() => expect(result.current.nodes).toHaveLength(2));
+
+    act(() => result.current.setNodes((prev) => prev.filter((n) => n.id === 0)));
+    await waitFor(() => expect(result.current.nodes).toHaveLength(1));
+
+    await act(async () => {
+      await result.current.generateWithLLM('two', null, null, { type: 'demo' }, 0);
+    });
+    await waitFor(() => expect(result.current.nodes).toHaveLength(3));
+
+    expect(result.current.connections).toContainEqual({ from: 0, to: 2 });
+    expect(result.current.connections).toContainEqual({ from: 2, to: 3 });
+  });
+
+  it('clears adopted ids when a saved graph is loaded', async () => {
+    const generate = vi.fn(async () => streamOf([nodesAsText(['New'])]));
+    const { result } = renderGraph(generate);
+
+    act(() => {
+      result.current.addNode({ id: 7, label: 'Loaded', ...NODE_FIELDS });
+      result.current.addNode({ id: 9, label: 'Loaded too', ...NODE_FIELDS });
+    });
+
+    await act(async () => {
+      await result.current.generateWithLLM('x', null, null, { type: 'demo' }, null);
+    });
+    await waitFor(() => expect(result.current.nodes).toHaveLength(3));
+
+    // Must not collide with the ids the loaded graph already used.
+    expect(result.current.nodes[2].id).toBe(10);
+  });
+
+  it('restarts numbering after a reset', async () => {
+    const generate = vi.fn(async () => streamOf([nodesAsText(['A'])]));
+    const { result } = renderGraph(generate);
+
+    await act(async () => {
+      await result.current.generateWithLLM('one', null, null, { type: 'demo' }, null);
+    });
+    await waitFor(() => expect(result.current.nodes).toHaveLength(1));
+
+    act(() => result.current.resetGraph());
+    await act(async () => {
+      await result.current.generateWithLLM('two', null, null, { type: 'demo' }, null);
+    });
+    await waitFor(() => expect(result.current.nodes).toHaveLength(1));
+
+    expect(result.current.nodes[0].id).toBe(0);
+  });
+});
