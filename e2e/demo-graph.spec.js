@@ -50,7 +50,9 @@ test.describe('demo graph', () => {
     // falsy, so the root node could never be found and delete silently no-oped.
     const root = page.locator('.node-component').filter({ hasText: 'Neural Networks Overview' });
     await root.hover();
-    await root.locator('button[title="Delete node"]').click();
+    const del = root.locator('button[title="Delete node"]');
+    await expect(del).toBeVisible();
+    await del.click();
 
     await expect(page.locator('.node-component')).toHaveCount(3);
   });
@@ -63,7 +65,9 @@ test.describe('demo graph', () => {
     // two edges touching it and leave 0->2 and 2->3.
     const node = page.locator('.node-component').filter({ hasText: 'Basic Architecture' });
     await node.hover();
-    await node.locator('button[title="Delete node"]').click();
+    const del = node.locator('button[title="Delete node"]');
+    await expect(del).toBeVisible();
+    await del.click();
 
     await expect(page.locator('.node-component')).toHaveCount(3);
     // Regression: edges were resolved as nodes[conn.from], an array index.
@@ -148,7 +152,9 @@ test.describe('demo graph', () => {
 
     const node = page.locator('.node-component').filter({ hasText: 'Training Process' });
     await node.hover();
-    await node.locator('button[title="Delete node"]').click();
+    const del = node.locator('button[title="Delete node"]');
+    await expect(del).toBeVisible();
+    await del.click();
 
     await expect(page.locator('.node-component')).toHaveCount(3);
     await expect(page.getByRole('button', { name: /Deleted \(1\)/ })).toBeVisible();

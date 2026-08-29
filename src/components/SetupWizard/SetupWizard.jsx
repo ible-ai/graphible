@@ -439,7 +439,10 @@ const SetupWizard = ({
         }));
 
         if (option === 'demo') {
-            // Demo can complete immediately if user wants
+            // Demo can complete immediately if user wants. Recording it as a
+            // completed setup matters: without this the wizard reopened on
+            // every reload, in front of whatever the user was doing.
+            saveSetupConfig({ type: MODEL_TYPES.DEMO });
             onLoadDemoGraph(DEMO_GRAPH_DATA);
             onComplete({ type: MODEL_TYPES.DEMO });
             onClose();

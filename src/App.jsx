@@ -230,7 +230,9 @@ const Graphible = () => {
     showSaveLoad,
     setShowSaveLoad,
     saveCurrentGraph,
-    deleteGraph
+    deleteGraph,
+    exportGraph,
+    importGraph
   } = useSaveLoad(nodes, connections, currentNodeId, initialPromptText);
 
   useKeyboardNavigation({
@@ -1013,6 +1015,8 @@ const Graphible = () => {
         onSave={saveCurrentGraph}
         onLoad={loadGraph}
         onDelete={deleteGraph}
+        onExport={exportGraph}
+        onImport={importGraph}
       />
 
       <InstallationGuide

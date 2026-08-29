@@ -1,7 +1,7 @@
 // Graph save/load interface
 
-import { useCallback, useEffect } from 'react';
-import { X, Save } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { X, Save, Download, Upload } from 'lucide-react';
 
 const SaveLoadModal = ({
   showSaveLoad,
@@ -10,8 +10,26 @@ const SaveLoadModal = ({
   onClose,
   onSave,
   onLoad,
-  onDelete
+  onDelete,
+  onExport,
+  onImport
 }) => {
+  const fileInputRef = useRef(null);
+  const [importError, setImportError] = useState(null);
+
+  const handleImport = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+
+    setImportError(null);
+    try {
+      await onImport(file);
+    } catch (error) {
+      setImportError(error?.message || 'Could not read that file.');
+    }
+  };
+
 
   const handleClose = useCallback(() => {
     if (!showSaveLoad) return null;
@@ -63,16 +81,45 @@ const SaveLoadModal = ({
         </div>
 
         {hasNodes && (
-          <div className="mb-4">
+          <div className="mb-4 flex gap-2">
             <button
               onClick={handleSave}
-              className="w-full px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors flex items-center gap-2"
+              className="flex-1 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
             >
               <Save size={16} />
               Save Current Graph
             </button>
+            <button
+              onClick={() => onExport?.()}
+              title="Download the current graph as a file"
+              className="px-4 py-2 bg-gray-700 text-gray-100 rounded hover:bg-gray-600 transition-colors flex items-center gap-2"
+            >
+              <Download size={16} />
+              Export
+            </button>
           </div>
         )}
+
+        <div className="mb-4">
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="w-full px-4 py-2 bg-gray-800 text-gray-200 rounded hover:bg-gray-700 transition-colors flex items-center justify-center gap-2 border border-gray-600"
+          >
+            <Upload size={16} />
+            Import from file
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".json,application/json"
+            onChange={handleImport}
+            className="hidden"
+            aria-label="Import graph file"
+          />
+          {importError && (
+            <p className="text-red-400 text-xs mt-2">{importError}</p>
+          )}
+        </div>
 
         <div className="space-y-2">
           {savedGraphs.length === 0 ? (
@@ -94,12 +141,21 @@ const SaveLoadModal = ({
                 <p className="text-gray-400 text-xs mb-2">
                   {new Date(graph.timestamp).toLocaleDateString()} • {graph.nodes.length} nodes
                 </p>
-                <button
-                  onClick={() => handleLoad(graph)}
-                  className="w-full px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm"
-                >
-                  Load Graph
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleLoad(graph)}
+                    className="flex-1 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm"
+                  >
+                    Load Graph
+                  </button>
+                  <button
+                    onClick={() => onExport?.(graph)}
+                    title="Download this graph as a file"
+                    className="px-3 py-1 bg-gray-700 text-gray-200 rounded hover:bg-gray-600 transition-colors text-sm"
+                  >
+                    <Download size={14} />
+                  </button>
+                </div>
               </div>
             ))
           )}
