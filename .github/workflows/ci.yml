@@ -12,9 +12,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # jsdom 30 requires ^22.22.2 || ^24.15.0 || >=26. On Node 20 undici's
+      # webidl shim finds no worker_threads.markAsUncloneable and every vitest
+      # worker dies before a single test runs.
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
 
       - run: npm ci

@@ -18,7 +18,10 @@ npm run test:all   # unit then e2e
 npm run deploy     # build + gh-pages -d dist
 ```
 
-No TypeScript — `.js`/`.jsx` only. Node >= 18.
+No TypeScript — `.js`/`.jsx` only. **Node >= 22.22.2** — jsdom 30 accepts only
+`^22.22.2 || ^24.15.0 || >=26`, and on Node 20 every vitest worker dies at
+startup (`webidl.util.markAsUncloneable is not a function`) before a test runs.
+Both workflows pin Node 24.
 
 **Testing.** `test/` holds 234 Vitest unit tests: the streaming JSON parser, context
 building, coordinates, clustering, the generation pipeline in `useGraphState`

@@ -15,7 +15,7 @@
   "author": "echansen",
   "type": "module",
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=22.22.2"
   },
   "scripts": {
     "dev": "vite",
