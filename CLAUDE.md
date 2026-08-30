@@ -120,7 +120,9 @@ same ids: `gemini-3.5-flash-lite` exists only on the latter,
 "Requested entity was not found", naming neither the entity nor the field.
 `CODE_ASSIST_MODELS` is separate from `LLM_CONFIG.EXTERNAL.GOOGLE.MODELS` and
 the selected id is held apart in `ModelSelector` so switching cannot carry a
-name across.
+name across. `migrateModelConfig` rewrites a saved id against its own backend's
+catalog for the same reason — a Code Assist id migrated against the Developer
+API catalog is exactly how one crosses over.
 
 Connection state is a tri-state string: `'pending' | 'connected' | 'disconnected'`. `testLLMConnection` throttles itself — after `maxFailures` (3) it refuses to retry within a `cooldownPeriod` (5s).
 

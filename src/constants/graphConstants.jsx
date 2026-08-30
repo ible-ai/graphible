@@ -344,13 +344,13 @@ export const CODE_ASSIST_MODELS = {
     description: 'Fastest, and the lightest use of your allowance',
     recommended: true,
   },
-  'gemini-3.5-flash': {
-    name: 'Gemini 3.5 Flash',
+  'gemini-3.7-flash': {
+    name: 'Gemini 3.7 Flash',
     description: 'Balanced speed and capability',
     recommended: false,
   },
-  'gemini-2.5-pro': {
-    name: 'Gemini 2.5 Pro',
+  'gemini-3.1-pro-preview': {
+    name: 'Gemini 3.1 Pro Preview',
     description: 'Most capable, and the heaviest use of your allowance',
     recommended: false,
   },
@@ -370,7 +370,15 @@ export const RECOMMENDED_GOOGLE_MODEL =
 // since retired. The saved config is loaded verbatim, so the stale id survives
 // upgrades and every request 404s - with an empty body, so nothing surfaces.
 // Any id no longer in the catalog is rewritten to the recommended one.
+// Each backend is migrated against its own catalog. Code Assist ids that leave
+// the catalog are not necessarily retired at Google, so a saved one keeps
+// working - but it is no longer offered in the menu, which leaves the user on a
+// model they cannot see and cannot switch back to.
 export const migrateModelConfig = (config) => {
+  if (config?.type === 'code-assist') {
+    if (Object.hasOwn(CODE_ASSIST_MODELS, config.model)) return config;
+    return { ...config, model: DEFAULT_CODE_ASSIST_MODEL };
+  }
   if (config?.type !== 'external' || config?.provider !== 'google') return config;
   if (Object.hasOwn(LLM_CONFIG.EXTERNAL.GOOGLE.MODELS, config.model)) return config;
   return { ...config, model: RECOMMENDED_GOOGLE_MODEL };

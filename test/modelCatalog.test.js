@@ -156,6 +156,21 @@ describe('code assist model catalog', () => {
     }
   });
 
+  it('rewrites a code-assist id that has left the catalog', () => {
+    // gemini-2.5-pro was offered until the catalog moved to 3.1 Pro Preview.
+    // Google still serves it, so nothing fails - the user is simply left on a
+    // model the menu no longer shows and cannot switch back to.
+    const stale = { type: 'code-assist', provider: 'google', model: 'gemini-2.5-pro' };
+    expect(migrateModelConfig(stale).model).toBe(DEFAULT_CODE_ASSIST_MODEL);
+  });
+
+  it('does not rewrite a code-assist id with the Developer API catalog', () => {
+    // The two vocabularies overlap by name but not by membership; migrating a
+    // Code Assist config against the wrong catalog is how an id crosses over.
+    const stale = { type: 'code-assist', provider: 'google', model: 'nope' };
+    expect(CODE_ASSIST_MODELS[migrateModelConfig(stale).model]).toBeDefined();
+  });
+
   it('leaves code-assist configs untouched when migrating', () => {
     // The migration rewrites unknown *Developer API* ids. A Code Assist id is
     // unknown to that catalog by design and must not be rewritten into one.
