@@ -1,7 +1,7 @@
 // Main application
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { RotateCcw, Save, Circle, MousePointer, Link, Trash2, Target, CircleQuestionMark, FileText, Waypoints } from 'lucide-react';
+import { RotateCcw, Save, Circle, MousePointer, Link, Trash2, Target, CircleQuestionMark, FileText, Waypoints, House } from 'lucide-react';
 
 // Import custom hooks
 import { useCamera } from './hooks/useCamera';
@@ -326,6 +326,16 @@ const Graphible = () => {
     setShowSetupWizard(true);
   }, []);
 
+  // Back to the start screen. Deliberately non-destructive: the graph stays in
+  // state, so this is reversible from the start screen's own "Back to graph".
+  // Submitting a new prompt there already calls resetGraph, so keeping the
+  // nodes here cannot leak them into the next graph.
+  const handleReturnToStart = useCallback(() => {
+    setShowPromptCenter(true);
+    setNodeDetails(null);
+    setModelMenuOpen(false);
+  }, [setShowPromptCenter, setNodeDetails, setModelMenuOpen]);
+
   // Update auto context when current node changes
   useEffect(() => {
     if (nodes.length > 0 && currentNodeId !== null) {
@@ -494,6 +504,8 @@ const Graphible = () => {
       <CenteredPrompt
         showPromptCenter={showPromptCenter}
         setShowPromptCenter={setShowPromptCenter}
+        hasGraph={nodes.length > 0}
+        onReturnToGraph={() => setShowPromptCenter(false)}
         llmConnected={llmConnected}
         onSubmit={handleInitialPromptSubmit}
         onShowSaveLoad={() => setShowSaveLoad(true)}
@@ -521,6 +533,14 @@ const Graphible = () => {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-3">
+                  <button
+                    onClick={handleReturnToStart}
+                    className="flex items-center gap-2 px-3 py-2 text-slate-600 rounded-lg hover:bg-slate-100 hover:text-slate-800 transition-all duration-200"
+                    title="Back to the start screen (your graph is kept)"
+                    aria-label="Back to the start screen"
+                  >
+                    <House size={16} />
+                  </button>
                   <h1 className="text-xl font-light text-slate-800 tracking-tight">graph.ible</h1>
                 </div>
 

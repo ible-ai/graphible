@@ -230,6 +230,12 @@ The wizard's option vocabulary (`demo`/`browser`/`cloud`/`local`) is **not** the
 
 Modals, all gated by `App.jsx` booleans: `SaveLoadModal`, `DeletionStoreModal` (checkbox multi-select, bulk restore / permanent delete with confirm; restore drops connections whose other endpoint no longer exists), `ConnectionManager` (two-panel: click two nodes to connect, X to remove; refuses duplicates in either direction), `ModelSelector` (Browser/Local/External tabs, click-outside-to-close, saves then tests after 100ms — also embedded in `CenteredPrompt`), `FeedbackModal`, `SetupWizard`.
 
+The header's home button returns to `CenteredPrompt` by setting
+`showPromptCenter` back to `true`. It leaves the graph in state, so the start
+screen offers "Back to graph" (and Escape) whenever `nodes.length > 0`. That is
+only safe because `handleInitialPromptSubmit` calls `resetGraph` before
+generating — a kept graph can be returned to, but never appended to.
+
 `NodeDetailsPanel` is the **only** place a node's full `content` renders — Markdown through `react-markdown` + `remark-math` + `rehype-katex`, in a draggable, resizable panel. Graph nodes themselves show only label and description.
 
 Persistence is browser-only — there is no server:
@@ -284,9 +290,10 @@ Verified by reading and by test runs. `git log` has what was fixed and why.
   AI Pro/Ultra tiers — the path breaks with no warning here. `loadCodeAssist`
   returning no `cloudaicompanionProject` may need an `onboardUser` call that is
   not implemented.
-- `useKeyboardNavigation`'s snap navigation and `NewPromptBox`/`CenteredPrompt`'s
-  global alphanumeric listeners are registered even while their components are
-  hidden, because the hooks run before the early return.
+- `useKeyboardNavigation`'s snap navigation and `NewPromptBox`'s global
+  alphanumeric listener are registered even while their components are hidden,
+  because the hooks run before the early return. `CenteredPrompt` had the same
+  bug and is now gated on `showPromptCenter`.
 - `calculateNodePosition` measures the live DOM through
   `getCurrentElementDimensions`, so layout depends on what is already rendered.
   It also uses `NODE_SPACING.x` for both axes, which may or may not be deliberate.

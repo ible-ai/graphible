@@ -1,13 +1,15 @@
 // Initial prompt interface
 
 import { useEffect, useState, useCallback } from 'react';
-import { Waypoints, FolderOpen, Zap, Settings, FileText } from 'lucide-react';
+import { Waypoints, FolderOpen, Zap, Settings, FileText, ArrowLeft } from 'lucide-react';
 import ModelSelector from './ModelSelector';
 import { RESPONSE_MODES, RESPONSE_MODE_LABELS } from '../constants/graphConstants';
 
 const CenteredPrompt = ({
   showPromptCenter,
   setShowPromptCenter,
+  hasGraph = false,
+  onReturnToGraph,
   llmConnected,
   onSubmit,
   onShowSaveLoad,
@@ -65,9 +67,26 @@ const CenteredPrompt = ({
     return 0;
   }, [inputPrompt, defaultText]);
 
+  const returnToGraph = useCallback(() => {
+    if (hasGraph) onReturnToGraph?.();
+  }, [hasGraph, onReturnToGraph]);
+
   // Global typing listener
   useEffect(() => {
+    // This hook runs before the `showPromptCenter` early return, so without
+    // this guard the listener stays live while the graph is on screen -
+    // every keystroke there would rewrite the hidden start prompt, and
+    // Escape would yank the user back to a graph they are already looking at.
+    if (!showPromptCenter) return undefined;
+
     const handleGlobalKeyDown = (e) => {
+      // Escape leaves the start screen the same way the back button entered
+      // it. Allowed from the focused textarea too, where Escape is not text.
+      if (e.key === 'Escape') {
+        returnToGraph();
+        return;
+      }
+
       // Don't interfere if user is typing in any input, textarea, or select element
       if (e.target.tagName === 'INPUT' ||
           e.target.tagName === 'TEXTAREA' ||
@@ -87,7 +106,7 @@ const CenteredPrompt = ({
     return () => {
       window.removeEventListener('keydown', handleGlobalKeyDown);
     };
-  }, [setInputPrompt]);
+  }, [setInputPrompt, showPromptCenter, returnToGraph]);
 
 
   const handleSubmit = useCallback(() => {
@@ -118,6 +137,19 @@ const CenteredPrompt = ({
   return (
     <div className="fixed inset-0 flex items-center justify-center z-20 bg-gradient-to-br from-slate-50 to-slate-100 font-inter">
       {/* Model Selector - positioned same as in main interface */}
+      {hasGraph && (
+        <button
+          type="button"
+          onClick={returnToGraph}
+          className="absolute top-6 right-6 z-30 flex items-center gap-2 px-4 py-2 bg-white/80 backdrop-blur-sm border border-slate-200 text-slate-600 rounded-lg hover:bg-white hover:text-slate-800 transition-all duration-200 shadow-sm"
+          style={{ fontSize: '12px' }}
+          title="Return to the graph you were exploring (Esc)"
+        >
+          <ArrowLeft size={16} />
+          Back to graph
+        </button>
+      )}
+
       <div className="absolute top-6 left-6 z-30">
         <ModelSelector
           currentModel={currentModel}

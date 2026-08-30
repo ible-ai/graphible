@@ -1,40 +1,27 @@
 # Handoff
 
-Last verified: 2026-08-30, on `main` at the merge `afab95f`.
+Last verified: 2026-08-30, on `main`.
 
 ## State
 
 `main` is clean. Lint 0 errors (2 pre-existing `exhaustive-deps` warnings in
-`SetupWizard`), **234 unit**, **60 e2e**, build clean. **Not pushed** —
+`SetupWizard`), **234 unit**, **65 e2e**, build clean. **Not pushed** —
 `origin/main` is behind and nothing here has ever been pushed.
 
-## Next task: a "back" button to the landing screen
-
-The landing screen is `CenteredPrompt`, gated entirely on **`showPromptCenter`**
-(`App.jsx:66`). It starts `true` and is set `false` once a graph exists.
-`CenteredPrompt` early-returns `null` when it is false, and the whole header
-block is `{!showPromptCenter && (...)}` at `App.jsx:511`. So "go back" is
-`setShowPromptCenter(true)` — the open question is what happens to the graph.
-
-Worth deciding before writing code:
-
-- **Keep the graph or clear it?** Setting the flag alone leaves nodes in state,
-  so returning and prompting again appends to the existing graph rather than
-  starting fresh. If the button is meant to read as "new graph", it needs
-  `resetGraph` from `useGraphState` too; if it is meant as "go look at the start
-  screen", it must not.
-- **Where does it live?** The header hides itself on the landing screen, so a
-  header button disappears exactly when you would want to leave it — that is
-  fine for a one-way "back", but means the button cannot toggle.
-- Anything floating goes on the `Z` scale in `src/constants/zLayers.js`. Note a
-  z-index only competes inside its own stacking context; the header is one, and
-  that is what trapped the model menu under the details panel (`8ae8616`).
-- A `<button>` is already in `isInteractiveTarget` in `useCanvasInteraction`, so
-  it will not pan the camera. A non-button element would.
-- `useKeyboardNavigation` is suppressed while `showPromptCenter` is true, so
-  returning to the landing screen also disables WASD. That is probably wanted.
-
 ## What just landed
+
+**Back button.** A home button in the header returns to the start screen; the
+start screen grows a "Back to graph" button (and Escape) whenever a graph
+exists. It is non-destructive — nodes stay in state — which is only safe
+because `handleInitialPromptSubmit` already calls `resetGraph`, so kept nodes
+cannot leak into the next graph. Both halves are asserted in
+`e2e/back-to-start.spec.js`.
+
+Fixed alongside it: `CenteredPrompt`'s global keydown listener was live while
+the graph was on screen (the hook runs before the component's early return), so
+typing on the canvas rewrote the hidden start prompt. It is now gated on
+`showPromptCenter`. The same known issue still stands for `NewPromptBox` and
+`useKeyboardNavigation`.
 
 `code-assist`: sign in with Google, generate on the user's own Gemini
 allowance. No API key, no Cloud project. Verified end to end against a live
