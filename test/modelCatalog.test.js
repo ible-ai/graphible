@@ -80,6 +80,25 @@ describe('google model catalog', () => {
     expect(LLM_CONFIG.EXTERNAL.GOOGLE.MODELS[DEFAULT_MODEL_CONFIGS.EXTERNAL.model]).toBeDefined();
   });
 
+  it('offers only ids gemini-cli lists as valid for this endpoint', () => {
+    // From @google/gemini-cli-core's VALID_GEMINI_MODELS. Anything outside it
+    // returns "Requested entity was not found", which names nothing.
+    const VALID = new Set([
+      'gemini-3-pro-preview', 'gemini-3.1-pro-preview',
+      'gemini-3.1-pro-preview-customtools', 'gemini-3-flash-preview',
+      'gemini-3-flash', 'gemini-3.5-flash', 'gemini-3.1-flash-lite',
+      'gemini-2.5-pro', 'gemini-2.5-flash',
+    ]);
+    for (const m of CODE_ASSIST_MODEL_LIST) expect(VALID.has(m.id), m.id).toBe(true);
+  });
+
+  it('offers no preview model, which needs account access we cannot detect', () => {
+    // gemini-cli resolves a preview id away when the account lacks access; we
+    // send it verbatim, so offering one ships a menu entry that only works for
+    // some users.
+    for (const m of CODE_ASSIST_MODEL_LIST) expect(m.id, m.id).not.toContain('preview');
+  });
+
   it('recommends exactly one model, and names every one', () => {
     expect(GOOGLE_MODEL_LIST.filter((m) => m.recommended)).toHaveLength(1);
     for (const m of GOOGLE_MODEL_LIST) {
@@ -157,10 +176,10 @@ describe('code assist model catalog', () => {
   });
 
   it('rewrites a code-assist id that has left the catalog', () => {
-    // gemini-2.5-pro was offered until the catalog moved to 3.1 Pro Preview.
-    // Google still serves it, so nothing fails - the user is simply left on a
-    // model the menu no longer shows and cannot switch back to.
-    const stale = { type: 'code-assist', provider: 'google', model: 'gemini-2.5-pro' };
+    // gemini-3.7-flash was offered briefly and is not in Code Assist's
+    // vocabulary at all, so a saved one fails every request until it is
+    // rewritten.
+    const stale = { type: 'code-assist', provider: 'google', model: 'gemini-3.7-flash' };
     expect(migrateModelConfig(stale).model).toBe(DEFAULT_CODE_ASSIST_MODEL);
   });
 

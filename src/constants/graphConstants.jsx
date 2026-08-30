@@ -333,20 +333,35 @@ export const GOOGLE_MODEL_LIST = Object.entries(LLM_CONFIG.EXTERNAL.GOOGLE.MODEL
 // Code Assist speaks a different model vocabulary from the Gemini Developer
 // API - gemini-3.5-flash-lite exists on one and not the other, and sending the
 // wrong name returns "Requested entity was not found" with nothing to say which
-// entity. Ids are from gemini-cli's packages/core/src/config/models.ts.
+// entity. Ids are from gemini-cli's packages/core/src/config/models.ts
+// (VALID_GEMINI_MODELS), which is the only published list of what this endpoint
+// accepts.
+//
+// Being in that list is necessary but not sufficient. gemini-cli never sends a
+// picked id straight through: resolveModel() rewrites it against per-account
+// state fetched at startup - hasAccessToPreview, a gemini-3.1 launch flag, and
+// a GEMINI_3_5_FLASH_GA_LAUNCHED experiment - and substitutes a GA model when
+// the account lacks preview access. We send the id verbatim, so only ids that
+// need no such access can be offered here. That is what ruled out
+// gemini-3.1-pro-preview and gemini-3-pro-preview: valid strings, rejected for
+// an account without preview access.
+//
+// gemini-3.7-flash is Developer-API-only and is not in this vocabulary at all.
 export const CODE_ASSIST_MODELS = {
   'gemini-3.1-flash-lite': {
     name: 'Gemini 3.1 Flash Lite',
     description: 'Fastest, and the lightest use of your allowance',
     recommended: true,
   },
-  'gemini-3.7-flash': {
-    name: 'Gemini 3.7 Flash',
+  'gemini-3.5-flash': {
+    name: 'Gemini 3.5 Flash',
     description: 'Balanced speed and capability',
     recommended: false,
   },
-  'gemini-3.1-pro-preview': {
-    name: 'Gemini 3.1 Pro Preview',
+  // gemini-cli's own DEFAULT_GEMINI_MODEL, and ungated - the 3.x Pro models are
+  // all preview and need account access we cannot detect.
+  'gemini-2.5-pro': {
+    name: 'Gemini 2.5 Pro',
     description: 'Most capable, and the heaviest use of your allowance',
     recommended: false,
   },

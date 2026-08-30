@@ -118,6 +118,18 @@ a feature:
 same ids: `gemini-3.5-flash-lite` exists only on the latter,
 `gemini-3.1-flash-lite` only on the former. Sending the wrong one returns
 "Requested entity was not found", naming neither the entity nor the field.
+The authoritative list for Code Assist is `VALID_GEMINI_MODELS` in
+`@google/gemini-cli-core`'s `config/models.js` — `npm pack` it and read it
+rather than guessing, because nothing in the API reports what it accepts.
+
+Membership in that list is necessary but not sufficient. gemini-cli never sends
+a picked id through: `resolveModel()` rewrites it against per-account state it
+fetches at startup (`hasAccessToPreview`, a 3.1 launch flag, a
+`GEMINI_3_5_FLASH_GA_LAUNCHED` experiment) and substitutes a GA model when the
+account lacks preview access. Graphible sends the id verbatim, **so only ids
+needing no such access can be offered** — every `*-preview` id is a valid string
+that fails for accounts without it. A test pins the catalog to non-preview ids
+for exactly this reason.
 `CODE_ASSIST_MODELS` is separate from `LLM_CONFIG.EXTERNAL.GOOGLE.MODELS` and
 the selected id is held apart in `ModelSelector` so switching cannot carry a
 name across. `migrateModelConfig` rewrites a saved id against its own backend's

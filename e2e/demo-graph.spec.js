@@ -257,7 +257,7 @@ test.describe('setup wizard', () => {
     await page.getByRole('button', { name: /External API/ }).click();
     await page.getByRole('button', { name: 'Google account' }).click();
 
-    for (const id of ['Gemini 3.1 Flash Lite', 'Gemini 3.7 Flash', 'Gemini 3.1 Pro Preview']) {
+    for (const id of ['Gemini 3.1 Flash Lite', 'Gemini 3.5 Flash', 'Gemini 2.5 Pro']) {
       await expect(page.getByText(id, { exact: true })).toBeVisible();
     }
     // The Developer API's default does not exist on Code Assist.
