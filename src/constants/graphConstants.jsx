@@ -128,7 +128,6 @@ export const LLM_CONFIG = {
   WEBLLM: {
     "onnx-community/gemma-3-270m-it-ONNX": {
       name: 'Gemma 3 270M',
-      description: 'Smallest and quickest to download.',
       params: '270M',
       size: '273 MB',
       dtype: 'q4f16',
@@ -137,7 +136,6 @@ export const LLM_CONFIG = {
     },
     "onnx-community/Qwen3-0.6B-ONNX": {
       name: 'Qwen3 0.6B',
-      description: 'A step up in quality for a modest download.',
       params: '0.6B',
       size: '570 MB',
       dtype: 'q4f16',
@@ -146,7 +144,6 @@ export const LLM_CONFIG = {
     },
     "onnx-community/gemma-3-1b-it-ONNX": {
       name: 'Gemma 3 1B',
-      description: 'Best quality of the browser options.',
       params: '1B',
       size: '764 MB',
       dtype: 'q4f16',
@@ -155,7 +152,6 @@ export const LLM_CONFIG = {
     },
     'gemma3-1b-it-q4f16_1-MLC': {
       name: 'Gemma 3 1B (MLC)',
-      description: 'Same model through the WebLLM runtime.',
       params: '1B',
       size: '711 MB',
       dtype: 'q4f16',

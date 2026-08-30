@@ -313,7 +313,6 @@ const ModelSelector = ({
                                                             </span>
                                                         )}
                                                     </div>
-                                                    <div className="text-xs text-slate-600 mb-2">{modelInfo.description}</div>
                                                     <div className="flex items-center gap-3 text-xs text-slate-500">
                                                         <span>Size: {modelInfo.size}</span>
                                                         <span>Performance: {modelInfo.performance}</span>
@@ -399,28 +398,10 @@ const ModelSelector = ({
 
                         {activeTab === 'external' && (
                             <div className="space-y-4">
-                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
-                                    <div className="flex items-start gap-2">
-                                        <Globe className="text-blue-600 flex-shrink-0 mt-0.5" size={16} />
-                                        <div>
-                                            <h3 className="font-semibold text-blue-800 mb-1 text-sm">Cloud AI Models</h3>
-                                            <div className="text-blue-700 text-xs space-y-1">
-                                                <div className="flex items-center gap-1">
-                                                    <CheckCircle size={10} />
-                                                    <span>Instant setup</span>
-                                                </div>
-                                                <div className="flex items-center gap-1">
-                                                    <CheckCircle size={10} />
-                                                    <span>Maximum capability</span>
-                                                </div>
-                                                <div className="flex items-center gap-1">
-                                                    <AlertCircle size={10} />
-                                                    <span>Requires internet & API costs</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                                {/* Provider select, hidden while Google is the only option.
+                                    Kept rather than deleted so routing a second provider
+                                    through here does not mean rebuilding the control.
+                                    externalConfig.provider still defaults to 'google'.
 
                                 <div>
                                     <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -447,9 +428,10 @@ const ModelSelector = ({
                                         <ChevronDown size={16} className="absolute right-3 top-3 text-gray-400 pointer-events-none" />
                                     </div>
                                 </div>
+                                */}
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">
                                         Model
                                     </label>
                                     <div className="space-y-2">
@@ -481,7 +463,7 @@ const ModelSelector = ({
                                                 />
                                                 <div className="flex-1">
                                                     <div className="font-medium text-sm">{model.name}</div>
-                                                    <div className="text-xs text-gray-400">{model.description}</div>
+                                                    <div className="text-xs text-slate-600">{model.description}</div>
                                                 </div>
                                                 <div className={`w-4 h-4 border-2 rounded-full transition-all duration-200 ${selectedModel === model.id
                                                     ? 'border-purple-500 bg-purple-500'
