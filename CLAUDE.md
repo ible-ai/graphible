@@ -20,11 +20,11 @@ npm run deploy     # build + gh-pages -d dist
 
 No TypeScript — `.js`/`.jsx` only. Node >= 18.
 
-**Testing.** `test/` holds 192 Vitest unit tests: the streaming JSON parser, context
+**Testing.** `test/` holds 234 Vitest unit tests: the streaming JSON parser, context
 building, coordinates, clustering, the generation pipeline in `useGraphState`
 (driven with a fake backend emitting the real envelope), the selection and
 manipulation hooks, `BrowserLLMEngine`'s provider dispatch, and the shared
-backend envelope via the demo model. `e2e/` holds 56 Playwright tests that drive a real build in
+backend envelope via the demo model. `e2e/` holds 60 Playwright tests that drive a real build in
 headless Chromium through the demo backend, which needs no Ollama, API key or
 WebGPU — so the graph, camera, node controls and wizard are all exercisable
 offline. Chromium launches with WebGPU enabled, and the browser-model capability
@@ -51,16 +51,16 @@ Push to `main` → `.github/workflows/deploy.yml` builds and deploys to GitHub P
 
 ## Repo map
 
-34 source files under `src/`:
+44 source files under `src/`:
 
 ```
 src/App.jsx               955 lines — the whole app shell; all UI state lives here
 src/main.jsx                        — React root; hides index.html's #loading div
 src/index.css                       — Tailwind + KaTeX imports, hit-test classes, hand-rolled .prose
 src/hooks/          (10)            — camera, graph state, LLM, selection, manipulation, feedback, save/load, keyboard, browser-LLM engine
-src/utils/           (5)            — coordinates, LLM parsing, context building, clustering, wizard helpers
+src/utils/           (11)            — coordinates, LLM parsing, context building, clustering, wizard helpers, Google/Code Assist auth
 src/constants/       (2)            — graphConstants.jsx, setupWizardConstants.jsx
-src/components/     (15)            — Minimap (784) and SetupWizard (825) are the two big ones
+src/components/     (18)            — Minimap (784) and SetupWizard (825) are the two big ones
 ```
 
 Gitignored and unimported: `src/dev/` (7 files; `src/dev/App.jsx` is a stale 1117-line fork of `App.jsx`) and `_src/`. Don't edit them for app changes.
@@ -79,6 +79,45 @@ Normalizes four backends behind one `generateWithLLM(prompt, stream, config)`. *
 | `local` | Ollama at `config.address` — `POST /api/generate`, `GET /api/tags` |
 | `external` | Google Gemini via `@google/genai`; `generateContentStream`, chunks flattened across `candidates[].content.parts[].text`. Generation params go in `config` (the SDK ignores the older `generationConfig`) and come from `LLM_CONFIG.EXTERNAL.GOOGLE.DEFAULT_CONFIG` |
 | `webllm` | `BrowserLLMEngine` (`useBrowserLLMEngine.js`), which dispatches per model id through `BROWSER_LLM_TO_PROVIDER` to either `@mlc-ai/web-llm` (`MLCEngine.chat.completions.create`) or `@huggingface/transformers` (`pipeline` + `TextStreamer`), re-wrapping both into the same envelope |
+| `code-assist` | Gemini on the **signed-in user's own** allowance, over `cloudcode-pa.googleapis.com/v1internal` (`codeAssist.js`). The only cloud path that bills nobody who deployed the app |
+| `google-oauth` | Gemini Developer API with an OAuth bearer token instead of a key, billed to a Cloud project the user names. Built, works, but needs a project id — kept as a power-user option |
+
+### Why `code-assist` exists
+
+Every Gemini Developer API request is attributed to a billable Cloud project, so
+it can only bill whoever deployed Graphible or a project the user creates
+themselves. The OAuth scope that used to shift usage to the end user,
+`generative-language.peruserquota`, is gone — the API lists its accepted scopes
+in a `www-authenticate` header on any 403 and that one is absent. Code Assist
+attributes to the signed-in Google account instead, which is the allowance
+gemini-cli spends.
+
+Reaching it means presenting gemini-cli's OAuth client, whose id and secret are
+published in its source; it is registered as a public client, so PKCE rather
+than the secret is what protects the exchange. Google's consent screen names
+"Gemini CLI", and the sign-in button says so too.
+
+Three things make this work from a static site, and each was a bug before it was
+a feature:
+
+- **The redirect.** `https://codeassist.google.com/authcode` is a Google-hosted
+  page that displays the code. gemini-cli's other redirect is a loopback port a
+  web page can neither listen on nor read across origins.
+- **The popup must open inside the click.** `beginSignIn` awaits
+  `crypto.subtle.digest`; opening the window after that await has lost the
+  user-gesture context and browsers block it. The window is opened empty and
+  navigated once the URL exists.
+- **One verifier per attempt.** Minting a fresh one per click invalidates the
+  code from a page the user already has open, which surfaces as `invalid_grant`
+  — the same error as an expired code.
+
+**Two model vocabularies.** Code Assist and the Developer API do not accept the
+same ids: `gemini-3.5-flash-lite` exists only on the latter,
+`gemini-3.1-flash-lite` only on the former. Sending the wrong one returns
+"Requested entity was not found", naming neither the entity nor the field.
+`CODE_ASSIST_MODELS` is separate from `LLM_CONFIG.EXTERNAL.GOOGLE.MODELS` and
+the selected id is held apart in `ModelSelector` so switching cannot carry a
+name across.
 
 Connection state is a tri-state string: `'pending' | 'connected' | 'disconnected'`. `testLLMConnection` throttles itself — after `maxFailures` (3) it refuses to retry within a `cooldownPeriod` (5s).
 
@@ -214,6 +253,14 @@ Tailwind v4 via `@tailwindcss/vite`; there is **no `tailwind.config.js`**. Globa
 
 ## Layout and layering
 
+A z-index only competes within its own stacking context. The model menu opens
+inside the header, so its `z-50` could never lift it above the details panel —
+the panel is a sibling of the *header*, not of the menu, and the panel swallowed
+clicks on the menu's controls. The header takes `Z.HEADER` and rises to
+`Z.DROPDOWN` while a menu inside it is open; the container has to do the lifting
+the child cannot. Overlap only happens at narrower viewports, so the regression
+test runs at 900px.
+
 `src/constants/zLayers.js` is the stacking order. These were ad hoc numbers
 scattered across components and they collided twice: the details panel sat below
 the minimap it overlaps, and raising it then hid modals behind it. Anything that
@@ -232,6 +279,11 @@ The model dropdown shipped that way and its Apply button was unclickable.
 Verified by reading and by test runs. `git log` has what was fixed and why.
 
 **Still open**
+- The `code-assist` client id belongs to gemini-cli, not to this project. If
+  Google rotates it or withdraws the flow — they have already withdrawn it for
+  AI Pro/Ultra tiers — the path breaks with no warning here. `loadCodeAssist`
+  returning no `cloudaicompanionProject` may need an `onboardUser` call that is
+  not implemented.
 - `useKeyboardNavigation`'s snap navigation and `NewPromptBox`/`CenteredPrompt`'s
   global alphanumeric listeners are registered even while their components are
   hidden, because the hooks run before the early return.
