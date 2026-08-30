@@ -7,6 +7,17 @@
 
 import { useState, useEffect, useCallback } from 'react';
 
+// Date.now() alone collides: saving and importing within the same millisecond
+// produced two graphs with one id, and every lookup here resolves by id, so one
+// silently shadowed the other. Stays time-ordered, but never repeats.
+let lastGraphId = 0;
+const nextGraphId = () => {
+  const now = Date.now();
+  lastGraphId = now > lastGraphId ? now : lastGraphId + 1;
+  return lastGraphId;
+};
+
+
 const STORAGE_KEY = 'graphible-graphs';
 const LEGACY_KEY = 'graphible';
 export const GRAPH_FILE_VERSION = 1;
@@ -61,7 +72,7 @@ export const useSaveLoad = (nodes, connections, currentNodeId, initialPromptText
   }, []);
 
   const buildGraph = useCallback((name) => ({
-    id: Date.now(),
+    id: nextGraphId(),
     name: name || initialPromptText || 'Untitled Graph',
     timestamp: new Date().toISOString(),
     nodes,
@@ -122,7 +133,7 @@ export const useSaveLoad = (nodes, connections, currentNodeId, initialPromptText
 
     const imported = {
       ...graph,
-      id: Date.now(),
+      id: nextGraphId(),
       name: graph.name || 'Imported graph',
       timestamp: new Date().toISOString(),
       connections: Array.isArray(graph.connections) ? graph.connections : [],

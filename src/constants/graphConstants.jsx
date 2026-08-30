@@ -333,3 +333,45 @@ export const DEFAULT_WEBLLM_MODEL_INFO =
 // Google models as an ordered array, for components that render a list.
 export const GOOGLE_MODEL_LIST = Object.entries(LLM_CONFIG.EXTERNAL.GOOGLE.MODELS)
   .map(([id, info]) => ({ id, ...info }));
+
+// Code Assist speaks a different model vocabulary from the Gemini Developer
+// API - gemini-3.5-flash-lite exists on one and not the other, and sending the
+// wrong name returns "Requested entity was not found" with nothing to say which
+// entity. Ids are from gemini-cli's packages/core/src/config/models.ts.
+export const CODE_ASSIST_MODELS = {
+  'gemini-3.1-flash-lite': {
+    name: 'Gemini 3.1 Flash Lite',
+    description: 'Fastest, and the lightest use of your allowance',
+    recommended: true,
+  },
+  'gemini-3.5-flash': {
+    name: 'Gemini 3.5 Flash',
+    description: 'Balanced speed and capability',
+    recommended: false,
+  },
+  'gemini-2.5-pro': {
+    name: 'Gemini 2.5 Pro',
+    description: 'Most capable, and the heaviest use of your allowance',
+    recommended: false,
+  },
+};
+
+export const CODE_ASSIST_MODEL_LIST = Object.entries(CODE_ASSIST_MODELS)
+  .map(([id, info]) => ({ id, ...info }));
+
+export const DEFAULT_CODE_ASSIST_MODEL =
+  (CODE_ASSIST_MODEL_LIST.find((m) => m.recommended) ?? CODE_ASSIST_MODEL_LIST[0]).id;
+
+// The recommended Google model, and the fallback for anything unrecognised.
+export const RECOMMENDED_GOOGLE_MODEL =
+  (GOOGLE_MODEL_LIST.find((m) => m.recommended) ?? GOOGLE_MODEL_LIST[0]).id;
+
+// A model id persisted before the catalog moved on can name a model Google has
+// since retired. The saved config is loaded verbatim, so the stale id survives
+// upgrades and every request 404s - with an empty body, so nothing surfaces.
+// Any id no longer in the catalog is rewritten to the recommended one.
+export const migrateModelConfig = (config) => {
+  if (config?.type !== 'external' || config?.provider !== 'google') return config;
+  if (Object.hasOwn(LLM_CONFIG.EXTERNAL.GOOGLE.MODELS, config.model)) return config;
+  return { ...config, model: RECOMMENDED_GOOGLE_MODEL };
+};

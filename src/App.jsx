@@ -24,6 +24,7 @@ import FeedbackModal from './components/FeedbackModal';
 import NewPromptBox from './components/NewPromptBox';
 import SaveLoadModal from './components/SaveLoadModal';
 import ModelSelector from './components/ModelSelector';
+import { Z } from './constants/zLayers';
 import InstallationGuide from './components/InstallationGuide';
 import DeletionStoreModal from './components/DeletionStoreModal';
 import ConnectionManager from './components/ConnectionManager';
@@ -69,6 +70,7 @@ const Graphible = () => {
   const [showDeletionStore, setShowDeletionStore] = useState(false);
   const [showConnectionManager, setShowConnectionManager] = useState(false);
   const [showSetupWizard, setShowSetupWizard] = useState(false);
+  const [modelMenuOpen, setModelMenuOpen] = useState(false);
   const [isFirstRun, setIsFirstRun] = useState(false);
 
   // Whether a reply is split into several nodes or kept whole in one.
@@ -509,7 +511,13 @@ const Graphible = () => {
       {!showPromptCenter && (
         <>
           {/* Header */}
-          <div className="absolute top-0 left-0 right-0 z-10 bg-white/80 backdrop-blur-md border-b border-slate-200/50 p-4 shadow-sm">
+          {/* The header is a stacking context, so a menu opened inside it can
+              never rise above the details panel on its own. Raising the header
+              itself is what lets the menu's controls stay clickable. */}
+          <div
+            className="absolute top-0 left-0 right-0 bg-white/80 backdrop-blur-md border-b border-slate-200/50 p-4 shadow-sm"
+            style={{ zIndex: modelMenuOpen ? Z.DROPDOWN : Z.HEADER }}
+          >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-3">
@@ -521,6 +529,7 @@ const Graphible = () => {
                   onModelChange={handleModelChange}
                   connectionStatus={llmConnected}
                   onTestConnection={testLLMConnection}
+                  onOpenChange={setModelMenuOpen}
                   webllmLoadingProgress={webllmLoadingProgress}
                   webllmLoadState={webllmLoadState}
                 />

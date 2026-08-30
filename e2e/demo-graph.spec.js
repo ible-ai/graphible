@@ -234,18 +234,34 @@ test.describe('setup wizard', () => {
     await expect(page.getByRole('button', { name: /AI in your browser/ })).toContainText('273 MB');
   });
 
-  test('offers the Gemini models the config declares', async ({ page }) => {
+  // Two catalogs, because Code Assist and the Gemini Developer API do not
+  // accept the same model ids. Showing one backend's names while sending to the
+  // other returns "Requested entity was not found".
+  test('offers the API-key models the config declares', async ({ page }) => {
     await loadDemoGraph(page);
 
-    // The model dropdown renders LLM_CONFIG.EXTERNAL.GOOGLE.MODELS, so this
-    // catches the catalog drifting from the ids the code actually sends.
     await page.locator('button').filter({ hasText: /No model detected|Demo/ }).first().click();
     await page.getByRole('button', { name: /External API/ }).click();
+    await page.getByRole('button', { name: 'Use an API key' }).click();
 
     for (const id of ['Gemini 3.5 Flash Lite', 'Gemini 3.6 Flash', 'Gemini 3.7 Flash']) {
       await expect(page.getByText(id, { exact: true })).toBeVisible();
     }
     await expect(page.getByText(/Gemini 2\.5/)).toHaveCount(0);
+  });
+
+  test('offers the Code Assist models, which are a different set', async ({ page }) => {
+    await loadDemoGraph(page);
+
+    await page.locator('button').filter({ hasText: /No model detected|Demo/ }).first().click();
+    await page.getByRole('button', { name: /External API/ }).click();
+    await page.getByRole('button', { name: 'Google account' }).click();
+
+    for (const id of ['Gemini 3.1 Flash Lite', 'Gemini 3.5 Flash', 'Gemini 2.5 Pro']) {
+      await expect(page.getByText(id, { exact: true })).toBeVisible();
+    }
+    // The Developer API's default does not exist on Code Assist.
+    await expect(page.getByText('Gemini 3.5 Flash Lite', { exact: true })).toHaveCount(0);
   });
 });
 

@@ -60,7 +60,17 @@ export const useKeyboardNavigation = ({
     };
     if (showPromptCenter || isTypingPrompt || showFeedbackModal) return;
 
+    // WASD snap-navigation must not run while the user is typing. Every input
+    // in the app would otherwise have to remember to stopPropagation, and any
+    // that forgets sends a-s-d-w to the camera instead of the field.
+    const isTypingInField = (target) =>
+      target?.tagName === 'INPUT'
+      || target?.tagName === 'TEXTAREA'
+      || target?.tagName === 'SELECT'
+      || target?.isContentEditable;
+
     const handleKeyDown = (e) => {
+      if (isTypingInField(e.target)) return;
       keysPressed.current.add(e.key.toLowerCase());
       if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(e.key.toLowerCase())) {
         e.preventDefault();
@@ -68,6 +78,8 @@ export const useKeyboardNavigation = ({
     };
 
     const handleKeyUp = (e) => {
+      // Not gated on the target: a key pressed on the canvas and released over
+      // an input must still be cleared, or it sticks down forever.
       keysPressed.current.delete(e.key.toLowerCase());
     };
 

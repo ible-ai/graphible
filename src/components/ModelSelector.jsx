@@ -1,7 +1,11 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { ChevronDown, Settings, Globe, Server, Compass, CheckCircle, AlertCircle } from 'lucide-react';
-import { LLM_CONFIG, DEFAULT_MODEL_CONFIGS, WEBLLM_STATE, DEFAULT_MODEL_CONFIG, GOOGLE_MODEL_LIST } from '../constants/graphConstants';
+import { LLM_CONFIG, DEFAULT_MODEL_CONFIGS, WEBLLM_STATE, DEFAULT_MODEL_CONFIG, GOOGLE_MODEL_LIST, CODE_ASSIST_MODEL_LIST, CODE_ASSIST_MODELS, DEFAULT_CODE_ASSIST_MODEL } from '../constants/graphConstants';
 import WebLLMProgressTracker from '../components/WebLLMProgressTracker';
+import { Z } from '../constants/zLayers';
+import { isGoogleSignInConfigured, isSignedIn, signIn } from '../utils/googleAuth';
+import CodeAssistSignIn from './CodeAssistSignIn';
+import { isSignedIn as caSignedIn, hasStoredGrant } from '../utils/codeAssistAuth';
 
 const ModelSelector = ({
     currentModel,
@@ -10,29 +14,60 @@ const ModelSelector = ({
     onTestConnection,
     webllmLoadingProgress,
     webllmLoadState,
+    onOpenChange,
 }) => {
     const [isOpen, setIsOpen] = useState(false);
-    const [activeTab, setActiveTab] = useState(currentModel.type || 'webllm');
+    const signInAvailable = isGoogleSignInConfigured();
+    const [authMethod, setAuthMethod] = useState('code-assist');
+    const [caReady, setCaReady] = useState(() => caSignedIn() || hasStoredGrant());
+    // Kept apart from externalConfig.model: the two backends do not accept the
+    // same ids, so carrying one across would send a name the other rejects.
+    const [caModel, setCaModel] = useState(DEFAULT_CODE_ASSIST_MODEL);
+    const [signInBusy, setSignInBusy] = useState(false);
+    const [signInError, setSignInError] = useState(null);
+    const [signedIn, setSignedIn] = useState(() => isSignedIn());
+    // google-oauth lives under the External tab; it is a way of authenticating to
+    // Google, not a separate place to configure.
+    const tabForType = (type) => (type === 'google-oauth' || type === 'code-assist' ? 'external' : type);
+    const [activeTab, setActiveTab] = useState(tabForType(currentModel.type) || 'webllm');
     const dropdownRef = useRef(null);
 
     const shouldShowProgressTracker = (webllmState) => {
         return ((webllmState == WEBLLM_STATE.RELOADING) || (webllmState == WEBLLM_STATE.DOWNLOADING));
     };
 
-    const [localConfig, setLocalConfig] = useState({
+    // Seed each tab from the model actually in use, so the panel shows what is
+    // running rather than the defaults. Previously the selection always read
+    // back as the default, which made a saved-but-different model invisible.
+    const fromCurrent = useCallback((type, fallback) => (
+        currentModel?.type === type ? { ...fallback, ...currentModel } : fallback
+    ), [currentModel]);
+
+    const [localConfig, setLocalConfig] = useState(() => fromCurrent('local', {
         address: DEFAULT_MODEL_CONFIGS.LOCAL.address,
         model: DEFAULT_MODEL_CONFIGS.LOCAL.model
-    });
+    }));
 
-    const [externalConfig, setExternalConfig] = useState({
+    const [externalConfig, setExternalConfig] = useState(() => fromCurrent('external', {
         provider: DEFAULT_MODEL_CONFIGS.EXTERNAL.provider,
         model: DEFAULT_MODEL_CONFIGS.EXTERNAL.model,
         apiKey: currentModel.apiKey || ''
-    });
+    }));
 
-    const [webllmConfig, setWebllmConfig] = useState({
+    const [webllmConfig, setWebllmConfig] = useState(() => fromCurrent('webllm', {
         model: DEFAULT_MODEL_CONFIGS.WEBLLM.model
-    });
+    }));
+
+    // The saved config is restored asynchronously at startup, after this panel
+    // has already mounted, so seeding at first render is not enough on its own.
+    useEffect(() => {
+        if (currentModel?.type === 'local') setLocalConfig(prev => ({ ...prev, ...currentModel }));
+        if (['external', 'google-oauth', 'code-assist'].includes(currentModel?.type)) setExternalConfig(prev => ({ ...prev, ...currentModel }));
+        if (currentModel?.type === 'webllm') setWebllmConfig(prev => ({ ...prev, ...currentModel }));
+        // Only while closed - switching the tab under an open panel would move
+        // the controls out from under the user.
+        if (!isOpen && currentModel?.type) setActiveTab(tabForType(currentModel.type));
+    }, [currentModel, isOpen]);
 
     // Load saved API key on component mount
     useEffect(() => {
@@ -41,6 +76,12 @@ const ModelSelector = ({
             setExternalConfig(prev => ({ ...prev, apiKey: savedApiKey }));
         }
     }, [externalConfig.apiKey]);
+
+    // The menu cannot escape its own stacking context, so whoever renders this
+    // has to raise the container while it is open.
+    useEffect(() => {
+        onOpenChange?.(isOpen);
+    }, [isOpen, onOpenChange]);
 
     // Close dropdown when clicking outside
     useEffect(() => {
@@ -54,13 +95,41 @@ const ModelSelector = ({
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
+    // Which model list the External tab is currently editing.
+    const selectedModel = authMethod === 'code-assist' ? caModel : externalConfig.model;
+    const selectModel = (id) => (authMethod === 'code-assist'
+        ? setCaModel(id)
+        : setExternalConfig(prev => ({ ...prev, model: id })));
+
+    const handleGoogleSignIn = async () => {
+        setSignInBusy(true);
+        setSignInError(null);
+        try {
+            await signIn();
+            setSignedIn(true);
+        } catch (error) {
+            setSignInError(error.message);
+            setSignedIn(false);
+        } finally {
+            setSignInBusy(false);
+        }
+    };
+
     const handleSave = () => {
         let config;
 
         if (activeTab === 'local') {
             config = { type: 'local', ...localConfig };
         } else if (activeTab === 'external') {
-            config = { type: 'external', ...externalConfig };
+            // Signed-in Google and a pasted key are different backends, not
+            // two settings of one: they authenticate and bill differently.
+            if (authMethod === 'code-assist') {
+                config = { type: 'code-assist', provider: 'google', model: caModel };
+            } else if (authMethod === 'oauth') {
+                config = { type: 'google-oauth', provider: 'google', model: externalConfig.model, projectId: externalConfig.projectId?.trim() || '' };
+            } else {
+                config = { type: 'external', ...externalConfig };
+            }
         } else if (activeTab === 'webllm') {
             config = { type: 'webllm', ...webllmConfig };
         }
@@ -87,7 +156,7 @@ const ModelSelector = ({
     };
 
     const getDisplayName = () => {
-        if (currentModel.type === 'external') {
+        if (['external', 'google-oauth', 'code-assist'].includes(currentModel.type)) {
             const model = GOOGLE_MODEL_LIST.find(m => m.id === currentModel.model);
             return model ? model.name : currentModel.model;
         } else if (currentModel.type === 'webllm') {
@@ -98,7 +167,7 @@ const ModelSelector = ({
     };
 
     const getDisplayIcon = useCallback(() => {
-        if (currentModel.type === 'external') return Globe;
+        if (['external', 'google-oauth', 'code-assist'].includes(currentModel.type)) return Globe;
         if (currentModel.type === 'webllm') return Compass;
         return Server;
     }, [currentModel.type]);
@@ -106,7 +175,7 @@ const ModelSelector = ({
     const DisplayIcon = getDisplayIcon();
 
     return (
-        <div className="relative font-inter" ref={dropdownRef}>
+        <div className="relative font-inter" ref={dropdownRef} style={{ zIndex: isOpen ? Z.DROPDOWN : undefined }}>
             {/* Main Button */}
             <button
                 onClick={() => setIsOpen(!isOpen)}
@@ -117,7 +186,7 @@ const ModelSelector = ({
             >
                 <div className="flex items-center gap-2">
                     <DisplayIcon size={16} className={
-                        currentModel.type === 'external' ? 'text-indigo-600' :
+                        ['external', 'google-oauth', 'code-assist'].includes(currentModel.type) ? 'text-indigo-600' :
                             currentModel.type === 'webllm' ? 'text-purple-600' :
                                 'text-slate-600'
                     } />
@@ -140,7 +209,8 @@ const ModelSelector = ({
                     // laptop screen, and the page itself does not scroll, so an
                     // unbounded panel put "Apply Settings" permanently out of
                     // reach and the chosen model could never be applied.
-                    className="absolute top-full left-0 mt-2 w-96 bg-white border border-slate-200 rounded-xl shadow-xl z-50 flex flex-col max-h-[calc(100vh-6rem)]"
+                    className="absolute top-full left-0 mt-2 w-96 bg-white border border-slate-200 rounded-xl shadow-xl flex flex-col max-h-[calc(100vh-6rem)]"
+                    style={{ zIndex: Z.DROPDOWN }}
                 >
                     {/* Tab Headers */}
                     <div className="flex border-b border-slate-200 flex-shrink-0 rounded-t-xl overflow-hidden">
@@ -383,10 +453,10 @@ const ModelSelector = ({
                                         Model
                                     </label>
                                     <div className="space-y-2">
-                                        {GOOGLE_MODEL_LIST.map((model) => (
+                                        {(authMethod === 'code-assist' ? CODE_ASSIST_MODEL_LIST : GOOGLE_MODEL_LIST).map((model) => (
                                             <label
                                                 key={model.id}
-                                                className={`flex items-center p-3 border rounded cursor-pointer transition-all duration-200 group ${externalConfig.model === model.id
+                                                className={`flex items-center p-3 border rounded cursor-pointer transition-all duration-200 group ${selectedModel === model.id
                                                     ? 'border-purple-500 bg-purple-500/10 text-purple-300'
                                                     : 'border-gray-600 hover:border-purple-400 hover:bg-purple-500/5'
                                                     }`}
@@ -405,19 +475,19 @@ const ModelSelector = ({
                                                     type="radio"
                                                     name="model"
                                                     value={model.id}
-                                                    checked={externalConfig.model === model.id}
-                                                    onChange={(e) => setExternalConfig(prev => ({ ...prev, model: e.target.value }))}
+                                                    checked={selectedModel === model.id}
+                                                    onChange={(e) => selectModel(e.target.value)}
                                                     className="sr-only"
                                                 />
                                                 <div className="flex-1">
                                                     <div className="font-medium text-sm">{model.name}</div>
                                                     <div className="text-xs text-gray-400">{model.description}</div>
                                                 </div>
-                                                <div className={`w-4 h-4 border-2 rounded-full transition-all duration-200 ${externalConfig.model === model.id
+                                                <div className={`w-4 h-4 border-2 rounded-full transition-all duration-200 ${selectedModel === model.id
                                                     ? 'border-purple-500 bg-purple-500'
                                                     : 'border-gray-400'
                                                     }`}>
-                                                    {externalConfig.model === model.id && (
+                                                    {selectedModel === model.id && (
                                                         <div className="w-2 h-2 bg-white rounded-full m-0.5" />
                                                     )}
                                                 </div>
@@ -426,7 +496,78 @@ const ModelSelector = ({
                                     </div>
                                 </div>
 
-                                <div>
+                                <div className="space-y-3">
+                                    <div className="flex rounded-lg border border-slate-300 overflow-hidden text-sm">
+                                        <button
+                                            type="button"
+                                            onClick={() => setAuthMethod('code-assist')}
+                                            className={`flex-1 px-3 py-2 transition-colors ${authMethod === 'code-assist'
+                                                ? 'bg-indigo-600 text-white'
+                                                : 'bg-white text-slate-600 hover:bg-slate-50'}`}
+                                        >
+                                            Google account
+                                        </button>
+                                        {signInAvailable && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setAuthMethod('oauth')}
+                                                className={`flex-1 px-3 py-2 transition-colors ${authMethod === 'oauth'
+                                                    ? 'bg-indigo-600 text-white'
+                                                    : 'bg-white text-slate-600 hover:bg-slate-50'}`}
+                                            >
+                                                Own project
+                                            </button>
+                                        )}
+                                        <button
+                                            type="button"
+                                            onClick={() => setAuthMethod('apikey')}
+                                            className={`flex-1 px-3 py-2 transition-colors ${authMethod === 'apikey'
+                                                ? 'bg-indigo-600 text-white'
+                                                : 'bg-white text-slate-600 hover:bg-slate-50'}`}
+                                        >
+                                            Use an API key
+                                        </button>
+                                    </div>
+
+                                    {authMethod === 'code-assist' && (
+                                        <CodeAssistSignIn signedIn={caReady} onSignedInChange={setCaReady} />
+                                    )}
+
+                                    {authMethod === 'oauth' && (
+                                        <div className="space-y-2">
+                                            <button
+                                                type="button"
+                                                onClick={handleGoogleSignIn}
+                                                disabled={signInBusy}
+                                                className="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-slate-700 font-medium hover:bg-slate-50 disabled:opacity-60 transition-colors"
+                                            >
+                                                {signInBusy
+                                                    ? 'Opening Google\u2026'
+                                                    : signedIn ? 'Signed in \u2713  \u00b7  Switch account' : 'Continue with Google'}
+                                            </button>
+                                            {signInError && (
+                                                <p className="text-xs text-rose-600">{signInError}</p>
+                                            )}
+                                            <label className="block text-xs font-medium text-slate-600">
+                                                Google Cloud project ID
+                                                <input
+                                                    type="text"
+                                                    value={externalConfig.projectId || ''}
+                                                    onChange={(e) => setExternalConfig(prev => ({ ...prev, projectId: e.target.value }))}
+                                                    onKeyDown={(e) => e.stopPropagation()}
+                                                    placeholder="my-project-123456"
+                                                    className="mt-1 w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 placeholder-slate-400 focus:border-indigo-500 focus:outline-none"
+                                                />
+                                            </label>
+                                            <p className="text-xs text-slate-500">
+                                                Required. Usage is billed to this project&apos;s Gemini quota,
+                                                and its free tier applies.
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className={authMethod === 'apikey' ? '' : 'hidden'}>
                                     <label className="block text-sm font-medium text-slate-700 mb-2">
                                         API Key
                                     </label>
@@ -450,7 +591,9 @@ const ModelSelector = ({
                             <button
                                 onClick={handleSave}
                                 disabled={
-                                    (activeTab === 'external' && !externalConfig.apiKey.trim()) ||
+                                    (activeTab === 'external' && authMethod === 'apikey' && !externalConfig.apiKey.trim()) ||
+                                    (activeTab === 'external' && authMethod === 'code-assist' && !caReady) ||
+                                    (activeTab === 'external' && authMethod === 'oauth' && (!signedIn || !externalConfig.projectId?.trim())) ||
                                     (activeTab === 'local' && (!localConfig.address.trim() || !localConfig.model.trim())) ||
                                     (activeTab === 'webllm' && !webllmConfig.model)
                                 }

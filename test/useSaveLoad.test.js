@@ -131,6 +131,18 @@ describe('export and import', () => {
     ).rejects.toThrow(/does not contain a Graphible graph/i);
   });
 
+  // Two graphs created in the same millisecond used to share an id, because it
+  // was Date.now(). This test flaked for exactly that reason.
+  it('gives distinct ids to graphs saved in the same millisecond', () => {
+    const { result } = render();
+    act(() => {
+      result.current.saveCurrentGraph('One');
+      result.current.saveCurrentGraph('Two');
+    });
+    const ids = result.current.savedGraphs.map((g) => g.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
   it('gives an imported graph its own id, so it cannot overwrite one', async () => {
     const { result } = render();
     act(() => { result.current.saveCurrentGraph('Existing'); });
