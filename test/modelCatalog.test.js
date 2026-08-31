@@ -81,23 +81,15 @@ describe('google model catalog', () => {
     expect(LLM_CONFIG.EXTERNAL.GOOGLE.MODELS[DEFAULT_MODEL_CONFIGS.EXTERNAL.model]).toBeDefined();
   });
 
-  it('offers only ids gemini-cli lists as valid for this endpoint', () => {
-    // From @google/gemini-cli-core's VALID_GEMINI_MODELS. Anything outside it
-    // returns "Requested entity was not found", which names nothing.
-    const VALID = new Set([
-      'gemini-3-pro-preview', 'gemini-3.1-pro-preview',
-      'gemini-3.1-pro-preview-customtools', 'gemini-3-flash-preview',
-      'gemini-3-flash', 'gemini-3.5-flash', 'gemini-3.1-flash-lite',
-      'gemini-2.5-pro', 'gemini-2.5-flash',
+  it('offers only ids a live account reported having quota for', () => {
+    // Read from retrieveUserQuota's buckets against a real account, not from a
+    // changelog. gemini-3.5-flash was in this list once and 404s.
+    const CONFIRMED = new Set([
+      'gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.5-pro',
+      'gemini-3-flash-preview', 'gemini-3-pro-preview',
+      'gemini-3.1-flash-lite', 'gemini-3.1-flash-lite-preview', 'gemini-3.1-pro-preview',
     ]);
-    for (const m of CODE_ASSIST_MODEL_LIST) expect(VALID.has(m.id), m.id).toBe(true);
-  });
-
-  it('offers no preview model, which needs account access we cannot detect', () => {
-    // gemini-cli resolves a preview id away when the account lacks access; we
-    // send it verbatim, so offering one ships a menu entry that only works for
-    // some users.
-    for (const m of CODE_ASSIST_MODEL_LIST) expect(m.id, m.id).not.toContain('preview');
+    for (const m of CODE_ASSIST_MODEL_LIST) expect(CONFIRMED.has(m.id), m.id).toBe(true);
   });
 
   it('recommends exactly one model, and names every one', () => {

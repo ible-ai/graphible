@@ -260,7 +260,7 @@ test.describe('setup wizard', () => {
     await page.getByRole('button', { name: /External API/ }).click();
     await page.getByRole('button', { name: 'Google account' }).click();
 
-    for (const id of ['Gemini 3.1 Flash Lite', 'Gemini 3.5 Flash', 'Gemini 2.5 Pro']) {
+    for (const id of ['Gemini 3.1 Flash Lite', 'Gemini 3 Flash', 'Gemini 3.1 Pro']) {
       await expect(page.getByText(id, { exact: true })).toBeVisible();
     }
     await expect(page.getByRole('button', { name: /Sign in to Gemini CLI/ })).toBeVisible();

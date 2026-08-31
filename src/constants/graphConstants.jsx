@@ -330,6 +330,18 @@ export const DEFAULT_WEBLLM_MODEL_INFO =
 export const GOOGLE_MODEL_LIST = Object.entries(LLM_CONFIG.EXTERNAL.GOOGLE.MODELS)
   .map(([id, info]) => ({ id, ...info }));
 
+// Every id here was read out of a live account's own quota buckets (see
+// scripts/probe-code-assist.mjs), not from a changelog. Two corrections worth
+// keeping in mind, both of which shipped broken first:
+//
+//   gemini-3.5-flash  404s - it is not in this vocabulary, despite the name
+//                     existing on the Developer API.
+//   *-preview ids     work. They were removed once on the theory that preview
+//                     models need account access we cannot detect; in fact
+//                     gemini-3.1-pro-preview answered 429 "exhausted", which
+//                     means the id was valid all along and only the quota was
+//                     spent. 404 is a bad name; 429 is a good one.
+//
 // Code Assist speaks a different model vocabulary from the Gemini Developer
 // API - gemini-3.5-flash-lite exists on one and not the other, and sending the
 // wrong name returns "Requested entity was not found" with nothing to say which
@@ -353,28 +365,23 @@ export const CODE_ASSIST_MODELS = {
     description: 'Fastest, and the lightest use of your allowance',
     recommended: true,
   },
-  'gemini-3.5-flash': {
-    name: 'Gemini 3.5 Flash',
+  'gemini-3-flash-preview': {
+    name: 'Gemini 3 Flash',
     description: 'Balanced speed and capability',
     recommended: false,
   },
-  // gemini-cli's own DEFAULT_GEMINI_MODEL, and ungated - the 3.x Pro models are
-  // all preview and need account access we cannot detect.
+  'gemini-3.1-pro-preview': {
+    name: 'Gemini 3.1 Pro',
+    description: 'Newest and most capable, and the heaviest use of your allowance',
+    recommended: false,
+  },
   'gemini-2.5-pro': {
     name: 'Gemini 2.5 Pro',
-    description: 'Most capable, and the heaviest use of your allowance',
+    description: 'The previous generation, when the newer ones are rate limited',
     recommended: false,
   },
 };
 
-// Antigravity reaches the same endpoint with its own OAuth client, and that
-// client is served newer models. Wire ids are from opencode-antigravity-auth's
-// model-resolver (the `antigravity-` prefix there is its own alias, stripped
-// before the request) - a Pro model takes a -low/-high thinking suffix.
-//
-// Treat this as a seed, not an inventory: discovery replaces it with whatever
-// the account's own quota buckets name, which is the only list that is true
-// per account.
 export const ANTIGRAVITY_MODELS = {
   'gemini-3-flash': {
     name: 'Gemini 3 Flash',

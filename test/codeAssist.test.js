@@ -222,12 +222,12 @@ describe('the menu built from what was discovered', () => {
     expect(buildCodeAssistModelList(null)).toBe(CODE_ASSIST_MODEL_LIST);
   });
 
-  it('offers a preview model when the account actually has one', () => {
-    // The whole point: gemini-3.1-pro-preview is unofferable as a guess and
-    // perfectly usable by an account with preview access.
-    const list = buildCodeAssistModelList(['gemini-3.1-flash-lite', 'gemini-3.1-pro-preview']);
-    expect(list.map((m) => m.id)).toContain('gemini-3.1-pro-preview');
-    expect(list.find((m) => m.id === 'gemini-3.1-pro-preview').name).toBe('Gemini 3.1 Pro Preview');
+  it('offers a discovered model the catalog has never heard of', () => {
+    // The whole point: whatever the account's quota names should reach the
+    // menu, titled from its id when nothing here names it.
+    const list = buildCodeAssistModelList(['gemini-3.1-flash-lite', 'gemini-4-ultra-preview']);
+    expect(list.map((m) => m.id)).toContain('gemini-4-ultra-preview');
+    expect(list.find((m) => m.id === 'gemini-4-ultra-preview').name).toBe('Gemini 4 Ultra Preview');
   });
 
   it('keeps the catalog wording for ids it already names', () => {

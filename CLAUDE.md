@@ -190,9 +190,18 @@ a feature:
 same ids: `gemini-3.5-flash-lite` exists only on the latter,
 `gemini-3.1-flash-lite` only on the former. Sending the wrong one returns
 "Requested entity was not found", naming neither the entity nor the field.
-The authoritative list for Code Assist is `VALID_GEMINI_MODELS` in
-`@google/gemini-cli-core`'s `config/models.js` — `npm pack` it and read it
-rather than guessing, because nothing in the API reports what it accepts.
+The authoritative list is **the account's own quota**:
+`retrieveUserQuota` returns one bucket per model it may use, which
+`scripts/probe-code-assist.mjs` prints. gemini-cli's `VALID_GEMINI_MODELS` is a
+useful cross-check but is not what this endpoint serves — `gemini-3.5-flash`
+appears there and 404s here.
+
+**404 and 429 mean opposite things and were once confused.** 404 "Requested
+entity was not found" is a bad model id; 429 "You have exhausted your capacity
+on this model" is a *good* id whose quota is spent. `gemini-3.1-pro-preview` was
+removed from the catalog on the strength of a failure that was really a 429, on
+the theory that preview ids need undetectable account access. They do not: they
+are ordinary ids and they work.
 
 **The catalog is a fallback, not the source of truth.** `retrieveUserQuota`
 (`v1internal:retrieveUserQuota`, `{project}` in, `{buckets:[{modelId,…}]}` out)
@@ -202,15 +211,10 @@ its own preview access out of the same field. Discovery failing returns `[]`,
 which `buildCodeAssistModelList` reads as "use the static catalog", so the worst
 case is the behaviour that shipped before it.
 
-Membership in that list is necessary but not sufficient. gemini-cli never sends
-a picked id through: `resolveModel()` rewrites it against per-account state it
-fetches at startup (`hasAccessToPreview`, a 3.1 launch flag, a
-`GEMINI_3_5_FLASH_GA_LAUNCHED` experiment) and substitutes a GA model when the
-account lacks preview access. Graphible sends the id verbatim, **so only ids
-needing no such access can go in the static catalog** — every `*-preview` id is
-a valid string that fails for accounts without it. A test pins that catalog to
-non-preview ids for exactly this reason. Discovered ids carry no such
-restriction: the account having a bucket for a model is proof it may use it.
+gemini-cli itself never sends a picked id through — `resolveModel()` rewrites it
+against per-account state — but that is a convenience for its own users, not a
+requirement of the API. Graphible sends the id verbatim and that is fine, so
+long as the id is one the account's quota actually names.
 `CODE_ASSIST_MODELS` is separate from `LLM_CONFIG.EXTERNAL.GOOGLE.MODELS` and
 the selected id is held apart in `ModelSelector` so switching cannot carry a
 name across. `migrateModelConfig` rewrites a saved id against its own backend's
