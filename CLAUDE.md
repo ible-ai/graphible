@@ -143,9 +143,9 @@ Gemini 3.5/3.6/3.7, `claude-sonnet-4-6`, `claude-opus-4-6-thinking`,
 
 Since `User-Agent` is forbidden to `fetch`, a web page reaches that surface only
 when the browser it runs in already says Antigravity — its own embedded browser
-does. `canReachAntigravity()` tests for it and the panel warns when it is
-absent, because otherwise every generation fails with "not found" and nothing
-explains why.
+does. `canReachAntigravity()` tests for it, and `ModelSelector` **omits the
+client entirely** when it is absent, rather than offering a menu on which every
+choice reports "not found". A saved config naming it falls back to `gemini-cli`.
 
 | | `gemini-cli` (default) | `antigravity` |
 |---|---|---|

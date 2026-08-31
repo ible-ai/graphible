@@ -266,19 +266,20 @@ test.describe('setup wizard', () => {
     await expect(page.getByRole('button', { name: /Sign in to Gemini CLI/ })).toBeVisible();
   });
 
-  test('warns that Antigravity needs its own browser', async ({ page }) => {
+  test('offers no client this browser cannot use', async ({ page }) => {
+    // Antigravity's models are served only to its own browser's User-Agent,
+    // which no web page may set. Offering them in Chromium would be offering a
+    // menu where every choice reports "not found".
     await loadDemoGraph(page);
 
     await page.locator('button').filter({ hasText: /No model detected|Demo/ }).first().click();
     await page.getByRole('button', { name: /External API/ }).click();
     await page.getByRole('button', { name: 'Google account' }).click();
-    await page.getByRole('button', { name: 'Antigravity', exact: true }).click();
 
-    // Chromium's User-Agent does not say Antigravity, so the models it lists
-    // cannot be fetched from here - and the panel has to say so rather than
-    // letting every generation fail with "not found".
-    await expect(page.getByText(/served only to Antigravity/)).toBeVisible();
-    await expect(page.getByText('Gemini 3.7 Flash', { exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Antigravity', exact: true })).toHaveCount(0);
+    await expect(page.getByText('Gemini 3.7 Flash', { exact: true })).toHaveCount(0);
+    // ...and the working client's models are what is left.
+    await expect(page.getByText('Gemini 3.1 Flash Lite', { exact: true })).toBeVisible();
   });
 });
 

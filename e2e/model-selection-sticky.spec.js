@@ -10,7 +10,7 @@ test.describe('the model panel shows what is running', () => {
     await page.addInitScript(() => {
       localStorage.setItem('graphible-setup-complete', 'true');
       localStorage.setItem('graphible-model-config', JSON.stringify({
-        type: 'code-assist', provider: 'google', authProvider: 'antigravity', model: 'gemini-3-flash',
+        type: 'code-assist', provider: 'google', model: 'gemini-2.5-pro',
       }));
       localStorage.setItem('graphible-antigravity-refresh', 'stub-grant');
       window.open = () => null;
@@ -28,12 +28,8 @@ test.describe('the model panel shows what is running', () => {
     await openPanel(page);
     await page.getByRole('button', { name: /External API/ }).click();
 
-    // The saved client, not the default one.
-    await expect(page.getByRole('button', { name: 'Antigravity', exact: true }))
-      .toHaveClass(/bg-slate-800/);
-
     // The saved model, not the catalog's recommendation.
-    const row = page.locator('label').filter({ hasText: 'Gemini 3 Flash' }).first();
+    const row = page.locator('label').filter({ hasText: 'Gemini 2.5 Pro' }).first();
     await expect(row).toBeVisible();
     await expect(row.locator('div.bg-purple-500')).toBeVisible();
   });
@@ -43,7 +39,7 @@ test.describe('the model panel shows what is running', () => {
     // absent from them must still survive, or every reopen resets it.
     // Added after the beforeEach script, so this one wins on the next load.
     await page.addInitScript(() => localStorage.setItem('graphible-model-config', JSON.stringify({
-      type: 'code-assist', authProvider: 'antigravity', model: 'gemini-4-not-yet-seeded',
+      type: 'code-assist', model: 'gemini-4-not-yet-seeded',
     })));
     await page.goto('/');
     await expect(page.locator('#main-prompt')).toBeVisible();
