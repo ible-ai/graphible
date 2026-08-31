@@ -176,19 +176,12 @@ describe('code assist model catalog', () => {
     }
   });
 
-  it('rewrites a code-assist id that has left the catalog', () => {
-    // gemini-3.7-flash was offered briefly and is not in Code Assist's
-    // vocabulary at all, so a saved one fails every request until it is
-    // rewritten.
-    const stale = { type: 'code-assist', provider: 'google', model: 'gemini-3.7-flash' };
-    expect(migrateModelConfig(stale).model).toBe(DEFAULT_CODE_ASSIST_MODEL);
-  });
-
-  it('does not rewrite a code-assist id with the Developer API catalog', () => {
-    // The two vocabularies overlap by name but not by membership; migrating a
-    // Code Assist config against the wrong catalog is how an id crosses over.
-    const stale = { type: 'code-assist', provider: 'google', model: 'nope' };
-    expect(CODE_ASSIST_MODELS[migrateModelConfig(stale).model]).toBeDefined();
+  it('keeps a code-assist id the catalog does not list', () => {
+    // The catalog is a seed; discovery routinely returns ids it never names,
+    // and rewriting those would replace a working model the user chose with a
+    // default - silently, which is worse than any error.
+    const discovered = { type: 'code-assist', provider: 'google', model: 'gemini-9-unlisted' };
+    expect(migrateModelConfig(discovered)).toBe(discovered);
   });
 
   it('leaves code-assist configs untouched when migrating', () => {
@@ -207,7 +200,9 @@ describe('migrating between the two Google clients', () => {
     expect(migrateModelConfig(config)).toBe(config);
   });
 
-  it('rewrites an Antigravity config to an Antigravity default', () => {
+  it('rewrites an id carried over from the other client', () => {
+    // gemini-2.5-pro is a gemini-cli id. Under Antigravity it cannot have been
+    // chosen, only carried across, and it fails every request.
     const config = { type: 'code-assist', authProvider: 'antigravity', model: 'gemini-2.5-pro' };
     expect(migrateModelConfig(config).model).toBe(DEFAULT_ANTIGRAVITY_MODEL);
   });

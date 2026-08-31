@@ -22,11 +22,21 @@ const ModelSelector = ({
     const [authMethod, setAuthMethod] = useState('code-assist');
     // Which desktop client's grant to sign in with. They are separate grants
     // reaching the same API, and Antigravity's is served newer models.
-    const [authProvider, setAuthProvider] = useState(DEFAULT_PROVIDER);
+    //
+    // Both of these seed from the running config, like every other tab does.
+    // Defaulting them instead made reopening the panel silently rewrite the
+    // choice: it came back on Gemini CLI showing that client's default, and
+    // Apply then sent that rather than what was running.
+    const isCodeAssist = currentModel?.type === 'code-assist';
+    const [authProvider, setAuthProvider] = useState(
+        () => (isCodeAssist ? currentModel.authProvider ?? DEFAULT_PROVIDER : DEFAULT_PROVIDER)
+    );
     const [caReady, setCaReady] = useState(() => caSignedIn() || hasStoredGrant());
     // Kept apart from externalConfig.model: the two backends do not accept the
     // same ids, so carrying one across would send a name the other rejects.
-    const [caModel, setCaModel] = useState(DEFAULT_CODE_ASSIST_MODEL);
+    const [caModel, setCaModel] = useState(
+        () => (isCodeAssist ? currentModel.model : DEFAULT_CODE_ASSIST_MODEL)
+    );
 
     const [signInBusy, setSignInBusy] = useState(false);
     const [signInError, setSignInError] = useState(null);
@@ -72,6 +82,16 @@ const ModelSelector = ({
         // Only while closed - switching the tab under an open panel would move
         // the controls out from under the user.
         if (!isOpen && currentModel?.type) setActiveTab(tabForType(currentModel.type));
+    }, [currentModel, isOpen]);
+
+    // The saved config is restored after this panel has mounted, so first-render
+    // seeding is not enough - the same reason localConfig/externalConfig have
+    // their own sync effect. Only while closed: re-seeding under an open panel
+    // would move the controls out from under the user mid-edit.
+    useEffect(() => {
+        if (isOpen || currentModel?.type !== 'code-assist') return;
+        setAuthProvider(currentModel.authProvider ?? DEFAULT_PROVIDER);
+        if (currentModel.model) setCaModel(currentModel.model);
     }, [currentModel, isOpen]);
 
     // Load saved API key on component mount
@@ -131,14 +151,18 @@ const ModelSelector = ({
 
     const codeAssistModels = buildCodeAssistModelList(discoveredModels, authProvider);
 
-    // Discovery can rule out the model already selected - the default included,
-    // since a saved id survives whatever the account turns out to have. Left
-    // alone it would sit in the panel unlisted and still be what Apply sends.
+    // Discovery can rule out the model already selected. Left alone it would sit
+    // in the panel unlisted and still be what Apply sends.
+    //
+    // Only once discovery has actually answered: the seed catalogs are a guess,
+    // and letting a guess overrule a running model is how a working choice gets
+    // replaced by a default.
     useEffect(() => {
+        if (!discoveredModels.length) return;
         if (!codeAssistModels.some((m) => m.id === caModel)) {
             setCaModel((codeAssistModels.find((m) => m.recommended) ?? codeAssistModels[0])?.id);
         }
-    }, [codeAssistModels, caModel]);
+    }, [discoveredModels.length, codeAssistModels, caModel]);
 
     // Which model list the External tab is currently editing.
     const selectedModel = authMethod === 'code-assist' ? caModel : externalConfig.model;

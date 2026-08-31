@@ -455,12 +455,17 @@ export const RECOMMENDED_GOOGLE_MODEL =
 // model they cannot see and cannot switch back to.
 export const migrateModelConfig = (config) => {
   if (config?.type === 'code-assist') {
-    // Each client has its own catalog. Migrating an Antigravity id against the
-    // gemini-cli one rewrites a working model into a foreign id - the same
-    // crossing-over this function exists to prevent.
+    // These catalogs are seeds, not inventories - the account's own quota is
+    // the authority on what it may use, and it routinely names models neither
+    // catalog lists. So "unknown here" is not evidence of "wrong", and
+    // rewriting on it silently replaces a model the user picked and that works.
+    //
+    // What *is* evidence: an id belonging to the other client. The two
+    // vocabularies do not overlap, so a gemini-cli id under Antigravity was
+    // carried across rather than chosen, and would fail every request.
     const antigravity = config.authProvider === 'antigravity';
-    const catalog = antigravity ? ANTIGRAVITY_MODELS : CODE_ASSIST_MODELS;
-    if (Object.hasOwn(catalog, config.model)) return config;
+    const foreign = antigravity ? CODE_ASSIST_MODELS : ANTIGRAVITY_MODELS;
+    if (!Object.hasOwn(foreign, config.model)) return config;
     return { ...config, model: antigravity ? DEFAULT_ANTIGRAVITY_MODEL : DEFAULT_CODE_ASSIST_MODEL };
   }
   if (config?.type !== 'external' || config?.provider !== 'google') return config;

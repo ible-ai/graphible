@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { textFromChunk, sseToEnvelope, modelsFromQuota } from '../src/utils/codeAssist';
+import { textFromChunk, sseToEnvelope, modelsFromQuota, authHeaders, endpointsFor } from '../src/utils/codeAssist';
 import { buildCodeAssistModelList, titleForModelId, CODE_ASSIST_MODEL_LIST, CODE_ASSIST_MODELS, ANTIGRAVITY_MODEL_LIST } from '../src/constants/graphConstants';
 import { extractAuthCode, emailFromIdToken, describeTokenError, beginSignIn, hasStoredGrant, signOut } from '../src/utils/codeAssistAuth';
 
@@ -310,5 +310,42 @@ describe('two Google clients, one API', () => {
     const discovered = buildCodeAssistModelList(['gemini-3.1-pro-high'], 'antigravity');
     expect(discovered.map((m) => m.id)).toEqual(['gemini-3.1-pro-high']);
     expect(discovered[0].recommended).toBe(true);
+  });
+});
+
+describe('what may be put on the wire', () => {
+  it('sends only the two headers this API allows cross-origin', () => {
+    // Google's CORS allowlist here is exactly authorization,content-type. Any
+    // extra header fails the *preflight* with 403, so the real request is
+    // never sent - and the browser reports "No 'Access-Control-Allow-Origin'
+    // header", which points at the response rather than at the header we
+    // added. Client-Metadata, which the desktop clients send, cost an
+    // afternoon this way.
+    expect(Object.keys(authHeaders('token')).map((h) => h.toLowerCase()).sort())
+      .toEqual(['authorization', 'content-type']);
+  });
+});
+
+describe('which host each client talks to', () => {
+  it('sends Antigravity generation to the sandbox, not prod', () => {
+    // Prod does not serve Antigravity's models: asking it for gemini-3-flash
+    // returns a bare 404 that reads as "bad model id" rather than "wrong
+    // host". The desktop client talks to the daily sandbox first.
+    expect(endpointsFor('antigravity', 'generate')[0])
+      .toBe('https://daily-cloudcode-pa.sandbox.googleapis.com');
+    expect(endpointsFor('antigravity', 'generate')).toContain('https://cloudcode-pa.googleapis.com');
+  });
+
+  it('resolves the Antigravity project on prod first, which is where it works', () => {
+    expect(endpointsFor('antigravity', 'load')[0]).toBe('https://cloudcode-pa.googleapis.com');
+  });
+
+  it('leaves gemini-cli on prod alone', () => {
+    expect(endpointsFor('gemini-cli', 'generate')).toEqual(['https://cloudcode-pa.googleapis.com']);
+    expect(endpointsFor('gemini-cli', 'load')).toEqual(['https://cloudcode-pa.googleapis.com']);
+  });
+
+  it('falls back to gemini-cli routing for an unknown provider', () => {
+    expect(endpointsFor('nonsense', 'generate')).toEqual(['https://cloudcode-pa.googleapis.com']);
   });
 });

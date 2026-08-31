@@ -6,23 +6,54 @@
 
 import { getAccessToken, DEFAULT_PROVIDER } from './codeAssistAuth';
 
-const ENDPOINT = 'https://cloudcode-pa.googleapis.com';
+const PROD = 'https://cloudcode-pa.googleapis.com';
+const DAILY = 'https://daily-cloudcode-pa.sandbox.googleapis.com';
+const AUTOPUSH = 'https://autopush-cloudcode-pa.sandbox.googleapis.com';
 const VERSION = 'v1internal';
 
-const methodUrl = (method) => `${ENDPOINT}/${VERSION}:${method}`;
-
-// Antigravity's own client announces itself here, and its newer models are
-// served to that client. A browser refuses to let fetch set User-Agent, which
-// the desktop app also sends - if the backend requires it, this is where that
-// shows up, as a refusal rather than a wrong answer.
-const CLIENT_METADATA = {
-  antigravity: '{"ideType":"ANTIGRAVITY","platform":"PLATFORM_UNSPECIFIED","pluginType":"GEMINI"}',
+// Antigravity's models are not served by prod - asking it for gemini-3-flash
+// returns a bare 404. Its own client talks to the daily sandbox first and falls
+// back, except for loadCodeAssist, which resolves the managed project reliably
+// only on prod. Orders are from opencode-antigravity-auth's constants, which
+// mirror what the desktop client does.
+const ENDPOINTS = {
+  'gemini-cli': { generate: [PROD], load: [PROD] },
+  antigravity: { generate: [DAILY, AUTOPUSH, PROD], load: [PROD, DAILY, AUTOPUSH] },
 };
 
-const authHeaders = (token, provider = DEFAULT_PROVIDER) => ({
+export const endpointsFor = (provider, kind) =>
+  (ENDPOINTS[provider] ?? ENDPOINTS[DEFAULT_PROVIDER])[kind];
+
+const methodUrl = (method, endpoint = PROD) => `${endpoint}/${VERSION}:${method}`;
+
+// Tries each endpoint in turn, giving up on the first that answers anything
+// other than "no such method or model here". A 404 from one host says nothing
+// about the next; any other status is the answer.
+const postToEndpoints = async (method, { provider, kind, body, query = '' }) => {
+  const token = await getAccessToken(provider);
+  const hosts = endpointsFor(provider, kind);
+  let last = null;
+
+  for (const host of hosts) {
+    const response = await fetch(`${methodUrl(method, host)}${query}`, {
+      method: 'POST',
+      headers: authHeaders(token),
+      body,
+    });
+    if (response.status !== 404) return response;
+    last = response;
+  }
+  return last;
+};
+
+// This API's CORS allowlist is exactly `authorization,content-type`. Any other
+// header - Client-Metadata, which the desktop clients send - makes the
+// *preflight* fail with 403, so the real request is never sent and the browser
+// reports only "No 'Access-Control-Allow-Origin' header", naming nothing.
+// Identifying the client has to happen in the body instead.
+export const authHeaders = (token) => ({
   Authorization: `Bearer ${token}`,
   'Content-Type': 'application/json',
-  ...(CLIENT_METADATA[provider] ? { 'Client-Metadata': CLIENT_METADATA[provider] } : {}),
 });
 
 const describeError = async (response) => {
@@ -55,11 +86,13 @@ const describeError = async (response) => {
 // Discovers the project Code Assist wants requests attributed to. Free-tier
 // accounts are handed one automatically; nothing is created here.
 export const loadCodeAssist = async (provider = DEFAULT_PROVIDER) => {
-  const token = await getAccessToken(provider);
-  const response = await fetch(methodUrl('loadCodeAssist'), {
-    method: 'POST',
-    headers: authHeaders(token, provider),
+  const response = await postToEndpoints('loadCodeAssist', {
+    provider,
+    kind: 'load',
     body: JSON.stringify({
+      // The header this would otherwise ride in fails CORS preflight, so the
+      // client identifies itself in the body - which is where gemini-cli's own
+      // loadCodeAssist puts it too.
       metadata: provider === 'antigravity'
         ? { pluginType: 'GEMINI', ideType: 'ANTIGRAVITY' }
         : { pluginType: 'GEMINI' },
@@ -93,10 +126,10 @@ export const textFromChunk = (chunk) =>
     .join('');
 
 export const streamGenerateContent = async (prompt, config) => {
-  const token = await getAccessToken(config?.provider ?? DEFAULT_PROVIDER);
-  const response = await fetch(`${methodUrl('streamGenerateContent')}?alt=sse`, {
-    method: 'POST',
-    headers: authHeaders(token, config?.provider ?? DEFAULT_PROVIDER),
+  const response = await postToEndpoints('streamGenerateContent', {
+    provider: config?.provider ?? DEFAULT_PROVIDER,
+    kind: 'generate',
+    query: '?alt=sse',
     body: requestBody(prompt, config),
   });
 
@@ -105,10 +138,9 @@ export const streamGenerateContent = async (prompt, config) => {
 };
 
 export const generateContent = async (prompt, config) => {
-  const token = await getAccessToken(config?.provider ?? DEFAULT_PROVIDER);
-  const response = await fetch(methodUrl('generateContent'), {
-    method: 'POST',
-    headers: authHeaders(token, config?.provider ?? DEFAULT_PROVIDER),
+  const response = await postToEndpoints('generateContent', {
+    provider: config?.provider ?? DEFAULT_PROVIDER,
+    kind: 'generate',
     body: requestBody(prompt, config),
   });
 
@@ -129,10 +161,9 @@ export const generateContent = async (prompt, config) => {
 // catalog" - so a bad response degrades to today's behaviour rather than an
 // empty menu.
 export const retrieveUserQuota = async (project, provider = DEFAULT_PROVIDER) => {
-  const token = await getAccessToken(provider);
-  const response = await fetch(methodUrl('retrieveUserQuota'), {
-    method: 'POST',
-    headers: authHeaders(token, provider),
+  const response = await postToEndpoints('retrieveUserQuota', {
+    provider,
+    kind: 'generate',
     body: JSON.stringify({ project }),
   });
 
