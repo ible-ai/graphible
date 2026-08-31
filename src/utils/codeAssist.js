@@ -103,6 +103,51 @@ export const generateContent = async (prompt, config) => {
   return textFromChunk(await response.json());
 };
 
+// What models this account can actually use.
+//
+// The catalog in graphConstants is a guess that has to hold for everyone, so it
+// can only name ids that need no per-account access - which is why picking a
+// preview model off a changelog fails. This asks instead: retrieveUserQuota
+// returns one bucket per model the account has an allowance for, and gemini-cli
+// derives its own preview access the same way (config.js: hasAccess =
+// quota.buckets.some(b => isPreviewModel(b.modelId))).
+//
+// Returns [] on any failure, which the caller reads as "use the static
+// catalog" - so a bad response degrades to today's behaviour rather than an
+// empty menu.
+export const retrieveUserQuota = async (project) => {
+  const token = await getAccessToken();
+  const response = await fetch(methodUrl('retrieveUserQuota'), {
+    method: 'POST',
+    headers: authHeaders(token),
+    body: JSON.stringify({ project }),
+  });
+
+  if (!response.ok) throw new Error(await describeError(response));
+  return response.json();
+};
+
+// Internal variants and non-chat models: real buckets, but not things to offer
+// as a model to talk to.
+const OFFERABLE = (id) => id && !/customtools|embedding/.test(id);
+
+export const modelsFromQuota = (quota) => {
+  const seen = new Set();
+  return (quota?.buckets ?? [])
+    .map((bucket) => bucket?.modelId)
+    .filter((id) => OFFERABLE(id) && !seen.has(id) && seen.add(id));
+};
+
+export const discoverModels = async (project) => {
+  try {
+    return modelsFromQuota(await retrieveUserQuota(project));
+  } catch (error) {
+    // Not worth surfacing: the static catalog still works.
+    console.warn('Could not read your model allowance; using the built-in list.', error);
+    return [];
+  }
+};
+
 // Re-reads an SSE body into the app's envelope: one {"response": "..."} line
 // per chunk. A network read can split mid-line, so the trailing partial is
 // carried over rather than parsed.

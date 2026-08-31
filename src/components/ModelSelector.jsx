@@ -1,11 +1,12 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { ChevronDown, Settings, Globe, Server, Compass, CheckCircle, AlertCircle } from 'lucide-react';
-import { LLM_CONFIG, DEFAULT_MODEL_CONFIGS, WEBLLM_STATE, DEFAULT_MODEL_CONFIG, GOOGLE_MODEL_LIST, CODE_ASSIST_MODEL_LIST, CODE_ASSIST_MODELS, DEFAULT_CODE_ASSIST_MODEL } from '../constants/graphConstants';
+import { LLM_CONFIG, DEFAULT_MODEL_CONFIGS, WEBLLM_STATE, DEFAULT_MODEL_CONFIG, GOOGLE_MODEL_LIST, DEFAULT_CODE_ASSIST_MODEL, buildCodeAssistModelList } from '../constants/graphConstants';
 import WebLLMProgressTracker from '../components/WebLLMProgressTracker';
 import { Z } from '../constants/zLayers';
 import { isGoogleSignInConfigured, isSignedIn, signIn } from '../utils/googleAuth';
 import CodeAssistSignIn from './CodeAssistSignIn';
 import { isSignedIn as caSignedIn, hasStoredGrant } from '../utils/codeAssistAuth';
+import { loadCodeAssist, discoverModels } from '../utils/codeAssist';
 
 const ModelSelector = ({
     currentModel,
@@ -94,6 +95,39 @@ const ModelSelector = ({
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
+
+    // What this account actually has, asked of the backend rather than assumed.
+    // The static catalog can only name models that need no per-account access,
+    // so a preview model the user is entitled to would otherwise be invisible -
+    // and one they are not entitled to would be offered and fail. Empty until
+    // it answers, which keeps the static list showing.
+    const [discoveredModels, setDiscoveredModels] = useState([]);
+
+    useEffect(() => {
+        if (!caReady || discoveredModels.length) return;
+        let cancelled = false;
+        (async () => {
+            try {
+                const { project } = await loadCodeAssist();
+                const ids = await discoverModels(project);
+                if (!cancelled) setDiscoveredModels(ids);
+            } catch {
+                // Discovery is an enhancement; the static catalog stands.
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [caReady, discoveredModels.length]);
+
+    const codeAssistModels = buildCodeAssistModelList(discoveredModels);
+
+    // Discovery can rule out the model already selected - the default included,
+    // since a saved id survives whatever the account turns out to have. Left
+    // alone it would sit in the panel unlisted and still be what Apply sends.
+    useEffect(() => {
+        if (!codeAssistModels.some((m) => m.id === caModel)) {
+            setCaModel((codeAssistModels.find((m) => m.recommended) ?? codeAssistModels[0])?.id);
+        }
+    }, [codeAssistModels, caModel]);
 
     // Which model list the External tab is currently editing.
     const selectedModel = authMethod === 'code-assist' ? caModel : externalConfig.model;
@@ -435,7 +469,7 @@ const ModelSelector = ({
                                         Model
                                     </label>
                                     <div className="space-y-2">
-                                        {(authMethod === 'code-assist' ? CODE_ASSIST_MODEL_LIST : GOOGLE_MODEL_LIST).map((model) => (
+                                        {(authMethod === 'code-assist' ? codeAssistModels : GOOGLE_MODEL_LIST).map((model) => (
                                             <label
                                                 key={model.id}
                                                 className={`flex items-center p-3 border rounded cursor-pointer transition-all duration-200 group ${selectedModel === model.id

@@ -370,6 +370,38 @@ export const CODE_ASSIST_MODELS = {
 export const CODE_ASSIST_MODEL_LIST = Object.entries(CODE_ASSIST_MODELS)
   .map(([id, info]) => ({ id, ...info }));
 
+// 'gemini-3.1-pro-preview' -> 'Gemini 3.1 Pro Preview'. Only used for ids the
+// static catalog does not name, which is the point: a model Google adds
+// tomorrow should appear without a release here.
+export const titleForModelId = (id) =>
+  id.split('-')
+    .map((part) => (/^[0-9.]+$/.test(part) ? part : part.charAt(0).toUpperCase() + part.slice(1)))
+    .join(' ');
+
+// The menu, given what the account turned out to have. Ids the static catalog
+// names keep their wording; anything else - a preview model this account has
+// access to, or one Google adds later - is titled from its id rather than
+// hidden. An empty list means discovery did not happen or failed, so the
+// static catalog stands.
+export const buildCodeAssistModelList = (discoveredIds) => {
+  if (!discoveredIds?.length) return CODE_ASSIST_MODEL_LIST;
+
+  const list = discoveredIds.map((id) => ({
+    id,
+    name: CODE_ASSIST_MODELS[id]?.name ?? titleForModelId(id),
+    description: CODE_ASSIST_MODELS[id]?.description ?? '',
+    recommended: false,
+  }));
+
+  // Keep a recommendation, so the panel still points somewhere on first open.
+  const preferred = list.find((m) => m.id === DEFAULT_CODE_ASSIST_MODEL)
+    ?? list.find((m) => m.id.includes('flash-lite'))
+    ?? list.find((m) => m.id.includes('flash'))
+    ?? list[0];
+  preferred.recommended = true;
+  return list;
+};
+
 export const DEFAULT_CODE_ASSIST_MODEL =
   (CODE_ASSIST_MODEL_LIST.find((m) => m.recommended) ?? CODE_ASSIST_MODEL_LIST[0]).id;
 

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { textFromChunk, sseToEnvelope } from '../src/utils/codeAssist';
+import { textFromChunk, sseToEnvelope, modelsFromQuota } from '../src/utils/codeAssist';
+import { buildCodeAssistModelList, titleForModelId, CODE_ASSIST_MODEL_LIST, CODE_ASSIST_MODELS } from '../src/constants/graphConstants';
 import { extractAuthCode, emailFromIdToken, describeTokenError, beginSignIn } from '../src/utils/codeAssistAuth';
 
 const drain = async (stream) => {
@@ -176,5 +177,74 @@ describe('sign-in restarts', () => {
     expect(params.get('code_challenge_method')).toBe('S256');
     expect(params.get('scope')).toContain('cloud-platform');
     expect(params.get('redirect_uri')).toBe('https://codeassist.google.com/authcode');
+  });
+});
+
+describe('model discovery, instead of guessing the catalog', () => {
+  // retrieveUserQuota returns one bucket per model the account has an
+  // allowance for. gemini-cli reads preview access out of the same field, so
+  // this is the backend telling us what it will accept rather than a list
+  // copied from a changelog.
+  it('reads the model ids out of the quota buckets', () => {
+    const quota = { buckets: [
+      { modelId: 'gemini-3.1-flash-lite', remainingFraction: 0.9 },
+      { modelId: 'gemini-3.1-pro-preview', remainingFraction: 0.5 },
+    ] };
+    expect(modelsFromQuota(quota)).toEqual(['gemini-3.1-flash-lite', 'gemini-3.1-pro-preview']);
+  });
+
+  it('drops internal variants that are not models to talk to', () => {
+    const quota = { buckets: [
+      { modelId: 'gemini-3.1-pro-preview-customtools' },
+      { modelId: 'gemini-embedding-001' },
+      { modelId: 'gemini-2.5-pro' },
+    ] };
+    expect(modelsFromQuota(quota)).toEqual(['gemini-2.5-pro']);
+  });
+
+  it('survives a response with no buckets rather than emptying the menu', () => {
+    expect(modelsFromQuota({})).toEqual([]);
+    expect(modelsFromQuota(null)).toEqual([]);
+    expect(modelsFromQuota({ buckets: [{ remainingFraction: 1 }] })).toEqual([]);
+  });
+
+  it('does not repeat a model listed in more than one bucket', () => {
+    const quota = { buckets: [{ modelId: 'gemini-2.5-pro' }, { modelId: 'gemini-2.5-pro' }] };
+    expect(modelsFromQuota(quota)).toEqual(['gemini-2.5-pro']);
+  });
+});
+
+describe('the menu built from what was discovered', () => {
+  it('keeps the static catalog when discovery found nothing', () => {
+    // The failure path: no sign-in yet, or the call failed. Falling back to an
+    // empty menu would be worse than the guess it replaces.
+    expect(buildCodeAssistModelList([])).toBe(CODE_ASSIST_MODEL_LIST);
+    expect(buildCodeAssistModelList(null)).toBe(CODE_ASSIST_MODEL_LIST);
+  });
+
+  it('offers a preview model when the account actually has one', () => {
+    // The whole point: gemini-3.1-pro-preview is unofferable as a guess and
+    // perfectly usable by an account with preview access.
+    const list = buildCodeAssistModelList(['gemini-3.1-flash-lite', 'gemini-3.1-pro-preview']);
+    expect(list.map((m) => m.id)).toContain('gemini-3.1-pro-preview');
+    expect(list.find((m) => m.id === 'gemini-3.1-pro-preview').name).toBe('Gemini 3.1 Pro Preview');
+  });
+
+  it('keeps the catalog wording for ids it already names', () => {
+    const list = buildCodeAssistModelList(['gemini-3.1-flash-lite']);
+    expect(list[0].name).toBe(CODE_ASSIST_MODELS['gemini-3.1-flash-lite'].name);
+    expect(list[0].description).toBeTruthy();
+  });
+
+  it('always recommends exactly one, whatever came back', () => {
+    for (const ids of [['gemini-2.5-pro'], ['gemini-3.5-flash', 'gemini-2.5-pro'],
+      ['gemini-3.1-flash-lite', 'gemini-3.1-pro-preview']]) {
+      expect(buildCodeAssistModelList(ids).filter((m) => m.recommended)).toHaveLength(1);
+    }
+  });
+
+  it('titles an id nobody has named yet', () => {
+    expect(titleForModelId('gemini-4-ultra-preview')).toBe('Gemini 4 Ultra Preview');
+    expect(titleForModelId('gemini-3.5-flash')).toBe('Gemini 3.5 Flash');
   });
 });

@@ -122,14 +122,23 @@ The authoritative list for Code Assist is `VALID_GEMINI_MODELS` in
 `@google/gemini-cli-core`'s `config/models.js` — `npm pack` it and read it
 rather than guessing, because nothing in the API reports what it accepts.
 
+**The catalog is a fallback, not the source of truth.** `retrieveUserQuota`
+(`v1internal:retrieveUserQuota`, `{project}` in, `{buckets:[{modelId,…}]}` out)
+returns one bucket per model the signed-in account has an allowance for, and
+`ModelSelector` builds its list from that once a grant exists. gemini-cli reads
+its own preview access out of the same field. Discovery failing returns `[]`,
+which `buildCodeAssistModelList` reads as "use the static catalog", so the worst
+case is the behaviour that shipped before it.
+
 Membership in that list is necessary but not sufficient. gemini-cli never sends
 a picked id through: `resolveModel()` rewrites it against per-account state it
 fetches at startup (`hasAccessToPreview`, a 3.1 launch flag, a
 `GEMINI_3_5_FLASH_GA_LAUNCHED` experiment) and substitutes a GA model when the
 account lacks preview access. Graphible sends the id verbatim, **so only ids
-needing no such access can be offered** — every `*-preview` id is a valid string
-that fails for accounts without it. A test pins the catalog to non-preview ids
-for exactly this reason.
+needing no such access can go in the static catalog** — every `*-preview` id is
+a valid string that fails for accounts without it. A test pins that catalog to
+non-preview ids for exactly this reason. Discovered ids carry no such
+restriction: the account having a bucket for a model is proof it may use it.
 `CODE_ASSIST_MODELS` is separate from `LLM_CONFIG.EXTERNAL.GOOGLE.MODELS` and
 the selected id is held apart in `ModelSelector` so switching cannot carry a
 name across. `migrateModelConfig` rewrites a saved id against its own backend's
