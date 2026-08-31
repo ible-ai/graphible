@@ -7,18 +7,20 @@
 import { getAccessToken, DEFAULT_PROVIDER } from './codeAssistAuth';
 
 const PROD = 'https://cloudcode-pa.googleapis.com';
-const DAILY = 'https://daily-cloudcode-pa.sandbox.googleapis.com';
-const AUTOPUSH = 'https://autopush-cloudcode-pa.sandbox.googleapis.com';
+// The host Antigravity's own CLI logs show it using. Not the `.sandbox` one a
+// third-party plugin's constants name - that resolves and answers, which is
+// what made the mistake survive: it 404s every model instead of failing loudly.
+const DAILY = 'https://daily-cloudcode-pa.googleapis.com';
 const VERSION = 'v1internal';
 
 // Antigravity's models are not served by prod - asking it for gemini-3-flash
-// returns a bare 404. Its own client talks to the daily sandbox first and falls
-// back, except for loadCodeAssist, which resolves the managed project reliably
-// only on prod. Orders are from opencode-antigravity-auth's constants, which
-// mirror what the desktop client does.
+// there returns a bare 404, which reads as a bad model id rather than a wrong
+// host.
 const ENDPOINTS = {
   'gemini-cli': { generate: [PROD], load: [PROD] },
-  antigravity: { generate: [DAILY, AUTOPUSH, PROD], load: [PROD, DAILY, AUTOPUSH] },
+  // daily first: with Antigravity's own User-Agent it resolves the
+  // `aicode-consumers` project, which is the one its models are served under.
+  antigravity: { generate: [DAILY, PROD], load: [DAILY, PROD] },
 };
 
 export // An unrecognised provider gets prod-only routing rather than whatever the

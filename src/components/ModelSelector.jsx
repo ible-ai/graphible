@@ -5,7 +5,7 @@ import WebLLMProgressTracker from '../components/WebLLMProgressTracker';
 import { Z } from '../constants/zLayers';
 import { isGoogleSignInConfigured, isSignedIn, signIn } from '../utils/googleAuth';
 import CodeAssistSignIn from './CodeAssistSignIn';
-import { isSignedIn as caSignedIn, hasStoredGrant, AUTH_PROVIDERS, DEFAULT_PROVIDER } from '../utils/codeAssistAuth';
+import { isSignedIn as caSignedIn, hasStoredGrant, AUTH_PROVIDERS, DEFAULT_PROVIDER, canReachAntigravity } from '../utils/codeAssistAuth';
 import { loadCodeAssist, discoverModels } from '../utils/codeAssist';
 
 const ModelSelector = ({
@@ -583,22 +583,35 @@ const ModelSelector = ({
                                     {authMethod === 'code-assist' && (
                                         <div className="space-y-3">
                                             <div className="flex rounded-lg border border-slate-200 overflow-hidden text-xs">
-                                                {Object.entries(AUTH_PROVIDERS).map(([key, { label, supported }]) => (
-                                                    <button
-                                                        key={key}
-                                                        type="button"
-                                                        onClick={() => setAuthProvider(key)}
-                                                        title={supported
-                                                            ? undefined
-                                                            : 'Signs in, but its models are served only to Antigravity\'s own app - a browser cannot reach them'}
-                                                        className={`flex-1 px-3 py-1.5 transition-colors ${authProvider === key
-                                                            ? 'bg-slate-800 text-white'
-                                                            : 'bg-white text-slate-600 hover:bg-slate-50'}`}
-                                                    >
-                                                        {label}{supported ? '' : ' (unavailable)'}
-                                                    </button>
-                                                ))}
+                                                {Object.entries(AUTH_PROVIDERS).map(([key, { label, requiresAntigravityAgent }]) => {
+                                                    const blocked = requiresAntigravityAgent && !canReachAntigravity();
+                                                    return (
+                                                        <button
+                                                            key={key}
+                                                            type="button"
+                                                            onClick={() => setAuthProvider(key)}
+                                                            title={blocked
+                                                                ? 'These models are served only to Antigravity\'s own browser. Sign-in works here, but every model will 404.'
+                                                                : undefined}
+                                                            className={`flex-1 px-3 py-1.5 transition-colors ${authProvider === key
+                                                                ? 'bg-slate-800 text-white'
+                                                                : 'bg-white text-slate-600 hover:bg-slate-50'}`}
+                                                        >
+                                                            {label}
+                                                        </button>
+                                                    );
+                                                })}
                                             </div>
+                                            {AUTH_PROVIDERS[authProvider]?.requiresAntigravityAgent
+                                                && !canReachAntigravity() && (
+                                                <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-2">
+                                                    These models are served only to Antigravity&apos;s own browser, which
+                                                    identifies itself in a header no web page may set. Sign-in works here,
+                                                    but every model will report &ldquo;not found&rdquo;. Open Graphible
+                                                    inside Antigravity to use them.
+                                                </p>
+                                            )}
+
                                             <CodeAssistSignIn
                                                 signedIn={caReady}
                                                 onSignedInChange={setCaReady}

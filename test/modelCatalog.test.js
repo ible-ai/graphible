@@ -12,6 +12,7 @@ import {
   CODE_ASSIST_MODEL_LIST,
   DEFAULT_CODE_ASSIST_MODEL,
   DEFAULT_ANTIGRAVITY_MODEL,
+  ANTIGRAVITY_MODELS,
 } from '../src/constants/graphConstants';
 
 // The catalogs used to be duplicated across ModelSelector, the wizard
@@ -202,5 +203,20 @@ describe('migrating between the two Google clients', () => {
   it('still rewrites a gemini-cli config to a gemini-cli default', () => {
     const config = { type: 'code-assist', model: 'gemini-3-flash' };
     expect(migrateModelConfig(config).model).toBe(DEFAULT_CODE_ASSIST_MODEL);
+  });
+});
+
+describe('catalogs that overlap', () => {
+  it('keeps a model both surfaces serve', () => {
+    // gemini-3.1-flash-lite is in both catalogs. Treating "present in the other
+    // one" as proof of crossing over rewrote it out of a working config.
+    const shared = 'gemini-3.1-flash-lite';
+    expect(CODE_ASSIST_MODELS[shared]).toBeDefined();
+    expect(ANTIGRAVITY_MODELS[shared]).toBeDefined();
+
+    for (const authProvider of ['gemini-cli', 'antigravity']) {
+      const config = { type: 'code-assist', authProvider, model: shared };
+      expect(migrateModelConfig(config), authProvider).toBe(config);
+    }
   });
 });

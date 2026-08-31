@@ -10,7 +10,7 @@ test.describe('the model panel shows what is running', () => {
     await page.addInitScript(() => {
       localStorage.setItem('graphible-setup-complete', 'true');
       localStorage.setItem('graphible-model-config', JSON.stringify({
-        type: 'code-assist', provider: 'google', authProvider: 'antigravity', model: 'gemini-3.1-pro-high',
+        type: 'code-assist', provider: 'google', authProvider: 'antigravity', model: 'gemini-3-flash',
       }));
       localStorage.setItem('graphible-antigravity-refresh', 'stub-grant');
       window.open = () => null;
@@ -29,11 +29,11 @@ test.describe('the model panel shows what is running', () => {
     await page.getByRole('button', { name: /External API/ }).click();
 
     // The saved client, not the default one.
-    await expect(page.getByRole('button', { name: /^Antigravity/ }))
+    await expect(page.getByRole('button', { name: 'Antigravity', exact: true }))
       .toHaveClass(/bg-slate-800/);
 
     // The saved model, not the catalog's recommendation.
-    const row = page.locator('label').filter({ hasText: 'Gemini 3.1 Pro (high)' });
+    const row = page.locator('label').filter({ hasText: 'Gemini 3 Flash' }).first();
     await expect(row).toBeVisible();
     await expect(row.locator('div.bg-purple-500')).toBeVisible();
   });

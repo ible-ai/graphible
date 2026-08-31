@@ -133,18 +133,35 @@ which names neither cause nor remedy.
 **Two clients reach this API** (`AUTH_PROVIDERS` in `codeAssistAuth.js`), and
 which one you present decides which models you are served:
 
+**The User-Agent selects the *surface*, not just the vocabulary.** With a
+browser's UA the account resolves the Code Assist project (`able-module-…`) and
+its models; with Antigravity's own UA the same account resolves
+`aicode-consumers` and a much larger catalog on a separate, untouched quota:
+Gemini 3.5/3.6/3.7, `claude-sonnet-4-6`, `claude-opus-4-6-thinking`,
+`gpt-oss-120b-medium`. Confirmed generating: `gemini-3.7-flash-tiered`,
+`gemini-3.6-flash-high`, `gemini-3-flash`.
+
+Since `User-Agent` is forbidden to `fetch`, a web page reaches that surface only
+when the browser it runs in already says Antigravity — its own embedded browser
+does. `canReachAntigravity()` tests for it and the panel warns when it is
+absent, because otherwise every generation fails with "not found" and nothing
+explains why.
+
 | | `gemini-cli` (default) | `antigravity` |
 |---|---|---|
 | redirect | `codeassist.google.com/authcode` | `antigravity.google/oauth-callback` |
 | extra scopes | — | `cclog`, `experimentsandconfigs` |
-| models | 2.5 Pro, 3.5 Flash, 3.1 Flash Lite | Gemini 3 Flash, 3.1 Pro (`-low`/`-high`) |
-| generation host | `cloudcode-pa` | `daily-cloudcode-pa.sandbox` → autopush → prod |
-| `loadCodeAssist` host | `cloudcode-pa` | `cloudcode-pa` first |
+| models | 3.1 Flash Lite, 3 Flash, 3.1 Pro, 2.5 Pro | 3.7/3.6/3 Flash, 3.1 Flash Lite |
+| host | `cloudcode-pa` | `daily-cloudcode-pa` → prod |
+| project | `able-module-…` | `aicode-consumers` |
+| needs UA | no | **yes** — Antigravity's own |
 
 **The hosts are not interchangeable.** Prod does not serve Antigravity's models
-and answers a bare 404, which reads as a bad model id rather than a wrong host —
-that misdirection cost most of a debugging session. `postToEndpoints` falls
-through on 404 only, so a 401 or 403 is never masked by a retry.
+and answers a bare 404, which reads as a bad model id rather than a wrong host.
+Note `daily-cloudcode-pa.googleapis.com` — *not* the `.sandbox` variant a
+third-party plugin names, which resolves and answers and so 404s every model
+instead of failing loudly. `postToEndpoints` falls through on 404 only, so a
+401 or 403 is never masked by a retry.
 
 Grants, verifiers, refresh tokens, projects and catalogs are all **per client** —
 a code minted under one is rejected by the other with `invalid_grant`, which

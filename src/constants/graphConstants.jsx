@@ -382,20 +382,43 @@ export const CODE_ASSIST_MODELS = {
   },
 };
 
+// The Antigravity surface: a different and much larger catalog than Code
+// Assist's - Gemini 3.5/3.6/3.7, Claude and gpt-oss, on a separate quota. Every
+// id below was read from a live account's quota buckets and confirmed to
+// generate.
+//
+// **Which surface you get is decided by the User-Agent**, not by the OAuth
+// client: a request carrying Antigravity's own string resolves the
+// `aicode-consumers` project and these models, while any browser string
+// resolves the Code Assist project and 404s all of them. A web page cannot set
+// that header - it is forbidden to `fetch` - so these are reachable only where
+// the User-Agent already says Antigravity, such as inside Antigravity's own
+// browser, or through something else that can set headers.
+//
+// Treat this as a seed, not an inventory: discovery replaces it with whatever
+// the account's own quota buckets name.
+//
+// Not included: gemini-3.1-pro-high/low and gpt-oss-120b-medium answer 400
+// "invalid argument" to this request shape, and the Claude ids want their own.
 export const ANTIGRAVITY_MODELS = {
-  'gemini-3-flash': {
-    name: 'Gemini 3 Flash',
-    description: 'Fastest, and the lightest use of your allowance',
+  'gemini-3.7-flash-tiered': {
+    name: 'Gemini 3.7 Flash',
+    description: 'Newest Flash, and the lightest use of your allowance',
     recommended: true,
   },
-  'gemini-3.1-pro-low': {
-    name: 'Gemini 3.1 Pro',
-    description: 'Newest, with light reasoning',
+  'gemini-3.6-flash-high': {
+    name: 'Gemini 3.6 Flash (high)',
+    description: 'Reasoning turned up',
     recommended: false,
   },
-  'gemini-3.1-pro-high': {
-    name: 'Gemini 3.1 Pro (high)',
-    description: 'Newest, reasoning turned up - heaviest use of your allowance',
+  'gemini-3-flash': {
+    name: 'Gemini 3 Flash',
+    description: 'Balanced speed and capability',
+    recommended: false,
+  },
+  'gemini-3.1-flash-lite': {
+    name: 'Gemini 3.1 Flash Lite',
+    description: 'Fastest, when the others are rate limited',
     recommended: false,
   },
 };
@@ -471,8 +494,12 @@ export const migrateModelConfig = (config) => {
     // vocabularies do not overlap, so a gemini-cli id under Antigravity was
     // carried across rather than chosen, and would fail every request.
     const antigravity = config.authProvider === 'antigravity';
+    const own = antigravity ? ANTIGRAVITY_MODELS : CODE_ASSIST_MODELS;
     const foreign = antigravity ? CODE_ASSIST_MODELS : ANTIGRAVITY_MODELS;
-    if (!Object.hasOwn(foreign, config.model)) return config;
+    // The catalogs overlap - gemini-3.1-flash-lite is served by both surfaces -
+    // so being in the other one is only evidence of crossing over when it is
+    // absent from this one.
+    if (Object.hasOwn(own, config.model) || !Object.hasOwn(foreign, config.model)) return config;
     return { ...config, model: antigravity ? DEFAULT_ANTIGRAVITY_MODEL : DEFAULT_CODE_ASSIST_MODEL };
   }
   if (config?.type !== 'external' || config?.provider !== 'google') return config;

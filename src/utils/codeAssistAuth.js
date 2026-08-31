@@ -26,7 +26,6 @@
 export const AUTH_PROVIDERS = {
   'gemini-cli': {
     label: 'Gemini CLI',
-    supported: true,
     // packages/core/src/code_assist/oauth2.ts
     clientId: '681255809395-oo8ft2oprdrnp9e3aqf6av3hmdib135j.apps.googleusercontent.com',
     clientSecret: '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',
@@ -39,11 +38,10 @@ export const AUTH_PROVIDERS = {
   },
   antigravity: {
     label: 'Antigravity',
-    // Signs in and reports an eligible free tier, but its models 404 from a
-    // browser: they are served only to Antigravity's own User-Agent, which no
-    // web page may send. Kept because the sign-in itself is sound, and a proxy
-    // or an extension could reach them.
-    supported: false,
+    // Reachable only from a browser whose User-Agent already says Antigravity;
+    // see canReachAntigravity below. Elsewhere the sign-in still works and
+    // every model 404s.
+    requiresAntigravityAgent: true,
     clientId: '1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com',
     clientSecret: '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',
     // Titled "Google Antigravity Authentication", with a Copy to Clipboard
@@ -73,6 +71,15 @@ export const AUTH_PROVIDERS = {
 // in the test, not the API: reproduce the client's real conditions, or the
 // answer describes something nobody ships.
 export const DEFAULT_PROVIDER = 'gemini-cli';
+
+// Whether this browser can reach Antigravity's surface at all.
+//
+// The API picks the model catalog from the User-Agent, and a page cannot set
+// that header - it is forbidden to `fetch`. So the only way a web app gets
+// Antigravity's models is to be running inside a browser whose own User-Agent
+// already says so, which Antigravity's embedded browser does.
+export const canReachAntigravity = () =>
+  typeof navigator !== 'undefined' && /Antigravity/i.test(navigator.userAgent ?? '');
 
 const providerOrThrow = (key) => {
   const provider = AUTH_PROVIDERS[key];

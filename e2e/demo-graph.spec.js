@@ -266,19 +266,19 @@ test.describe('setup wizard', () => {
     await expect(page.getByRole('button', { name: /Sign in to Gemini CLI/ })).toBeVisible();
   });
 
-  test('marks the client whose models a browser cannot reach', async ({ page }) => {
+  test('warns that Antigravity needs its own browser', async ({ page }) => {
     await loadDemoGraph(page);
 
     await page.locator('button').filter({ hasText: /No model detected|Demo/ }).first().click();
     await page.getByRole('button', { name: /External API/ }).click();
     await page.getByRole('button', { name: 'Google account' }).click();
-    await page.getByRole('button', { name: /Antigravity \(unavailable\)/ }).click();
+    await page.getByRole('button', { name: 'Antigravity', exact: true }).click();
 
-    for (const id of ['Gemini 3 Flash', 'Gemini 3.1 Pro']) {
-      await expect(page.getByText(id, { exact: true })).toBeVisible();
-    }
-    // The Developer API's default does not exist on Code Assist.
-    await expect(page.getByText('Gemini 3.5 Flash Lite', { exact: true })).toHaveCount(0);
+    // Chromium's User-Agent does not say Antigravity, so the models it lists
+    // cannot be fetched from here - and the panel has to say so rather than
+    // letting every generation fail with "not found".
+    await expect(page.getByText(/served only to Antigravity/)).toBeVisible();
+    await expect(page.getByText('Gemini 3.7 Flash', { exact: true })).toBeVisible();
   });
 });
 

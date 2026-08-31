@@ -341,17 +341,17 @@ describe('what may be put on the wire', () => {
 });
 
 describe('which host each client talks to', () => {
-  it('sends Antigravity generation to the sandbox, not prod', () => {
-    // Prod does not serve Antigravity's models: asking it for gemini-3-flash
-    // returns a bare 404 that reads as "bad model id" rather than "wrong
-    // host". The desktop client talks to the daily sandbox first.
-    expect(endpointsFor('antigravity', 'generate')[0])
-      .toBe('https://daily-cloudcode-pa.sandbox.googleapis.com');
-    expect(endpointsFor('antigravity', 'generate')).toContain('https://cloudcode-pa.googleapis.com');
-  });
-
-  it('resolves the Antigravity project on prod first, which is where it works', () => {
-    expect(endpointsFor('antigravity', 'load')[0]).toBe('https://cloudcode-pa.googleapis.com');
+  it('sends Antigravity to the daily host its own CLI uses', () => {
+    // Prod 404s Antigravity's models, and the `.sandbox` variant a third-party
+    // plugin names does too - it resolves and answers, so the mistake survives
+    // as "bad model id" rather than failing loudly. This host is the one in
+    // Antigravity's own logs, and it resolves the aicode-consumers project.
+    for (const kind of ['generate', 'load']) {
+      expect(endpointsFor('antigravity', kind)[0])
+        .toBe('https://daily-cloudcode-pa.googleapis.com');
+      expect(endpointsFor('antigravity', kind)).not.toContain(
+        'https://daily-cloudcode-pa.sandbox.googleapis.com');
+    }
   });
 
   it('leaves gemini-cli on prod alone', () => {
