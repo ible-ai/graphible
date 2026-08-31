@@ -308,12 +308,13 @@ describe('two Google clients, one API', () => {
     expect(hasStoredGrant('antigravity')).toBe(true);
   });
 
-  it('defaults to the client Google still supports for individuals', async () => {
-    // loadCodeAssist under gemini-cli reports free-tier ineligible with
-    // UNSUPPORTED_CLIENT, naming Antigravity as the replacement.
-    expect(DEFAULT_PROVIDER).toBe('antigravity');
+  it('defaults to the client that actually generates from a browser', async () => {
+    // The User-Agent selects the model vocabulary and a browser cannot set it,
+    // so Antigravity's models 404 from a web page however the token was
+    // obtained. gemini-cli's work.
+    expect(DEFAULT_PROVIDER).toBe('gemini-cli');
     expect(new URL(await beginSignIn()).searchParams.get('redirect_uri'))
-      .toBe('https://antigravity.google/oauth-callback');
+      .toBe('https://codeassist.google.com/authcode');
   });
 
   it('builds the menu from the right catalog per client', () => {

@@ -29,7 +29,7 @@ test.describe('the model panel shows what is running', () => {
     await page.getByRole('button', { name: /External API/ }).click();
 
     // The saved client, not the default one.
-    await expect(page.getByRole('button', { name: 'Antigravity', exact: true }))
+    await expect(page.getByRole('button', { name: /^Antigravity/ }))
       .toHaveClass(/bg-slate-800/);
 
     // The saved model, not the catalog's recommendation.

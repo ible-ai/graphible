@@ -72,9 +72,20 @@ const token = await (async () => {
   return data.access_token;
 })();
 
-// Only the two headers this API's CORS allows, so what passes here also passes
-// from the browser. Sending more from Node would prove nothing about the app.
-const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+// A browser User-Agent, because this API selects the model vocabulary from it
+// and answers UNSUPPORTED_CLIENT to a string it does not recognise - which is
+// what Node sends by default, and what once produced a confident, wrong
+// conclusion that Google had retired the whole client. The browser cannot set
+// this header at all (it is forbidden to fetch), so sending a browser's own
+// string is what reproduces the app's real conditions rather than faking them.
+const BROWSER_UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) '
+  + 'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36';
+
+const headers = {
+  Authorization: `Bearer ${token}`,
+  'Content-Type': 'application/json',
+  'User-Agent': BROWSER_UA,
+};
 const post = (host, method, body, query = '') =>
   fetch(`${host}/v1internal:${method}${query}`, { method: 'POST', headers, body: JSON.stringify(body) });
 

@@ -100,23 +100,35 @@ secret, both published in source; each is registered as a public client, so
 PKCE rather than the secret is what protects the exchange. Google's consent
 screen names the client, and the sign-in button says so too.
 
-**Google has retired the gemini-cli client for individuals.** Verified against
-a live account: `loadCodeAssist` returns no project, no tier, and
+**The `User-Agent` selects the model vocabulary, and a browser cannot set it.**
+This is the single most important fact about this backend, and it was
+established with real credentials against a live account:
 
-```
-ineligibleTiers: [{ tierId: 'free-tier', reasonCode: 'UNSUPPORTED_CLIENT',
-  reasonMessage: 'This client is no longer supported for Gemini Code Assist for
-  individuals. To continue using Gemini, please migrate to the Antigravity
-  suite of products: https://antigravity.google' }]
-```
+| client | User-Agent sent | result |
+|---|---|---|
+| gemini-cli | Node/undici default | `UNSUPPORTED_CLIENT`, no project, no tier |
+| gemini-cli | any browser UA | free tier, project resolved, **generates** |
+| antigravity | any browser UA | free tier, but every Antigravity model 404s |
+| antigravity | Antigravity's Electron UA | free tier, project `aicode-consumers`, **generates** |
 
-`onboardUser` confirms it — `free-tier` is 403 "not eligible", `standard-tier`
-succeeds but hands back an empty project because it wants one of the user's
-own, which is the billed path this feature exists to avoid. Generation then
-fails with "You do not have a valid license (#3501)", which names neither the
-cause nor the remedy. **`ineligibleTiers[].reasonMessage` is the only place
-Google explains it, so `loadCodeAssist` surfaces it rather than discarding it.**
-`DEFAULT_PROVIDER` is `antigravity` for this reason.
+`User-Agent` is a forbidden header name, so `fetch` cannot set it and every
+request from a page carries the browser's own string. That pins Graphible to
+gemini-cli's vocabulary: `gemini-3-flash` and the other Antigravity ids return
+"Requested entity was not found" from a browser regardless of host, project, or
+which OAuth client minted the token. Antigravity's sign-in is kept but marked
+unavailable — sound auth, unreachable models.
+
+**Beware of probing this from Node.** Doing so once produced a confident and
+completely wrong conclusion — that Google had retired the gemini-cli client for
+individuals — because undici's default `User-Agent` is not a browser's, and the
+API answers `UNSUPPORTED_CLIENT` to anything it does not recognise.
+`scripts/probe-code-assist.mjs` therefore sends a browser UA. Reproduce the
+client's real conditions or the answer describes something nobody ships.
+
+If a request does come back ineligible, `loadCodeAssist` surfaces
+`ineligibleTiers[].reasonMessage` — the only place Google explains itself.
+Otherwise generation fails with "You do not have a valid license (#3501)",
+which names neither cause nor remedy.
 
 **Two clients reach this API** (`AUTH_PROVIDERS` in `codeAssistAuth.js`), and
 which one you present decides which models you are served:

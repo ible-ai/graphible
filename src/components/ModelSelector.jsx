@@ -590,12 +590,12 @@ const ModelSelector = ({
                                                         onClick={() => setAuthProvider(key)}
                                                         title={supported
                                                             ? undefined
-                                                            : 'Google has retired this sign-in for individual accounts'}
+                                                            : 'Signs in, but its models are served only to Antigravity\'s own app - a browser cannot reach them'}
                                                         className={`flex-1 px-3 py-1.5 transition-colors ${authProvider === key
                                                             ? 'bg-slate-800 text-white'
                                                             : 'bg-white text-slate-600 hover:bg-slate-50'}`}
                                                     >
-                                                        {label}{supported ? '' : ' (legacy)'}
+                                                        {label}{supported ? '' : ' (unavailable)'}
                                                     </button>
                                                 ))}
                                             </div>

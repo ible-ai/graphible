@@ -31,7 +31,7 @@ test.describe('model menu above the details panel', () => {
 
     await page.getByRole('button', { name: /External API/ }).click();
     await page.getByRole('button', { name: 'Google account' }).click();
-    await page.getByRole('button', { name: /Sign in to Antigravity/ }).click();
+    await page.getByRole('button', { name: /Sign in to Gemini CLI/ }).click();
 
     const input = page.locator('input[placeholder^="4/0"]');
     await expect(input).toBeVisible();

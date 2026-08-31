@@ -24,9 +24,26 @@
 // asking Google's authorize endpoint and reading which ones answer
 // redirect_uri_mismatch. Do that before adding a third.
 export const AUTH_PROVIDERS = {
+  'gemini-cli': {
+    label: 'Gemini CLI',
+    supported: true,
+    // packages/core/src/code_assist/oauth2.ts
+    clientId: '681255809395-oo8ft2oprdrnp9e3aqf6av3hmdib135j.apps.googleusercontent.com',
+    clientSecret: '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',
+    redirectUri: 'https://codeassist.google.com/authcode',
+    scopes: [
+      'https://www.googleapis.com/auth/cloud-platform',
+      'https://www.googleapis.com/auth/userinfo.email',
+      'https://www.googleapis.com/auth/userinfo.profile',
+    ],
+  },
   antigravity: {
     label: 'Antigravity',
-    supported: true,
+    // Signs in and reports an eligible free tier, but its models 404 from a
+    // browser: they are served only to Antigravity's own User-Agent, which no
+    // web page may send. Kept because the sign-in itself is sound, and a proxy
+    // or an extension could reach them.
+    supported: false,
     clientId: '1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com',
     clientSecret: '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',
     // Titled "Google Antigravity Authentication", with a Copy to Clipboard
@@ -40,24 +57,22 @@ export const AUTH_PROVIDERS = {
       'https://www.googleapis.com/auth/experimentsandconfigs',
     ],
   },
-  'gemini-cli': {
-    label: 'Gemini CLI',
-    // Retired by Google for individual accounts; kept for anyone whose
-    // account still has a tier that works with it.
-    supported: false,
-    // packages/core/src/code_assist/oauth2.ts
-    clientId: '681255809395-oo8ft2oprdrnp9e3aqf6av3hmdib135j.apps.googleusercontent.com',
-    clientSecret: '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',
-    redirectUri: 'https://codeassist.google.com/authcode',
-    scopes: [
-      'https://www.googleapis.com/auth/cloud-platform',
-      'https://www.googleapis.com/auth/userinfo.email',
-      'https://www.googleapis.com/auth/userinfo.profile',
-    ],
-  },
 };
 
-export const DEFAULT_PROVIDER = 'antigravity';
+// gemini-cli, because from a browser it is the one that actually generates.
+//
+// The User-Agent decides which model vocabulary this API serves, and a browser
+// cannot set it - it is a forbidden header name, so every request carries the
+// browser's own string whatever the code asks for. Under that UA the gemini-cli
+// models work and Antigravity's 404 on every host and project, whichever OAuth
+// client presented the token. Verified against a live account.
+//
+// An earlier reading of this said the opposite - that gemini-cli was retired,
+// because loadCodeAssist answered UNSUPPORTED_CLIENT. That was an artifact of
+// probing from Node, whose default User-Agent is not a browser's. The lesson is
+// in the test, not the API: reproduce the client's real conditions, or the
+// answer describes something nobody ships.
+export const DEFAULT_PROVIDER = 'gemini-cli';
 
 const providerOrThrow = (key) => {
   const provider = AUTH_PROVIDERS[key];
