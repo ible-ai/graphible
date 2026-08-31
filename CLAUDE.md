@@ -108,6 +108,13 @@ which one you present decides which models you are served:
 | redirect | `codeassist.google.com/authcode` | `antigravity.google/oauth-callback` |
 | extra scopes | — | `cclog`, `experimentsandconfigs` |
 | models | 2.5 Pro, 3.5 Flash, 3.1 Flash Lite | Gemini 3 Flash, 3.1 Pro (`-low`/`-high`) |
+| generation host | `cloudcode-pa` | `daily-cloudcode-pa.sandbox` → autopush → prod |
+| `loadCodeAssist` host | `cloudcode-pa` | `cloudcode-pa` first |
+
+**The hosts are not interchangeable.** Prod does not serve Antigravity's models
+and answers a bare 404, which reads as a bad model id rather than a wrong host —
+that misdirection cost most of a debugging session. `postToEndpoints` falls
+through on 404 only, so a 401 or 403 is never masked by a retry.
 
 Grants, verifiers, refresh tokens, projects and catalogs are all **per client** —
 a code minted under one is rejected by the other with `invalid_grant`, which
@@ -121,10 +128,19 @@ found after the loopback redirect in Antigravity's own source suggested, wrongly
 that no hosted page existed. Antigravity's page is titled "Google Antigravity
 Authentication" and has a Copy to Clipboard button.
 
-Antigravity's desktop app also sends a spoofed Electron `User-Agent`, which a
-browser forbids `fetch` from setting. `Client-Metadata` is sent; if the backend
-also requires that `User-Agent`, this path cannot work from a web page and will
-say so at the first real call.
+Antigravity's desktop app also sends a spoofed Electron `User-Agent` and a
+`Client-Metadata` header. **A browser can send neither**, and not only because
+`User-Agent` is forbidden to `fetch`: this API's CORS allowlist is exactly
+`authorization,content-type`, so any third header fails the *preflight* with
+403 and the real request never leaves. The browser then reports "No
+`Access-Control-Allow-Origin` header", which points at the response rather than
+at the header you added.
+
+Verified end to end against a real account: **none of that identification is
+required**. Generation works from the browser with the two allowed headers and
+the client named only in the `loadCodeAssist` body. What the 403
+"you do not have a valid license (#3501)" actually tracked was sending an
+Antigravity model to the wrong host, not a missing client fingerprint.
 
 Three things make this work from a static site, and each was a bug before it was
 a feature:
