@@ -10,7 +10,7 @@ test.describe('the model panel shows what is running', () => {
     await page.addInitScript(() => {
       localStorage.setItem('graphible-setup-complete', 'true');
       localStorage.setItem('graphible-model-config', JSON.stringify({
-        type: 'code-assist', provider: 'google', model: 'gemini-2.5-pro',
+        type: 'code-assist', provider: 'google', model: 'gemini-3.1-flash-lite',
       }));
       // Under the key the saved client reads: a grant for the other one leaves
       // this signed out, and a signed-out panel lists no models at all.
@@ -32,7 +32,7 @@ test.describe('the model panel shows what is running', () => {
 
     // The saved model, not the catalog's recommendation. The stub grant cannot
     // reach Google, so this is the fallback list, which appears on a timer.
-    const row = page.locator('label').filter({ hasText: 'gemini-2.5-pro' }).first();
+    const row = page.locator('label').filter({ hasText: 'gemini-3.1-flash-lite' }).first();
     await expect(row).toBeVisible({ timeout: 15000 });
     await expect(row.locator('div.bg-purple-500')).toBeVisible();
   });

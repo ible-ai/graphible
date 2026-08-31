@@ -220,9 +220,20 @@ export const retrieveUserQuota = async (project, provider = DEFAULT_PROVIDER) =>
   return response.json();
 };
 
-// Internal variants and non-chat models: real buckets, but not things to offer
-// as a model to talk to.
-const OFFERABLE = (id) => id && !/customtools|embedding/.test(id);
+// Real buckets, but not things to offer as a model to talk to: internal
+// variants, non-chat models, and the agent/editor surfaces that share this
+// quota (`chat_20706`, `tab_flash_lite_preview`, `gemini-pro-agent`).
+const INTERNAL = /customtools|embedding|^chat_|^tab_|-agent$|-image$/;
+
+// Anything older than Gemini 3 is not offered. The account still has quota for
+// 2.5 and it still works - this is a product decision, not a capability one, so
+// it lives here rather than being filtered out of the request path.
+const supersededGemini = (id) => {
+  const [, major] = id.match(/^gemini-(\d+)(?:\.\d+)?-/) ?? [];
+  return major !== undefined && Number(major) < 3;
+};
+
+const OFFERABLE = (id) => Boolean(id) && !INTERNAL.test(id) && !supersededGemini(id);
 
 export const modelsFromQuota = (quota) => {
   const seen = new Set();

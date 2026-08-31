@@ -331,7 +331,9 @@ export const GOOGLE_MODEL_LIST = Object.entries(LLM_CONFIG.EXTERNAL.GOOGLE.MODEL
   .map(([id, info]) => ({ id, ...info }));
 
 // Every id here was read out of a live account's own quota buckets (see
-// scripts/probe-code-assist.mjs), not from a changelog. Two corrections worth
+// scripts/probe-code-assist.mjs), not from a changelog. Nothing older than
+// Gemini 3 is offered, here or from discovery - the account still has 2.5
+// quota and it still works, but it is not what anyone should be handed. Two corrections worth
 // keeping in mind, both of which shipped broken first:
 //
 //   gemini-3.5-flash  404s - it is not in this vocabulary, despite the name
@@ -373,11 +375,6 @@ export const CODE_ASSIST_MODELS = {
   'gemini-3.1-pro-preview': {
     name: 'Gemini 3.1 Pro Preview',
     description: 'Newest and most capable, and the heaviest use of your allowance',
-    recommended: false,
-  },
-  'gemini-2.5-pro': {
-    name: 'Gemini 2.5 Pro',
-    description: 'The previous generation, when the newer ones are rate limited',
     recommended: false,
   },
 };
@@ -449,21 +446,6 @@ export const SHARED_MODELS = {
     name: 'Gemini 3.1 Flash Lite',
     description: 'Fastest, and the lightest use of your allowance',
     recommended: true,
-  },
-  'gemini-2.5-flash': {
-    name: 'Gemini 2.5 Flash',
-    description: 'Balanced speed and capability',
-    recommended: false,
-  },
-  'gemini-2.5-pro': {
-    name: 'Gemini 2.5 Pro',
-    description: 'Most capable of the four, and the heaviest use of your allowance',
-    recommended: false,
-  },
-  'gemini-2.5-flash-lite': {
-    name: 'Gemini 2.5 Flash Lite',
-    description: 'The previous generation, when the others are rate limited',
-    recommended: false,
   },
 };
 

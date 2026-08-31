@@ -194,12 +194,35 @@ describe('model discovery, instead of guessing the catalog', () => {
   });
 
   it('drops internal variants that are not models to talk to', () => {
+    // These share the quota response with real models: agent and editor
+    // surfaces, an embedding model, a custom-tools build.
     const quota = { buckets: [
       { modelId: 'gemini-3.1-pro-preview-customtools' },
       { modelId: 'gemini-embedding-001' },
-      { modelId: 'gemini-2.5-pro' },
+      { modelId: 'chat_20706' },
+      { modelId: 'tab_flash_lite_preview' },
+      { modelId: 'gemini-pro-agent' },
+      { modelId: 'gemini-3.1-pro-preview' },
     ] };
-    expect(modelsFromQuota(quota)).toEqual(['gemini-2.5-pro']);
+    expect(modelsFromQuota(quota)).toEqual(['gemini-3.1-pro-preview']);
+  });
+
+  it('drops anything older than Gemini 3', () => {
+    // The account still has 2.5 quota and 2.5 still answers; it is simply not
+    // what anyone should be handed now.
+    const quota = { buckets: [
+      { modelId: 'gemini-2.5-pro' },
+      { modelId: 'gemini-2.5-flash' },
+      { modelId: 'gemini-3-flash' },
+      { modelId: 'gemini-3.7-flash-tiered' },
+    ] };
+    expect(modelsFromQuota(quota)).toEqual(['gemini-3-flash', 'gemini-3.7-flash-tiered']);
+  });
+
+  it('keeps models that are not Gemini at all', () => {
+    // The rule is about Gemini generations; Claude and gpt-oss have their own.
+    const quota = { buckets: [{ modelId: 'claude-sonnet-4-6' }, { modelId: 'gpt-oss-120b-medium' }] };
+    expect(modelsFromQuota(quota)).toEqual(['claude-sonnet-4-6', 'gpt-oss-120b-medium']);
   });
 
   it('survives a response with no buckets rather than emptying the menu', () => {
@@ -209,8 +232,8 @@ describe('model discovery, instead of guessing the catalog', () => {
   });
 
   it('does not repeat a model listed in more than one bucket', () => {
-    const quota = { buckets: [{ modelId: 'gemini-2.5-pro' }, { modelId: 'gemini-2.5-pro' }] };
-    expect(modelsFromQuota(quota)).toEqual(['gemini-2.5-pro']);
+    const quota = { buckets: [{ modelId: 'gemini-3-flash' }, { modelId: 'gemini-3-flash' }] };
+    expect(modelsFromQuota(quota)).toEqual(['gemini-3-flash']);
   });
 });
 
@@ -369,11 +392,10 @@ describe('what to offer before the account has answered', () => {
   // and Antigravity's own browser on aicode-consumers, and they overlap by
   // four models out of 8 and 25. Seeding either full catalog offers ids that
   // 404 - which is exactly what a 404 in the app was reporting.
-  it('seeds only models both projects serve', () => {
+  it('seeds only what both projects serve and is current', () => {
+    // The two projects overlap by four models; three of them are 2.5.
     expect(buildCodeAssistModelList([])).toBe(SHARED_MODEL_LIST);
-    expect(SHARED_MODEL_LIST.map((m) => m.id).sort()).toEqual([
-      'gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.5-pro', 'gemini-3.1-flash-lite',
-    ]);
+    expect(SHARED_MODEL_LIST.map((m) => m.id)).toEqual(['gemini-3.1-flash-lite']);
   });
 
   it('seeds nothing exclusive to either surface', () => {

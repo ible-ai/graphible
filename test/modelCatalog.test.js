@@ -194,9 +194,9 @@ describe('migrating between the two Google clients', () => {
   });
 
   it('rewrites an id carried over from the other client', () => {
-    // gemini-2.5-pro is a gemini-cli id. Under Antigravity it cannot have been
-    // chosen, only carried across, and it fails every request.
-    const config = { type: 'code-assist', authProvider: 'antigravity', model: 'gemini-2.5-pro' };
+    // gemini-3.1-pro-preview is a Code Assist id. Under Antigravity it cannot
+    // have been chosen, only carried across, and it fails every request.
+    const config = { type: 'code-assist', authProvider: 'antigravity', model: 'gemini-3.1-pro-preview' };
     expect(migrateModelConfig(config).model).toBe(DEFAULT_ANTIGRAVITY_MODEL);
   });
 

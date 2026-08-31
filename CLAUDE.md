@@ -235,11 +235,20 @@ them as a 404 on generate. If discovery fails, or takes more than four seconds,
 `SHARED_MODELS` stands in so the panel is never empty; a late answer still
 replaces it.
 
+**Nothing older than Gemini 3 is offered.** `OFFERABLE` in `codeAssist.js`
+drops any `gemini-` id below major version 3, along with the internal surfaces
+that share the same quota response (`chat_20706`, `tab_flash_lite_preview`,
+`gemini-pro-agent`, embeddings, `*-customtools`). Non-Gemini models — Claude,
+gpt-oss — are kept; the rule is about Gemini generations. The account still has
+2.5 quota and 2.5 still answers, so this is a product decision and it lives in
+the catalog layer, not the request path.
+
 **The project decides the models, and only the account can report it.** A
 browser resolves the Code Assist project (8 models); Antigravity's own browser
 resolves `aicode-consumers` (25). They overlap by four —
 `gemini-3.1-flash-lite`, `gemini-2.5-flash`, `gemini-2.5-flash-lite`,
-`gemini-2.5-pro` — and `SHARED_MODELS` is exactly that overlap. It is what the
+`gemini-2.5-pro` — of which only the first survives the Gemini 3 rule, so
+`SHARED_MODELS` is that one model. It is what the
 menu offers before discovery answers, because anything else is a guess about
 which project you will land on, and a wrong guess offers ids that 404. Picking
 the seed from a `User-Agent` test did precisely that.
