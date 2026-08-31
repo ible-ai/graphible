@@ -227,6 +227,14 @@ removed from the catalog on the strength of a failure that was really a 429, on
 the theory that preview ids need undetectable account access. They do not: they
 are ordinary ids and they work.
 
+**The panel lists no Code Assist model until the account has named one.**
+`retrieveUserQuota` is the only thing that knows, so before it answers the menu
+shows a line of text rather than a plausible list — every plausible list that
+was tried offered ids the resolved project had never heard of, and the user met
+them as a 404 on generate. If discovery fails, or takes more than four seconds,
+`SHARED_MODELS` stands in so the panel is never empty; a late answer still
+replaces it.
+
 **The project decides the models, and only the account can report it.** A
 browser resolves the Code Assist project (8 models); Antigravity's own browser
 resolves `aicode-consumers` (25). They overlap by four —

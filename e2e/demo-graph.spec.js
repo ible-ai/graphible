@@ -250,50 +250,43 @@ test.describe('setup wizard', () => {
     await expect(page.getByText(/Gemini 2\.5/)).toHaveCount(0);
   });
 
-  test('opens on the client that works from a browser', async ({ page }) => {
-    // The User-Agent decides which models the API serves and a browser cannot
-    // set it, so Antigravity's 404 from a web page. gemini-cli's are what a
-    // new user must land on.
-    await loadDemoGraph(page);
-
+  const openGoogleAccountTab = async (page) => {
     await page.locator('button').filter({ hasText: /No model detected|Demo/ }).first().click();
     await page.getByRole('button', { name: /External API/ }).click();
     await page.getByRole('button', { name: 'Google account' }).click();
+  };
 
-    for (const id of ['Gemini 3.1 Flash Lite', 'Gemini 2.5 Flash', 'Gemini 2.5 Pro']) {
-      await expect(page.getByText(id, { exact: true })).toBeVisible();
-    }
+  test('lists no models until the account has said which it has', async ({ page }) => {
+    // Which models exist depends on the project the server resolves, which
+    // cannot be known from here. Every plausible list we invented instead put
+    // ids in the menu that the resolved project had never heard of, and the
+    // user got a 404 on generate.
+    await loadDemoGraph(page);
+    await openGoogleAccountTab(page);
+
+    await expect(page.getByText(/your account.s own models are listed here/)).toBeVisible();
+    await expect(page.locator('label').filter({ hasText: /^gemini-/ })).toHaveCount(0);
     await expect(page.getByRole('button', { name: /Sign in to Gemini CLI/ })).toBeVisible();
   });
 
-  test('offers Antigravity, listing the models it can actually serve here', async ({ page }) => {
-    // In an ordinary browser an Antigravity grant resolves the Code Assist
-    // project and its models - the sign-in works, only Antigravity's own
-    // catalogue is out of reach. Listing 3.7 Flash here would offer three
-    // models that 404.
+  test('offers Antigravity, and says where its catalogue is served', async ({ page }) => {
+    // The sign-in works in any browser - it resolves the Code Assist project
+    // and its models. Only Antigravity's own catalogue needs its own browser.
     await loadDemoGraph(page);
-
-    await page.locator('button').filter({ hasText: /No model detected|Demo/ }).first().click();
-    await page.getByRole('button', { name: /External API/ }).click();
-    await page.getByRole('button', { name: 'Google account' }).click();
+    await openGoogleAccountTab(page);
     await page.getByRole('button', { name: 'Antigravity', exact: true }).click();
 
     await expect(page.getByRole('button', { name: /Sign in to Antigravity/ })).toBeVisible();
-    await expect(page.getByText('gemini-3.1-flash-lite', { exact: true })).toBeVisible();
-    await expect(page.getByText('gemini-3.7-flash-tiered', { exact: true })).toHaveCount(0);
     await expect(page.getByText(/larger catalogue is served only to its/)).toBeVisible();
   });
 
-  test('says nothing of the sort for the client that works', async ({ page }) => {
+  test('says nothing of the sort for the client that works everywhere', async ({ page }) => {
     await loadDemoGraph(page);
+    await openGoogleAccountTab(page);
 
-    await page.locator('button').filter({ hasText: /No model detected|Demo/ }).first().click();
-    await page.getByRole('button', { name: /External API/ }).click();
-    await page.getByRole('button', { name: 'Google account' }).click();
-
-    await expect(page.getByText('Gemini 3.1 Flash Lite', { exact: true })).toBeVisible();
-    await expect(page.getByText('gemini-3.7-flash-tiered', { exact: true })).toHaveCount(0);
+    await expect(page.getByText(/larger catalogue is served only to its/)).toHaveCount(0);
   });
+
 });
 
 test.describe('details panel', () => {

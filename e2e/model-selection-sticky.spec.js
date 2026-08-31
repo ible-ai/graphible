@@ -12,7 +12,9 @@ test.describe('the model panel shows what is running', () => {
       localStorage.setItem('graphible-model-config', JSON.stringify({
         type: 'code-assist', provider: 'google', model: 'gemini-2.5-pro',
       }));
-      localStorage.setItem('graphible-antigravity-refresh', 'stub-grant');
+      // Under the key the saved client reads: a grant for the other one leaves
+      // this signed out, and a signed-out panel lists no models at all.
+      localStorage.setItem('graphible-code-assist-refresh', 'stub-grant');
       window.open = () => null;
     });
     await page.goto('/');
@@ -28,9 +30,10 @@ test.describe('the model panel shows what is running', () => {
     await openPanel(page);
     await page.getByRole('button', { name: /External API/ }).click();
 
-    // The saved model, not the catalog's recommendation.
+    // The saved model, not the catalog's recommendation. The stub grant cannot
+    // reach Google, so this is the fallback list, which appears on a timer.
     const row = page.locator('label').filter({ hasText: 'gemini-2.5-pro' }).first();
-    await expect(row).toBeVisible();
+    await expect(row).toBeVisible({ timeout: 15000 });
     await expect(row.locator('div.bg-purple-500')).toBeVisible();
   });
 

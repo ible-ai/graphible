@@ -140,30 +140,57 @@ const ModelSelector = ({
     // and one they are not entitled to would be offered and fail. Empty until
     // it answers, which keeps the static list showing.
     const [discoveredModels, setDiscoveredModels] = useState([]);
+    // Distinguishes "not asked yet" from "asked and got nothing", which decide
+    // different things: the first shows a wait, the second has to fall back to
+    // something usable or leave the user with an empty menu.
+    const [discoveryTried, setDiscoveryTried] = useState(false);
 
     // Signed in to one client says nothing about the other, and neither does
     // what the last one had access to.
     useEffect(() => {
         setCaReady(caSignedIn(authProvider) || hasStoredGrant(authProvider));
         setDiscoveredModels([]);
+        setDiscoveryTried(false);
     }, [authProvider]);
 
     useEffect(() => {
         if (!caReady || discoveredModels.length) return;
         let cancelled = false;
+
+        // Two network round trips stand between opening this panel and seeing
+        // any model. They are usually quick and sometimes not, and a panel that
+        // stays empty while they hang is indistinguishable from a broken one -
+        // so the fallback is shown on a timer, and a late answer still replaces
+        // it.
+        const settle = setTimeout(() => { if (!cancelled) setDiscoveryTried(true); }, 4000);
+
         (async () => {
             try {
                 const { project } = await loadCodeAssist(authProvider);
                 const ids = await discoverModels(project, authProvider);
                 if (!cancelled) setDiscoveredModels(ids);
             } catch {
-                // Discovery is an enhancement; the static catalog stands.
+                // Nothing to surface: the fallback below keeps the panel usable.
+            } finally {
+                if (!cancelled) setDiscoveryTried(true);
             }
         })();
-        return () => { cancelled = true; };
+
+        return () => { cancelled = true; clearTimeout(settle); };
     }, [caReady, discoveredModels.length, authProvider]);
 
     const codeAssistModels = buildCodeAssistModelList(discoveredModels);
+
+    // Until the account has answered there is no honest list to show: which
+    // models exist depends on the project the server resolves, and that is not
+    // knowable from here. Showing a plausible one instead is what put ids in
+    // the menu that the resolved project had never heard of.
+    // ...but an account that will not answer must still leave a usable menu, so
+    // after a failed attempt the shared seed stands in - the four models both
+    // projects serve, which cannot 404 whichever one was resolved.
+    const modelsAreKnown = authMethod !== 'code-assist'
+        || discoveredModels.length > 0
+        || (caReady && discoveryTried);
 
     // Discovery can rule out the model already selected. Left alone it would sit
     // in the panel unlisted and still be what Apply sends.
@@ -517,8 +544,17 @@ const ModelSelector = ({
                                     <label className="block text-sm font-medium text-slate-700 mb-2">
                                         Model
                                     </label>
+                                    {!modelsAreKnown && (
+                                        <p className="text-xs text-slate-500 mb-2">
+                                            {caReady
+                                                ? 'Reading the models on your account\u2026'
+                                                : 'Sign in below and your account\u2019s own models are listed here.'}
+                                        </p>
+                                    )}
                                     <div className="space-y-2">
-                                        {(authMethod === 'code-assist' ? codeAssistModels : GOOGLE_MODEL_LIST).map((model) => (
+                                        {(authMethod === 'code-assist'
+                                            ? (modelsAreKnown ? codeAssistModels : [])
+                                            : GOOGLE_MODEL_LIST).map((model) => (
                                             <label
                                                 key={model.id}
                                                 className={`flex items-center p-3 border rounded cursor-pointer transition-all duration-200 group ${selectedModel === model.id
