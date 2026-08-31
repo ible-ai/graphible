@@ -163,7 +163,7 @@ const ModelSelector = ({
         return () => { cancelled = true; };
     }, [caReady, discoveredModels.length, authProvider]);
 
-    const codeAssistModels = buildCodeAssistModelList(discoveredModels, authProvider, canReachAntigravity());
+    const codeAssistModels = buildCodeAssistModelList(discoveredModels);
 
     // Discovery can rule out the model already selected. Left alone it would sit
     // in the panel unlisted and still be what Apply sends.
@@ -617,9 +617,9 @@ const ModelSelector = ({
                                             )}
                                             {antigravityBlocked && (
                                                 <p className="text-xs text-slate-500">
-                                                    Works here, on the same models as Gemini CLI. Antigravity&apos;s own
-                                                    catalogue &mdash; 3.7 Flash, Claude &mdash; is served only to its own
-                                                    browser, which identifies itself in a header no web page may set.
+                                                    Works here. Antigravity&apos;s larger catalogue is served only to its
+                                                    own browser, which identifies itself in a header no web page may set
+                                                    &mdash; signing in lists whichever models your account actually has.
                                                 </p>
                                             )}
 

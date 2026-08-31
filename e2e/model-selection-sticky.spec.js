@@ -29,7 +29,7 @@ test.describe('the model panel shows what is running', () => {
     await page.getByRole('button', { name: /External API/ }).click();
 
     // The saved model, not the catalog's recommendation.
-    const row = page.locator('label').filter({ hasText: 'Gemini 2.5 Pro' }).first();
+    const row = page.locator('label').filter({ hasText: 'gemini-2.5-pro' }).first();
     await expect(row).toBeVisible();
     await expect(row.locator('div.bg-purple-500')).toBeVisible();
   });

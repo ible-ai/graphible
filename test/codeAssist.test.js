@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { textFromChunk, sseToEnvelope, modelsFromQuota, authHeaders, endpointsFor } from '../src/utils/codeAssist';
-import { buildCodeAssistModelList, titleForModelId, CODE_ASSIST_MODEL_LIST, CODE_ASSIST_MODELS, ANTIGRAVITY_MODEL_LIST } from '../src/constants/graphConstants';
+import { buildCodeAssistModelList, titleForModelId, CODE_ASSIST_MODEL_LIST, CODE_ASSIST_MODELS, SHARED_MODEL_LIST } from '../src/constants/graphConstants';
 import { extractAuthCode, emailFromIdToken, describeTokenError, beginSignIn, hasStoredGrant, signOut, DEFAULT_PROVIDER } from '../src/utils/codeAssistAuth';
 
 const drain = async (stream) => {
@@ -215,11 +215,11 @@ describe('model discovery, instead of guessing the catalog', () => {
 });
 
 describe('the menu built from what was discovered', () => {
-  it('keeps the static catalog when discovery found nothing', () => {
-    // The failure path: no sign-in yet, or the call failed. Falling back to an
-    // empty menu would be worse than the guess it replaces.
-    expect(buildCodeAssistModelList([])).toBe(CODE_ASSIST_MODEL_LIST);
-    expect(buildCodeAssistModelList(null)).toBe(CODE_ASSIST_MODEL_LIST);
+  it('keeps a usable menu when discovery found nothing', () => {
+    // The failure path: no sign-in yet, or the call failed. An empty menu would
+    // be worse than the shared seed.
+    expect(buildCodeAssistModelList([])).toBe(SHARED_MODEL_LIST);
+    expect(buildCodeAssistModelList(null)).toBe(SHARED_MODEL_LIST);
   });
 
   it('offers a discovered model the catalog has never heard of', () => {
@@ -317,11 +317,10 @@ describe('two Google clients, one API', () => {
       .toBe('https://codeassist.google.com/authcode');
   });
 
-  it('builds the menu from the right catalog per client', () => {
-    expect(buildCodeAssistModelList([], 'antigravity')).toBe(ANTIGRAVITY_MODEL_LIST);
-    expect(buildCodeAssistModelList([], 'gemini-cli')).toBe(CODE_ASSIST_MODEL_LIST);
-    // Discovery still wins over either seed.
-    const discovered = buildCodeAssistModelList(['gemini-3.1-pro-high'], 'antigravity');
+  it('builds the same menu whichever client signed in', () => {
+    // The client does not decide the catalog - the project the server resolves
+    // does, and only the account's own quota reports that.
+    const discovered = buildCodeAssistModelList(['gemini-3.1-pro-high']);
     expect(discovered.map((m) => m.id)).toEqual(['gemini-3.1-pro-high']);
     expect(discovered[0].recommended).toBe(true);
   });
@@ -364,23 +363,35 @@ describe('which host each client talks to', () => {
   });
 });
 
-describe('Antigravity from a browser that is not Antigravity', () => {
-  // The grant still works there: it resolves the Code Assist project and that
-  // project's models, exactly as gemini-cli does. Only Antigravity's own
-  // catalogue is out of reach.
-  it('seeds the reachable catalog, not the one that would 404', () => {
-    const list = buildCodeAssistModelList([], 'antigravity', false);
-    expect(list).toBe(CODE_ASSIST_MODEL_LIST);
-    expect(list.map((m) => m.id)).not.toContain('gemini-3.7-flash-tiered');
+describe('what to offer before the account has answered', () => {
+  // Which models exist depends on the project the server resolves, which a
+  // browser cannot know in advance: a browser lands on the Code Assist project
+  // and Antigravity's own browser on aicode-consumers, and they overlap by
+  // four models out of 8 and 25. Seeding either full catalog offers ids that
+  // 404 - which is exactly what a 404 in the app was reporting.
+  it('seeds only models both projects serve', () => {
+    expect(buildCodeAssistModelList([])).toBe(SHARED_MODEL_LIST);
+    expect(SHARED_MODEL_LIST.map((m) => m.id).sort()).toEqual([
+      'gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.5-pro', 'gemini-3.1-flash-lite',
+    ]);
   });
 
-  it('still seeds Antigravity’s own catalog where it can be served', () => {
-    expect(buildCodeAssistModelList([], 'antigravity', true)).toBe(ANTIGRAVITY_MODEL_LIST);
+  it('seeds nothing exclusive to either surface', () => {
+    const seeded = new Set(SHARED_MODEL_LIST.map((m) => m.id));
+    expect(seeded.has('gemini-3.7-flash-tiered')).toBe(false);  // Antigravity only
+    expect(seeded.has('gemini-3.1-pro-preview')).toBe(false);   // Code Assist only
   });
 
-  it('lets discovery override either way', () => {
-    // Whatever the account's quota names wins over both seeds.
-    const list = buildCodeAssistModelList(['gemini-3.1-pro-preview'], 'antigravity', false);
-    expect(list.map((m) => m.id)).toEqual(['gemini-3.1-pro-preview']);
+  it('hands over to discovery the moment it answers', () => {
+    for (const ids of [['gemini-3.7-flash-tiered'], ['gemini-3.1-pro-preview']]) {
+      expect(buildCodeAssistModelList(ids).map((m) => m.id)).toEqual(ids);
+    }
+  });
+
+  it('names a discovered id from either catalog, or from the id itself', () => {
+    expect(buildCodeAssistModelList(['gemini-3.7-flash-tiered'])[0].name)
+      .toBe('Gemini 3.7 Flash (tiered)');
+    expect(buildCodeAssistModelList(['gemini-9-unheard-of'])[0].name)
+      .toBe('Gemini 9 Unheard Of');
   });
 });

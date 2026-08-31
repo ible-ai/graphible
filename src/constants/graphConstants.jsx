@@ -436,6 +436,40 @@ export const ANTIGRAVITY_MODEL_LIST = Object.entries(ANTIGRAVITY_MODELS)
 export const DEFAULT_ANTIGRAVITY_MODEL =
   (ANTIGRAVITY_MODEL_LIST.find((m) => m.recommended) ?? ANTIGRAVITY_MODEL_LIST[0]).id;
 
+// What to offer before the account has told us anything.
+//
+// Which models exist depends on the *project* the server resolves, not on which
+// client signed in: a browser lands on the Code Assist project (8 models) and
+// Antigravity's own browser on `aicode-consumers` (25). Guessing wrong offers
+// ids that 404. These four are served by both, so they are safe whichever way
+// it goes, and discovery replaces them with the real list the moment it
+// answers.
+export const SHARED_MODELS = {
+  'gemini-3.1-flash-lite': {
+    name: 'Gemini 3.1 Flash Lite',
+    description: 'Fastest, and the lightest use of your allowance',
+    recommended: true,
+  },
+  'gemini-2.5-flash': {
+    name: 'Gemini 2.5 Flash',
+    description: 'Balanced speed and capability',
+    recommended: false,
+  },
+  'gemini-2.5-pro': {
+    name: 'Gemini 2.5 Pro',
+    description: 'Most capable of the four, and the heaviest use of your allowance',
+    recommended: false,
+  },
+  'gemini-2.5-flash-lite': {
+    name: 'Gemini 2.5 Flash Lite',
+    description: 'The previous generation, when the others are rate limited',
+    recommended: false,
+  },
+};
+
+export const SHARED_MODEL_LIST = Object.entries(SHARED_MODELS)
+  .map(([id, info]) => ({ id, ...info }));
+
 export const CODE_ASSIST_MODEL_LIST = Object.entries(CODE_ASSIST_MODELS)
   .map(([id, info]) => ({ id, ...info }));
 
@@ -452,18 +486,19 @@ export const titleForModelId = (id) =>
 // access to, or one Google adds later - is titled from its id rather than
 // hidden. An empty list means discovery did not happen or failed, so the
 // static catalog stands.
-// `antigravityReachable` is whether this browser can be served Antigravity's
-// surface at all. When it cannot, an Antigravity grant still works - it simply
-// resolves the Code Assist project and its models, exactly as gemini-cli does -
-// so the Code Assist catalog is the honest seed. Offering 3.7 Flash there lists
-// three models that 404 and one that happens to be on both surfaces.
-export const buildCodeAssistModelList = (discoveredIds, provider = 'gemini-cli', antigravityReachable = true) => {
-  const antigravity = provider === 'antigravity' && antigravityReachable;
-  const known = antigravity ? ANTIGRAVITY_MODELS : CODE_ASSIST_MODELS;
-  const fallback = antigravity ? ANTIGRAVITY_MODEL_LIST : CODE_ASSIST_MODEL_LIST;
-  const preferredId = antigravity ? DEFAULT_ANTIGRAVITY_MODEL : DEFAULT_CODE_ASSIST_MODEL;
+// The menu, given what the account turned out to have.
+//
+// Until discovery answers there is nothing to go on but a guess about which
+// project the server will resolve, and a wrong guess offers ids that 404 - so
+// the seed is the set both projects serve. Once the quota has spoken, that is
+// the list, whatever it contains.
+export const buildCodeAssistModelList = (discoveredIds) => {
+  if (!discoveredIds?.length) return SHARED_MODEL_LIST;
 
-  if (!discoveredIds?.length) return fallback;
+  // Both catalogs are only name sources now; an id in neither is titled from
+  // itself.
+  const known = { ...CODE_ASSIST_MODELS, ...ANTIGRAVITY_MODELS, ...SHARED_MODELS };
+  const preferredId = DEFAULT_CODE_ASSIST_MODEL;
 
   const list = discoveredIds.map((id) => ({
     id,

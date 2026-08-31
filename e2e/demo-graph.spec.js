@@ -260,7 +260,7 @@ test.describe('setup wizard', () => {
     await page.getByRole('button', { name: /External API/ }).click();
     await page.getByRole('button', { name: 'Google account' }).click();
 
-    for (const id of ['Gemini 3.1 Flash Lite', 'Gemini 3 Flash Preview', 'Gemini 3.1 Pro Preview']) {
+    for (const id of ['Gemini 3.1 Flash Lite', 'Gemini 2.5 Flash', 'Gemini 2.5 Pro']) {
       await expect(page.getByText(id, { exact: true })).toBeVisible();
     }
     await expect(page.getByRole('button', { name: /Sign in to Gemini CLI/ })).toBeVisible();
@@ -281,7 +281,7 @@ test.describe('setup wizard', () => {
     await expect(page.getByRole('button', { name: /Sign in to Antigravity/ })).toBeVisible();
     await expect(page.getByText('gemini-3.1-flash-lite', { exact: true })).toBeVisible();
     await expect(page.getByText('gemini-3.7-flash-tiered', { exact: true })).toHaveCount(0);
-    await expect(page.getByText(/same models as Gemini CLI/)).toBeVisible();
+    await expect(page.getByText(/larger catalogue is served only to its/)).toBeVisible();
   });
 
   test('says nothing of the sort for the client that works', async ({ page }) => {
@@ -292,7 +292,7 @@ test.describe('setup wizard', () => {
     await page.getByRole('button', { name: 'Google account' }).click();
 
     await expect(page.getByText('Gemini 3.1 Flash Lite', { exact: true })).toBeVisible();
-    await expect(page.getByText(/same models as Gemini CLI/)).toHaveCount(0);
+    await expect(page.getByText('gemini-3.7-flash-tiered', { exact: true })).toHaveCount(0);
   });
 });
 

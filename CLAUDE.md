@@ -227,6 +227,15 @@ removed from the catalog on the strength of a failure that was really a 429, on
 the theory that preview ids need undetectable account access. They do not: they
 are ordinary ids and they work.
 
+**The project decides the models, and only the account can report it.** A
+browser resolves the Code Assist project (8 models); Antigravity's own browser
+resolves `aicode-consumers` (25). They overlap by four —
+`gemini-3.1-flash-lite`, `gemini-2.5-flash`, `gemini-2.5-flash-lite`,
+`gemini-2.5-pro` — and `SHARED_MODELS` is exactly that overlap. It is what the
+menu offers before discovery answers, because anything else is a guess about
+which project you will land on, and a wrong guess offers ids that 404. Picking
+the seed from a `User-Agent` test did precisely that.
+
 **The catalog is a fallback, not the source of truth.** `retrieveUserQuota`
 (`v1internal:retrieveUserQuota`, `{project}` in, `{buckets:[{modelId,…}]}` out)
 returns one bucket per model the signed-in account has an allowance for, and
