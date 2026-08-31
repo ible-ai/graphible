@@ -23,11 +23,11 @@ No TypeScript — `.js`/`.jsx` only. **Node >= 22.22.2** — jsdom 30 accepts on
 startup (`webidl.util.markAsUncloneable is not a function`) before a test runs.
 Both workflows pin Node 24.
 
-**Testing.** `test/` holds 234 Vitest unit tests: the streaming JSON parser, context
+**Testing.** `test/` holds 261 Vitest unit tests: the streaming JSON parser, context
 building, coordinates, clustering, the generation pipeline in `useGraphState`
 (driven with a fake backend emitting the real envelope), the selection and
 manipulation hooks, `BrowserLLMEngine`'s provider dispatch, and the shared
-backend envelope via the demo model. `e2e/` holds 60 Playwright tests that drive a real build in
+backend envelope via the demo model. `e2e/` holds 68 Playwright tests that drive a real build in
 headless Chromium through the demo backend, which needs no Ollama, API key or
 WebGPU — so the graph, camera, node controls and wizard are all exercisable
 offline. Chromium launches with WebGPU enabled, and the browser-model capability
@@ -57,13 +57,14 @@ Push to `main` → `.github/workflows/deploy.yml` builds and deploys to GitHub P
 44 source files under `src/`:
 
 ```
-src/App.jsx               955 lines — the whole app shell; all UI state lives here
+src/App.jsx               920 lines — the whole app shell; all UI state lives here
 src/main.jsx                        — React root; hides index.html's #loading div
 src/index.css                       — Tailwind + KaTeX imports, hit-test classes, hand-rolled .prose
 src/hooks/          (10)            — camera, graph state, LLM, selection, manipulation, feedback, save/load, keyboard, browser-LLM engine
 src/utils/           (11)            — coordinates, LLM parsing, context building, clustering, wizard helpers, Google/Code Assist auth
-src/constants/       (2)            — graphConstants.jsx, setupWizardConstants.jsx
-src/components/     (18)            — Minimap (784) and SetupWizard (825) are the two big ones
+src/constants/       (3)            — graphConstants.jsx, setupWizardConstants.jsx, zLayers.js
+scripts/             (1)            — probe-code-assist.mjs, the live-API probe (see below)
+src/components/     (17)            — Minimap (784) and SetupWizard (825) are the two big ones
 ```
 
 Gitignored and unimported: `src/dev/` (7 files; `src/dev/App.jsx` is a stale 1117-line fork of `App.jsx`) and `_src/`. Don't edit them for app changes.
@@ -399,14 +400,44 @@ Panels must fit the viewport: `body` and `#root` both set `overflow: hidden`, so
 anything taller than the window has content that literally cannot be reached.
 The model dropdown shipped that way and its Apply button was unclickable.
 
+## Testing against the live API
+
+`scripts/probe-code-assist.mjs` exercises a Code Assist backend with real
+credentials, which is the only way to learn anything true about it. Point it at
+a refresh token:
+
+```bash
+# after signing in through the app, in the browser console:
+#   localStorage.getItem('graphible-code-assist-refresh')   # or -antigravity-
+echo '<token>' > .env/code-assist-refresh                   # .env/ is gitignored
+node scripts/probe-code-assist.mjs gemini-cli               # or: antigravity
+```
+
+It prints the project each host resolves, the model ids the account's own quota
+names, and which host × project × model combinations generate.
+
+**Every wrong turn this backend produced came from testing a proxy for the real
+thing**, and each was corrected only by a real request:
+
+| believed | actually |
+|---|---|
+| `gemini-3.7-flash` is the current model | not in this vocabulary at all — 404 |
+| `gemini-3.1-pro-preview` is a bad id | valid; the failure was a **429**, quota, not 404 |
+| preview ids need undetectable account access | they are ordinary ids and work |
+| Google retired the gemini-cli client | an artifact of Node's User-Agent, not a fact about Google |
+| Antigravity cannot work from a web page | its models work; only its *User-Agent* is out of reach |
+
+404 means a bad model id. 429 means a good one whose quota is spent. Confusing
+the two removed the model the user had asked for.
+
 ## Known issues
 
 Verified by reading and by test runs. `git log` has what was fixed and why.
 
 **Still open**
-- The `code-assist` client id belongs to gemini-cli, not to this project. If
-  Google rotates it or withdraws the flow — they have already withdrawn it for
-  AI Pro/Ultra tiers — the path breaks with no warning here. `loadCodeAssist`
+- The `code-assist` client ids belong to gemini-cli and to Antigravity, not to
+  this project. If Google rotates either or withdraws the flow, the path breaks
+  with no warning here. `loadCodeAssist`
   returning no `cloudaicompanionProject` may need an `onboardUser` call that is
   not implemented.
 - `useKeyboardNavigation`'s snap navigation and `NewPromptBox`'s global
@@ -425,11 +456,17 @@ Verified by reading and by test runs. `git log` has what was fixed and why.
 - 2 `react-hooks/exhaustive-deps` warnings in `SetupWizard`.
 - `LLM_CONFIG` still carries a flat backwards-compatibility block that nothing
   reads, and `setupWizardConstants.jsx` exports several unused objects.
-- `App.jsx` is still ~890 lines. The pointer layer is extracted; the model and
+- `App.jsx` is still ~920 lines. The pointer layer is extracted; the model and
   modal orchestration are the next seams.
 - The browser-model download path is still unverified end to end: consent,
   capability detection and dispatch are tested, but nothing exercises a real
-  model load, which would pull hundreds of megabytes.
+  model load, which would pull hundreds of megabytes. WebGPU reports **no
+  adapter at all** in this dev environment, headless and headed, so it cannot be
+  exercised here.
+- The Gemini Developer API catalog (`LLM_CONFIG.EXTERNAL.GOOGLE.MODELS`) is the
+  one model list never checked against a live endpoint — verifying it needs an
+  API key, and nothing here has one. Every other catalog was read from a real
+  account's quota.
 
 **Two patterns worth suspecting first**
 

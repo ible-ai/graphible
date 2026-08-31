@@ -7,13 +7,17 @@ Transform any topic into an interactive, AI-powered learning graph. Explore conc
 
 ## 🚀 Features
 
-- **AI-Powered Graph Generation**: Connect to local LLM (Ollama) for dynamic content creation
+- **Bring your own Google account**: sign in and generate on your own Gemini
+  allowance — no API key to create, no Cloud project to configure, and nothing
+  billed to whoever deployed the site
+- **AI-Powered Graph Generation**: Google Gemini, a local Ollama model, a model
+  running in your browser, or a demo graph that needs none of them
 - **Interactive Visual Interface**: Navigate through interconnected learning nodes
 - **Real-time Streaming**: Watch nodes generate in real-time as the LLM processes
 - **Adaptive UI**: Interface learns and adapts to user preferences and feedback
 - **Rich Navigation**: Mouse, keyboard, and touch controls for seamless exploration
 - **Feedback System**: Rate and improve content through integrated feedback loops
-- **Persistent State**: Save and load learning graphs for continued exploration
+- **Save and Load**: keep graphs for the rest of the browsing session
 
 ## 🎯 Quick Start
 
@@ -23,18 +27,37 @@ Visit **[our *ONLINE* demo](http://ible-ai.github.io/graphible)**
 ### Option 2: Local Development
 
 ```bash
-# Clone the repository
 git clone https://github.com/ible-ai/graphible.git
 cd graphible
-
-# Install dependencies  
 npm install
 
-# Start development server
-npm run dev
+# The dev server runs over HTTPS, which WebGPU and the local Ollama fetches
+# both require. Generate certificates once, into the gitignored .env/:
+mkdir -p .env && cd .env && mkcert localhost 127.0.0.1 ::1 && cd ..
+
+npm run dev        # https://localhost:3000
 ```
 
-### Option 3: Connect to Local LLM
+Without those certificates `npm run dev` cannot start — it is the first thing
+that trips up a fresh clone.
+
+```bash
+npm run test       # 261 unit tests (Vitest)
+npm run test:e2e   # 68 end-to-end tests (Playwright, headless Chromium)
+npm run lint
+npm run build
+```
+
+The end-to-end suite drives a real build through the demo backend, so it needs
+no model, API key or WebGPU.
+
+### Option 3: Use your own Google account
+
+Open the model menu, choose **External API → Google account**, and sign in.
+Google shows a code; paste it back. That is the whole setup — the requests are
+attributed to your account's own Gemini allowance.
+
+### Option 4: Connect to Local LLM
 
 1. **Install Ollama**: [https://ollama.ai](https://ollama.ai)
 2. **Start Ollama with CORS**:
@@ -44,7 +67,7 @@ npm run dev
 3. **Pull a model**:
    ```bash
    ollama pull gemma3:4b
-   ollama pull gemma3:270M
+   ollama pull gemma3:270m   # the lightweight option, 292MB
    ```
 4. **Launch Graphible** and start exploring!
 
@@ -58,14 +81,16 @@ npm run dev
    - Arrow keys to jump between nodes
    - Click nodes for detailed content
 4. **Provide Feedback**: Use thumbs up/down to improve content
-5. **Save Your Work**: Graphs persist between sessions
+5. **Save Your Work**: graphs are kept in `sessionStorage`, so they survive
+   reloads but not a browser restart
 
 ## 🛠 Technology Stack
 
-- **Frontend**: React 18, Vite, TailwindCSS
+- **Frontend**: React 19, Vite 6, Tailwind v4
 - **Icons**: Lucide React
-- **LLM Integration**: Ollama (local) or OpenAI API
-- **Deployment**: GitHub Pages, Vercel, Netlify compatible
+- **LLM Integration**: Google Gemini (Google sign-in or an API key), Ollama
+  (local), WebLLM / transformers.js (in-browser), and a demo backend
+- **Deployment**: GitHub Pages (live at [graph.ible.ai](https://graph.ible.ai))
 - **Architecture**: Modular hooks-based React architecture
 
 ## 🎨 Key Components
@@ -91,12 +116,16 @@ npm run deploy   # Deploy to GitHub Pages
 ## 🔧 Configuration
 
 ### LLM Settings
-Edit `src/constants/graphConstants.jsx`:
+Model catalogs live in `LLM_CONFIG` in `src/constants/graphConstants.jsx`, and
+only there — they were once duplicated across the model selector, the setup
+wizard and the installation guide, and drifted apart. Add or change a model in
+one place.
+
 ```javascript
 export const LLM_CONFIG = {
-  BASE_URL: 'http://localhost:11434',  // Ollama endpoint
-  MODEL: 'gemma3:4b',  // Model name
-  // ... other settings
+  LOCAL: { DEFAULT_BASE_URL: 'http://localhost:11434', ... },  // Ollama
+  WEBLLM: { ... },                                             // in-browser
+  EXTERNAL: { GOOGLE: { MODELS: { ... } } },                   // Gemini
 };
 ```
 
