@@ -4,16 +4,25 @@
 // The user copies it back here. That paste is the whole setup: no API key, no
 // Cloud project, nothing to understand.
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ExternalLink, Check } from 'lucide-react';
-import { beginSignIn, completeSignIn, signOut, getAccountEmail } from '../utils/codeAssistAuth';
+import { beginSignIn, completeSignIn, signOut, getAccountEmail, AUTH_PROVIDERS, DEFAULT_PROVIDER } from '../utils/codeAssistAuth';
 
-const CodeAssistSignIn = ({ signedIn, onSignedInChange }) => {
+const CodeAssistSignIn = ({ signedIn, onSignedInChange, provider = DEFAULT_PROVIDER }) => {
   const [stage, setStage] = useState('idle');
   const [pasted, setPasted] = useState('');
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
   const [blockedUrl, setBlockedUrl] = useState(null);
+
+  // A code is minted for one client and rejected by the other, so an
+  // in-flight paste cannot survive a switch between them.
+  useEffect(() => {
+    setStage('idle');
+    setPasted('');
+    setError(null);
+    setBlockedUrl(null);
+  }, [provider]);
 
   const openGoogle = async () => {
     setError(null);
@@ -24,7 +33,7 @@ const CodeAssistSignIn = ({ signedIn, onSignedInChange }) => {
     // whose challenge no longer matches.
     const win = window.open('', '_blank');
     try {
-      const url = await beginSignIn();
+      const url = await beginSignIn(provider);
       if (win) {
         win.location = url;
       } else {
@@ -42,7 +51,7 @@ const CodeAssistSignIn = ({ signedIn, onSignedInChange }) => {
     setBusy(true);
     setError(null);
     try {
-      await completeSignIn(pasted);
+      await completeSignIn(pasted, provider);
       setPasted('');
       setStage('idle');
       onSignedInChange(true);
@@ -59,12 +68,12 @@ const CodeAssistSignIn = ({ signedIn, onSignedInChange }) => {
         <div className="flex items-center gap-2 min-w-0">
           <Check size={16} className="text-emerald-600 flex-shrink-0" />
           <span className="text-sm text-emerald-900 truncate">
-            {getAccountEmail() ?? 'Signed in to Google'}
+            {getAccountEmail(provider) ?? 'Signed in to Google'}
           </span>
         </div>
         <button
           type="button"
-          onClick={() => { signOut(); onSignedInChange(false); }}
+          onClick={() => { signOut(provider); onSignedInChange(false); }}
           className="text-xs text-emerald-700 hover:text-emerald-900 underline flex-shrink-0"
         >
           Sign out
@@ -81,13 +90,13 @@ const CodeAssistSignIn = ({ signedIn, onSignedInChange }) => {
         className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-slate-300 rounded-lg text-slate-700 font-medium hover:bg-slate-50 transition-colors"
       >
         <ExternalLink size={15} />
-        Sign in to Gemini CLI
+        Sign in to {AUTH_PROVIDERS[provider].label}
       </button>
 
       <p className="text-xs text-slate-500">
         Uses your own Google account&apos;s Gemini allowance. Google&apos;s page will
-        name <span className="font-medium">Gemini CLI</span> &mdash; that is the
-        application you are granting access to.
+        name <span className="font-medium">{AUTH_PROVIDERS[provider].label}</span>{' '}
+        &mdash; that is the application you are granting access to.
       </p>
 
       {blockedUrl && (

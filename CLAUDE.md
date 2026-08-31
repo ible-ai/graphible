@@ -95,10 +95,36 @@ in a `www-authenticate` header on any 403 and that one is absent. Code Assist
 attributes to the signed-in Google account instead, which is the allowance
 gemini-cli spends.
 
-Reaching it means presenting gemini-cli's OAuth client, whose id and secret are
-published in its source; it is registered as a public client, so PKCE rather
-than the secret is what protects the exchange. Google's consent screen names
-"Gemini CLI", and the sign-in button says so too.
+Reaching it means presenting a Google desktop client's OAuth client id and
+secret, both published in source; each is registered as a public client, so
+PKCE rather than the secret is what protects the exchange. Google's consent
+screen names the client, and the sign-in button says so too.
+
+**Two clients reach this API** (`AUTH_PROVIDERS` in `codeAssistAuth.js`), and
+which one you present decides which models you are served:
+
+| | `gemini-cli` (default) | `antigravity` |
+|---|---|---|
+| redirect | `codeassist.google.com/authcode` | `antigravity.google/oauth-callback` |
+| extra scopes | — | `cclog`, `experimentsandconfigs` |
+| models | 2.5 Pro, 3.5 Flash, 3.1 Flash Lite | Gemini 3 Flash, 3.1 Pro (`-low`/`-high`) |
+
+Grants, verifiers, refresh tokens, projects and catalogs are all **per client** —
+a code minted under one is rejected by the other with `invalid_grant`, which
+reads exactly like an expired code. `migrateModelConfig` is provider-aware for
+the same reason.
+
+Which redirects a client accepts is undocumented. Establish it by asking
+Google's authorize endpoint and reading which pairings answer
+`redirect_uri_mismatch` — that is how `antigravity.google/oauth-callback` was
+found after the loopback redirect in Antigravity's own source suggested, wrongly,
+that no hosted page existed. Antigravity's page is titled "Google Antigravity
+Authentication" and has a Copy to Clipboard button.
+
+Antigravity's desktop app also sends a spoofed Electron `User-Agent`, which a
+browser forbids `fetch` from setting. `Client-Metadata` is sent; if the backend
+also requires that `User-Agent`, this path cannot work from a web page and will
+say so at the first real call.
 
 Three things make this work from a static site, and each was a bug before it was
 a feature:

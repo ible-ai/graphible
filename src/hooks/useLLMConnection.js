@@ -8,6 +8,7 @@ import { getModelConsent, setModelConsent, clearModelConsent, isModelCached } fr
 import { getAccessToken, clearSession, isSignedIn } from '../utils/googleAuth';
 import * as codeAssistAuth from '../utils/codeAssistAuth';
 import { loadCodeAssist, streamGenerateContent, generateContent, sseToEnvelope } from '../utils/codeAssist';
+import { DEFAULT_PROVIDER } from '../utils/codeAssistAuth';
 
 const GEMINI_REST = 'https://generativelanguage.googleapis.com/v1beta';
 
@@ -153,12 +154,17 @@ export const useLLMConnection = () => {
 
   // Resolves the account's project and tier, which doubles as proof the token
   // works. Costs no tokens, so testing does not spend the user's allowance.
-  const testCodeAssistConnection = async () => {
-    if (!codeAssistAuth.isSignedIn() && !codeAssistAuth.hasStoredGrant()) return false;
+  const testCodeAssistConnection = async (config) => {
+    const provider = config?.authProvider ?? DEFAULT_PROVIDER;
+    if (!codeAssistAuth.isSignedIn(provider) && !codeAssistAuth.hasStoredGrant(provider)) return false;
 
-    const { project, tier } = await loadCodeAssist();
+    const { project, tier } = await loadCodeAssist(provider);
     // Cached onto the live config so generation does not repeat the lookup.
-    setCurrentModel((prev) => (prev.type === 'code-assist' ? { ...prev, project, tier } : prev));
+    // Keyed on the provider too: a project resolved under one client's grant is
+    // not the one the other client's requests are attributed to.
+    setCurrentModel((prev) => (prev.type === 'code-assist' && (prev.authProvider ?? DEFAULT_PROVIDER) === provider
+      ? { ...prev, project, tier }
+      : prev));
     return true;
   };
 
@@ -295,7 +301,7 @@ export const useLLMConnection = () => {
       } else if (config.type === 'google-oauth') {
         isConnected = await testGoogleOAuthConnection(config, { interactive });
       } else if (config.type === 'code-assist') {
-        isConnected = await testCodeAssistConnection();
+        isConnected = await testCodeAssistConnection(config);
       } else if (config.type === 'webllm') {
         isConnected = await testWebLLMConnection(config, { interactive });
       } else if (config.type === 'demo') {
@@ -547,10 +553,14 @@ export const useLLMConnection = () => {
   const generateWithCodeAssist = async (prompt, stream = true, config = currentModel) => {
     // The project comes back from loadCodeAssist and is cached on the config by
     // the connection test; re-resolving it per prompt would double the requests.
-    const project = config.project ?? (await loadCodeAssist()).project;
+    // Which Google desktop client's grant to spend. They reach the same API
+    // and are not interchangeable: each has its own token and its own models.
+    const provider = config.authProvider ?? DEFAULT_PROVIDER;
+    const project = config.project ?? (await loadCodeAssist(provider)).project;
     const settings = {
       model: config.model,
       project,
+      provider,
       generationConfig: LLM_CONFIG.EXTERNAL.GOOGLE.DEFAULT_CONFIG,
     };
 

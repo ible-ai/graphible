@@ -367,6 +367,38 @@ export const CODE_ASSIST_MODELS = {
   },
 };
 
+// Antigravity reaches the same endpoint with its own OAuth client, and that
+// client is served newer models. Wire ids are from opencode-antigravity-auth's
+// model-resolver (the `antigravity-` prefix there is its own alias, stripped
+// before the request) - a Pro model takes a -low/-high thinking suffix.
+//
+// Treat this as a seed, not an inventory: discovery replaces it with whatever
+// the account's own quota buckets name, which is the only list that is true
+// per account.
+export const ANTIGRAVITY_MODELS = {
+  'gemini-3-flash': {
+    name: 'Gemini 3 Flash',
+    description: 'Fastest, and the lightest use of your allowance',
+    recommended: true,
+  },
+  'gemini-3.1-pro-low': {
+    name: 'Gemini 3.1 Pro',
+    description: 'Newest, with light reasoning',
+    recommended: false,
+  },
+  'gemini-3.1-pro-high': {
+    name: 'Gemini 3.1 Pro (high)',
+    description: 'Newest, reasoning turned up - heaviest use of your allowance',
+    recommended: false,
+  },
+};
+
+export const ANTIGRAVITY_MODEL_LIST = Object.entries(ANTIGRAVITY_MODELS)
+  .map(([id, info]) => ({ id, ...info }));
+
+export const DEFAULT_ANTIGRAVITY_MODEL =
+  (ANTIGRAVITY_MODEL_LIST.find((m) => m.recommended) ?? ANTIGRAVITY_MODEL_LIST[0]).id;
+
 export const CODE_ASSIST_MODEL_LIST = Object.entries(CODE_ASSIST_MODELS)
   .map(([id, info]) => ({ id, ...info }));
 
@@ -383,18 +415,22 @@ export const titleForModelId = (id) =>
 // access to, or one Google adds later - is titled from its id rather than
 // hidden. An empty list means discovery did not happen or failed, so the
 // static catalog stands.
-export const buildCodeAssistModelList = (discoveredIds) => {
-  if (!discoveredIds?.length) return CODE_ASSIST_MODEL_LIST;
+export const buildCodeAssistModelList = (discoveredIds, provider = 'gemini-cli') => {
+  const known = provider === 'antigravity' ? ANTIGRAVITY_MODELS : CODE_ASSIST_MODELS;
+  const fallback = provider === 'antigravity' ? ANTIGRAVITY_MODEL_LIST : CODE_ASSIST_MODEL_LIST;
+  const preferredId = provider === 'antigravity' ? DEFAULT_ANTIGRAVITY_MODEL : DEFAULT_CODE_ASSIST_MODEL;
+
+  if (!discoveredIds?.length) return fallback;
 
   const list = discoveredIds.map((id) => ({
     id,
-    name: CODE_ASSIST_MODELS[id]?.name ?? titleForModelId(id),
-    description: CODE_ASSIST_MODELS[id]?.description ?? '',
+    name: known[id]?.name ?? titleForModelId(id),
+    description: known[id]?.description ?? '',
     recommended: false,
   }));
 
   // Keep a recommendation, so the panel still points somewhere on first open.
-  const preferred = list.find((m) => m.id === DEFAULT_CODE_ASSIST_MODEL)
+  const preferred = list.find((m) => m.id === preferredId)
     ?? list.find((m) => m.id.includes('flash-lite'))
     ?? list.find((m) => m.id.includes('flash'))
     ?? list[0];
@@ -419,8 +455,13 @@ export const RECOMMENDED_GOOGLE_MODEL =
 // model they cannot see and cannot switch back to.
 export const migrateModelConfig = (config) => {
   if (config?.type === 'code-assist') {
-    if (Object.hasOwn(CODE_ASSIST_MODELS, config.model)) return config;
-    return { ...config, model: DEFAULT_CODE_ASSIST_MODEL };
+    // Each client has its own catalog. Migrating an Antigravity id against the
+    // gemini-cli one rewrites a working model into a foreign id - the same
+    // crossing-over this function exists to prevent.
+    const antigravity = config.authProvider === 'antigravity';
+    const catalog = antigravity ? ANTIGRAVITY_MODELS : CODE_ASSIST_MODELS;
+    if (Object.hasOwn(catalog, config.model)) return config;
+    return { ...config, model: antigravity ? DEFAULT_ANTIGRAVITY_MODEL : DEFAULT_CODE_ASSIST_MODEL };
   }
   if (config?.type !== 'external' || config?.provider !== 'google') return config;
   if (Object.hasOwn(LLM_CONFIG.EXTERNAL.GOOGLE.MODELS, config.model)) return config;

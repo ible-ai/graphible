@@ -4,16 +4,25 @@
 // and project; responses wrap the candidates in a `response` field. Shapes are
 // from packages/core/src/code_assist/converter.ts and server.ts.
 
-import { getAccessToken } from './codeAssistAuth';
+import { getAccessToken, DEFAULT_PROVIDER } from './codeAssistAuth';
 
 const ENDPOINT = 'https://cloudcode-pa.googleapis.com';
 const VERSION = 'v1internal';
 
 const methodUrl = (method) => `${ENDPOINT}/${VERSION}:${method}`;
 
-const authHeaders = (token) => ({
+// Antigravity's own client announces itself here, and its newer models are
+// served to that client. A browser refuses to let fetch set User-Agent, which
+// the desktop app also sends - if the backend requires it, this is where that
+// shows up, as a refusal rather than a wrong answer.
+const CLIENT_METADATA = {
+  antigravity: '{"ideType":"ANTIGRAVITY","platform":"PLATFORM_UNSPECIFIED","pluginType":"GEMINI"}',
+};
+
+const authHeaders = (token, provider = DEFAULT_PROVIDER) => ({
   Authorization: `Bearer ${token}`,
   'Content-Type': 'application/json',
+  ...(CLIENT_METADATA[provider] ? { 'Client-Metadata': CLIENT_METADATA[provider] } : {}),
 });
 
 const describeError = async (response) => {
@@ -45,12 +54,16 @@ const describeError = async (response) => {
 
 // Discovers the project Code Assist wants requests attributed to. Free-tier
 // accounts are handed one automatically; nothing is created here.
-export const loadCodeAssist = async () => {
-  const token = await getAccessToken();
+export const loadCodeAssist = async (provider = DEFAULT_PROVIDER) => {
+  const token = await getAccessToken(provider);
   const response = await fetch(methodUrl('loadCodeAssist'), {
     method: 'POST',
-    headers: authHeaders(token),
-    body: JSON.stringify({ metadata: { pluginType: 'GEMINI' } }),
+    headers: authHeaders(token, provider),
+    body: JSON.stringify({
+      metadata: provider === 'antigravity'
+        ? { pluginType: 'GEMINI', ideType: 'ANTIGRAVITY' }
+        : { pluginType: 'GEMINI' },
+    }),
   });
 
   if (!response.ok) throw new Error(await describeError(response));
@@ -80,10 +93,10 @@ export const textFromChunk = (chunk) =>
     .join('');
 
 export const streamGenerateContent = async (prompt, config) => {
-  const token = await getAccessToken();
+  const token = await getAccessToken(config?.provider ?? DEFAULT_PROVIDER);
   const response = await fetch(`${methodUrl('streamGenerateContent')}?alt=sse`, {
     method: 'POST',
-    headers: authHeaders(token),
+    headers: authHeaders(token, config?.provider ?? DEFAULT_PROVIDER),
     body: requestBody(prompt, config),
   });
 
@@ -92,10 +105,10 @@ export const streamGenerateContent = async (prompt, config) => {
 };
 
 export const generateContent = async (prompt, config) => {
-  const token = await getAccessToken();
+  const token = await getAccessToken(config?.provider ?? DEFAULT_PROVIDER);
   const response = await fetch(methodUrl('generateContent'), {
     method: 'POST',
-    headers: authHeaders(token),
+    headers: authHeaders(token, config?.provider ?? DEFAULT_PROVIDER),
     body: requestBody(prompt, config),
   });
 
@@ -115,11 +128,11 @@ export const generateContent = async (prompt, config) => {
 // Returns [] on any failure, which the caller reads as "use the static
 // catalog" - so a bad response degrades to today's behaviour rather than an
 // empty menu.
-export const retrieveUserQuota = async (project) => {
-  const token = await getAccessToken();
+export const retrieveUserQuota = async (project, provider = DEFAULT_PROVIDER) => {
+  const token = await getAccessToken(provider);
   const response = await fetch(methodUrl('retrieveUserQuota'), {
     method: 'POST',
-    headers: authHeaders(token),
+    headers: authHeaders(token, provider),
     body: JSON.stringify({ project }),
   });
 
@@ -138,9 +151,9 @@ export const modelsFromQuota = (quota) => {
     .filter((id) => OFFERABLE(id) && !seen.has(id) && seen.add(id));
 };
 
-export const discoverModels = async (project) => {
+export const discoverModels = async (project, provider = DEFAULT_PROVIDER) => {
   try {
-    return modelsFromQuota(await retrieveUserQuota(project));
+    return modelsFromQuota(await retrieveUserQuota(project, provider));
   } catch (error) {
     // Not worth surfacing: the static catalog still works.
     console.warn('Could not read your model allowance; using the built-in list.', error);

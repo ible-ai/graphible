@@ -11,6 +11,7 @@ import {
   CODE_ASSIST_MODELS,
   CODE_ASSIST_MODEL_LIST,
   DEFAULT_CODE_ASSIST_MODEL,
+  DEFAULT_ANTIGRAVITY_MODEL,
 } from '../src/constants/graphConstants';
 
 // The catalogs used to be duplicated across ModelSelector, the wizard
@@ -195,5 +196,24 @@ describe('code assist model catalog', () => {
     // unknown to that catalog by design and must not be rewritten into one.
     const config = { type: 'code-assist', provider: 'google', model: DEFAULT_CODE_ASSIST_MODEL };
     expect(migrateModelConfig(config)).toBe(config);
+  });
+});
+
+describe('migrating between the two Google clients', () => {
+  it('leaves an Antigravity model alone', () => {
+    // Migrated against the gemini-cli catalog it would be rewritten to a
+    // gemini-cli id and sent to Antigravity, which does not know it.
+    const config = { type: 'code-assist', authProvider: 'antigravity', model: 'gemini-3-flash' };
+    expect(migrateModelConfig(config)).toBe(config);
+  });
+
+  it('rewrites an Antigravity config to an Antigravity default', () => {
+    const config = { type: 'code-assist', authProvider: 'antigravity', model: 'gemini-2.5-pro' };
+    expect(migrateModelConfig(config).model).toBe(DEFAULT_ANTIGRAVITY_MODEL);
+  });
+
+  it('still rewrites a gemini-cli config to a gemini-cli default', () => {
+    const config = { type: 'code-assist', model: 'gemini-3-flash' };
+    expect(migrateModelConfig(config).model).toBe(DEFAULT_CODE_ASSIST_MODEL);
   });
 });

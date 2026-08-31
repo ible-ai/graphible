@@ -14,26 +14,65 @@
 //
 // Values below are from packages/core/src/code_assist/oauth2.ts.
 
-const CLIENT_ID = '681255809395-oo8ft2oprdrnp9e3aqf6av3hmdib135j.apps.googleusercontent.com';
-const CLIENT_SECRET = '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';
+// Two Google desktop clients reach this same API, and each publishes its own
+// id, secret and - critically - a Google-hosted page that displays the
+// authorization code for the user to copy. That hosted page is the only reason
+// either flow works from a web page: the loopback redirect both also register
+// lands on a dead port a hosted page can neither listen on nor read.
+//
+// Which redirects a client accepts is not documented; it was established by
+// asking Google's authorize endpoint and reading which ones answer
+// redirect_uri_mismatch. Do that before adding a third.
+export const AUTH_PROVIDERS = {
+  'gemini-cli': {
+    label: 'Gemini CLI',
+    // packages/core/src/code_assist/oauth2.ts
+    clientId: '681255809395-oo8ft2oprdrnp9e3aqf6av3hmdib135j.apps.googleusercontent.com',
+    clientSecret: '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',
+    redirectUri: 'https://codeassist.google.com/authcode',
+    scopes: [
+      'https://www.googleapis.com/auth/cloud-platform',
+      'https://www.googleapis.com/auth/userinfo.email',
+      'https://www.googleapis.com/auth/userinfo.profile',
+    ],
+  },
+  antigravity: {
+    label: 'Antigravity',
+    clientId: '1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com',
+    clientSecret: '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',
+    // Titled "Google Antigravity Authentication", with a Copy to Clipboard
+    // button - a friendlier page than gemini-cli's.
+    redirectUri: 'https://antigravity.google/oauth-callback',
+    scopes: [
+      'https://www.googleapis.com/auth/cloud-platform',
+      'https://www.googleapis.com/auth/userinfo.email',
+      'https://www.googleapis.com/auth/userinfo.profile',
+      'https://www.googleapis.com/auth/cclog',
+      'https://www.googleapis.com/auth/experimentsandconfigs',
+    ],
+  },
+};
 
-const SCOPES = [
-  'https://www.googleapis.com/auth/cloud-platform',
-  'https://www.googleapis.com/auth/userinfo.email',
-  'https://www.googleapis.com/auth/userinfo.profile',
-];
+export const DEFAULT_PROVIDER = 'gemini-cli';
 
-// A Google-hosted page that displays the authorization code for the user to
-// copy. gemini-cli uses it for its no-browser flow, and it is the reason this
-// works from a web page at all: the loopback redirect it uses otherwise lands
-// on a dead port that a hosted page can neither listen on nor read.
-const REDIRECT_URI = 'https://codeassist.google.com/authcode';
+const providerOrThrow = (key) => {
+  const provider = AUTH_PROVIDERS[key];
+  if (!provider) throw new Error(`Unknown sign-in provider: ${key}`);
+  return provider;
+};
 
 const AUTH_ENDPOINT = 'https://accounts.google.com/o/oauth2/v2/auth';
 const TOKEN_ENDPOINT = 'https://oauth2.googleapis.com/token';
 
-const VERIFIER_KEY = 'graphible-code-assist-verifier';
-const REFRESH_KEY = 'graphible-code-assist-refresh';
+// Per provider: two grants can be live at once, and mixing a verifier or a
+// refresh token between clients fails as invalid_grant, which reads exactly
+// like an expired code.
+const verifierKey = (p) => (p === DEFAULT_PROVIDER
+  ? 'graphible-code-assist-verifier'
+  : `graphible-${p}-verifier`);
+const refreshKey = (p) => (p === DEFAULT_PROVIDER
+  ? 'graphible-code-assist-refresh'
+  : `graphible-${p}-refresh`);
 
 const base64Url = (bytes) =>
   btoa(String.fromCharCode(...new Uint8Array(bytes)))
@@ -47,11 +86,14 @@ const challengeFor = async (verifier) =>
 // Access tokens live in memory only; they expire in an hour and there is no
 // reason to persist them. The refresh token is stored so that signing in
 // survives a reload - the same trade gemini-cli makes by writing it to disk.
-let session = null;
+const sessions = new Map();
 
-export const isSignedIn = () => Boolean(session?.token) && session.expiresAt > Date.now();
-export const hasStoredGrant = () => Boolean(readStored(REFRESH_KEY));
-export const getAccountEmail = () => session?.email ?? null;
+export const isSignedIn = (p = DEFAULT_PROVIDER) => {
+  const session = sessions.get(p);
+  return Boolean(session?.token) && session.expiresAt > Date.now();
+};
+export const hasStoredGrant = (p = DEFAULT_PROVIDER) => Boolean(readStored(refreshKey(p)));
+export const getAccountEmail = (p = DEFAULT_PROVIDER) => sessions.get(p)?.email ?? null;
 
 function readStored(key) {
   try {
@@ -70,28 +112,30 @@ function writeStored(key, value) {
   }
 }
 
-export const signOut = () => {
-  session = null;
-  writeStored(REFRESH_KEY, null);
-  writeStored(VERIFIER_KEY, null);
+export const signOut = (p = DEFAULT_PROVIDER) => {
+  sessions.delete(p);
+  writeStored(refreshKey(p), null);
+  writeStored(verifierKey(p), null);
 };
 
 // Step one: build the URL and hand it to the user. The verifier is kept in
 // storage rather than memory so the flow survives the user opening the link in
 // another tab and coming back.
-export const beginSignIn = async () => {
+export const beginSignIn = async (p = DEFAULT_PROVIDER) => {
+  const provider = providerOrThrow(p);
+
   // Reuse any verifier from an unfinished attempt. Generating a fresh one per
   // click invalidates the code from a page the user already has open, which is
   // easy to hit: click, miss the popup, click again, then paste the first
   // page's code and get invalid_grant.
-  const verifier = readStored(VERIFIER_KEY) || randomVerifier();
-  writeStored(VERIFIER_KEY, verifier);
+  const verifier = readStored(verifierKey(p)) || randomVerifier();
+  writeStored(verifierKey(p), verifier);
 
   const params = new URLSearchParams({
-    client_id: CLIENT_ID,
-    redirect_uri: REDIRECT_URI,
+    client_id: provider.clientId,
+    redirect_uri: provider.redirectUri,
     response_type: 'code',
-    scope: SCOPES.join(' '),
+    scope: provider.scopes.join(' '),
     access_type: 'offline',
     prompt: 'consent',
     code_challenge: await challengeFor(verifier),
@@ -121,53 +165,56 @@ const postToken = async (body) => {
 // Step two: trade the pasted code for tokens. Users paste all sorts of things,
 // so a full redirect URL or a "code=..." fragment is accepted as readily as
 // the bare code.
-export const completeSignIn = async (pasted) => {
+export const completeSignIn = async (pasted, p = DEFAULT_PROVIDER) => {
+  const provider = providerOrThrow(p);
   const code = extractAuthCode(pasted);
   if (!code) throw new Error('That does not look like an authorization code. Copy the whole code from the Google page.');
 
-  const verifier = readStored(VERIFIER_KEY);
+  const verifier = readStored(verifierKey(p));
   if (!verifier) throw new Error('This sign-in expired. Start it again.');
 
   const data = await postToken({
     code,
-    client_id: CLIENT_ID,
-    client_secret: CLIENT_SECRET,
+    client_id: provider.clientId,
+    client_secret: provider.clientSecret,
     code_verifier: verifier,
-    redirect_uri: REDIRECT_URI,
+    redirect_uri: provider.redirectUri,
     grant_type: 'authorization_code',
   });
 
-  writeStored(VERIFIER_KEY, null);
-  if (data.refresh_token) writeStored(REFRESH_KEY, data.refresh_token);
-  session = toSession(data);
-  return session;
+  writeStored(verifierKey(p), null);
+  if (data.refresh_token) writeStored(refreshKey(p), data.refresh_token);
+  sessions.set(p, toSession(data, p));
+  return sessions.get(p);
 };
 
-const toSession = (data) => ({
+const toSession = (data, p) => ({
   token: data.access_token,
   // A minute of margin, so a request is never sent with a token that expires
   // while it is in flight.
   expiresAt: Date.now() + (Number(data.expires_in) || 3600) * 1000 - 60_000,
-  email: emailFromIdToken(data.id_token) ?? session?.email ?? null,
+  // A refresh response carries no id_token, so keep the name already known.
+  email: emailFromIdToken(data.id_token) ?? sessions.get(p)?.email ?? null,
 });
 
 // Returns a usable access token, refreshing from the stored grant when the
 // current one has aged out. Rejects when the user needs to sign in again.
-export const getAccessToken = async () => {
-  if (isSignedIn()) return session.token;
+export const getAccessToken = async (p = DEFAULT_PROVIDER) => {
+  if (isSignedIn(p)) return sessions.get(p).token;
 
-  const refreshToken = readStored(REFRESH_KEY);
+  const provider = providerOrThrow(p);
+  const refreshToken = readStored(refreshKey(p));
   if (!refreshToken) throw new Error('Sign in with Google to use your Gemini allowance.');
 
   const data = await postToken({
-    client_id: CLIENT_ID,
-    client_secret: CLIENT_SECRET,
+    client_id: provider.clientId,
+    client_secret: provider.clientSecret,
     refresh_token: refreshToken,
     grant_type: 'refresh_token',
   });
 
-  session = toSession(data);
-  return session.token;
+  sessions.set(p, toSession(data, p));
+  return sessions.get(p).token;
 };
 
 const safeDecode = (value) => {
@@ -219,5 +266,5 @@ export const describeTokenError = (data) => {
   }
 };
 
-export const CODE_ASSIST_SCOPES = SCOPES;
-export const CODE_ASSIST_REDIRECT = REDIRECT_URI;
+export const CODE_ASSIST_SCOPES = AUTH_PROVIDERS[DEFAULT_PROVIDER].scopes;
+export const CODE_ASSIST_REDIRECT = AUTH_PROVIDERS[DEFAULT_PROVIDER].redirectUri;

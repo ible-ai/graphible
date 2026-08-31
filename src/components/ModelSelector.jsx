@@ -5,7 +5,7 @@ import WebLLMProgressTracker from '../components/WebLLMProgressTracker';
 import { Z } from '../constants/zLayers';
 import { isGoogleSignInConfigured, isSignedIn, signIn } from '../utils/googleAuth';
 import CodeAssistSignIn from './CodeAssistSignIn';
-import { isSignedIn as caSignedIn, hasStoredGrant } from '../utils/codeAssistAuth';
+import { isSignedIn as caSignedIn, hasStoredGrant, AUTH_PROVIDERS, DEFAULT_PROVIDER } from '../utils/codeAssistAuth';
 import { loadCodeAssist, discoverModels } from '../utils/codeAssist';
 
 const ModelSelector = ({
@@ -20,10 +20,14 @@ const ModelSelector = ({
     const [isOpen, setIsOpen] = useState(false);
     const signInAvailable = isGoogleSignInConfigured();
     const [authMethod, setAuthMethod] = useState('code-assist');
+    // Which desktop client's grant to sign in with. They are separate grants
+    // reaching the same API, and Antigravity's is served newer models.
+    const [authProvider, setAuthProvider] = useState(DEFAULT_PROVIDER);
     const [caReady, setCaReady] = useState(() => caSignedIn() || hasStoredGrant());
     // Kept apart from externalConfig.model: the two backends do not accept the
     // same ids, so carrying one across would send a name the other rejects.
     const [caModel, setCaModel] = useState(DEFAULT_CODE_ASSIST_MODEL);
+
     const [signInBusy, setSignInBusy] = useState(false);
     const [signInError, setSignInError] = useState(null);
     const [signedIn, setSignedIn] = useState(() => isSignedIn());
@@ -103,22 +107,29 @@ const ModelSelector = ({
     // it answers, which keeps the static list showing.
     const [discoveredModels, setDiscoveredModels] = useState([]);
 
+    // Signed in to one client says nothing about the other, and neither does
+    // what the last one had access to.
+    useEffect(() => {
+        setCaReady(caSignedIn(authProvider) || hasStoredGrant(authProvider));
+        setDiscoveredModels([]);
+    }, [authProvider]);
+
     useEffect(() => {
         if (!caReady || discoveredModels.length) return;
         let cancelled = false;
         (async () => {
             try {
-                const { project } = await loadCodeAssist();
-                const ids = await discoverModels(project);
+                const { project } = await loadCodeAssist(authProvider);
+                const ids = await discoverModels(project, authProvider);
                 if (!cancelled) setDiscoveredModels(ids);
             } catch {
                 // Discovery is an enhancement; the static catalog stands.
             }
         })();
         return () => { cancelled = true; };
-    }, [caReady, discoveredModels.length]);
+    }, [caReady, discoveredModels.length, authProvider]);
 
-    const codeAssistModels = buildCodeAssistModelList(discoveredModels);
+    const codeAssistModels = buildCodeAssistModelList(discoveredModels, authProvider);
 
     // Discovery can rule out the model already selected - the default included,
     // since a saved id survives whatever the account turns out to have. Left
@@ -158,7 +169,7 @@ const ModelSelector = ({
             // Signed-in Google and a pasted key are different backends, not
             // two settings of one: they authenticate and bill differently.
             if (authMethod === 'code-assist') {
-                config = { type: 'code-assist', provider: 'google', model: caModel };
+                config = { type: 'code-assist', provider: 'google', authProvider, model: caModel };
             } else if (authMethod === 'oauth') {
                 config = { type: 'google-oauth', provider: 'google', model: externalConfig.model, projectId: externalConfig.projectId?.trim() || '' };
             } else {
@@ -546,7 +557,27 @@ const ModelSelector = ({
                                     </div>
 
                                     {authMethod === 'code-assist' && (
-                                        <CodeAssistSignIn signedIn={caReady} onSignedInChange={setCaReady} />
+                                        <div className="space-y-3">
+                                            <div className="flex rounded-lg border border-slate-200 overflow-hidden text-xs">
+                                                {Object.entries(AUTH_PROVIDERS).map(([key, { label }]) => (
+                                                    <button
+                                                        key={key}
+                                                        type="button"
+                                                        onClick={() => setAuthProvider(key)}
+                                                        className={`flex-1 px-3 py-1.5 transition-colors ${authProvider === key
+                                                            ? 'bg-slate-800 text-white'
+                                                            : 'bg-white text-slate-600 hover:bg-slate-50'}`}
+                                                    >
+                                                        {label}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                            <CodeAssistSignIn
+                                                signedIn={caReady}
+                                                onSignedInChange={setCaReady}
+                                                provider={authProvider}
+                                            />
+                                        </div>
                                     )}
 
                                     {authMethod === 'oauth' && (

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { textFromChunk, sseToEnvelope, modelsFromQuota } from '../src/utils/codeAssist';
-import { buildCodeAssistModelList, titleForModelId, CODE_ASSIST_MODEL_LIST, CODE_ASSIST_MODELS } from '../src/constants/graphConstants';
-import { extractAuthCode, emailFromIdToken, describeTokenError, beginSignIn } from '../src/utils/codeAssistAuth';
+import { buildCodeAssistModelList, titleForModelId, CODE_ASSIST_MODEL_LIST, CODE_ASSIST_MODELS, ANTIGRAVITY_MODEL_LIST } from '../src/constants/graphConstants';
+import { extractAuthCode, emailFromIdToken, describeTokenError, beginSignIn, hasStoredGrant, signOut } from '../src/utils/codeAssistAuth';
 
 const drain = async (stream) => {
   const reader = stream.getReader();
@@ -246,5 +246,69 @@ describe('the menu built from what was discovered', () => {
   it('titles an id nobody has named yet', () => {
     expect(titleForModelId('gemini-4-ultra-preview')).toBe('Gemini 4 Ultra Preview');
     expect(titleForModelId('gemini-3.5-flash')).toBe('Gemini 3.5 Flash');
+  });
+});
+
+describe('two Google clients, one API', () => {
+  beforeEach(() => localStorage.clear());
+
+  it('sends each client to its own hosted code page', async () => {
+    // The redirect is the whole reason either works from a web page, and the
+    // two are not interchangeable: Google answers redirect_uri_mismatch for
+    // the wrong pairing, which reads as "Access blocked" to the user.
+    const gemini = new URL(await beginSignIn('gemini-cli')).searchParams;
+    const antigravity = new URL(await beginSignIn('antigravity')).searchParams;
+
+    expect(gemini.get('redirect_uri')).toBe('https://codeassist.google.com/authcode');
+    expect(antigravity.get('redirect_uri')).toBe('https://antigravity.google/oauth-callback');
+    expect(gemini.get('client_id')).not.toBe(antigravity.get('client_id'));
+  });
+
+  it("asks for the extra scopes Antigravity's client declares", async () => {
+    const scope = new URL(await beginSignIn('antigravity')).searchParams.get('scope');
+    expect(scope).toContain('cclog');
+    expect(scope).toContain('experimentsandconfigs');
+  });
+
+  it('keeps the verifier of one client out of the other', async () => {
+    // A code minted under one client is rejected by the other, and a shared
+    // verifier would make that failure indistinguishable from an expired code.
+    const first = new URL(await beginSignIn('gemini-cli')).searchParams.get('code_challenge');
+    const second = new URL(await beginSignIn('antigravity')).searchParams.get('code_challenge');
+    expect(first).not.toBe(second);
+
+    // ...and each stays stable across repeat clicks, as before.
+    expect(new URL(await beginSignIn('gemini-cli')).searchParams.get('code_challenge')).toBe(first);
+  });
+
+  it('tracks sign-in per client rather than globally', () => {
+    expect(hasStoredGrant('gemini-cli')).toBe(false);
+    localStorage.setItem('graphible-antigravity-refresh', 'token');
+    expect(hasStoredGrant('antigravity')).toBe(true);
+    expect(hasStoredGrant('gemini-cli')).toBe(false);
+  });
+
+  it('signs out of one client without signing out of the other', () => {
+    localStorage.setItem('graphible-antigravity-refresh', 'a');
+    localStorage.setItem('graphible-code-assist-refresh', 'b');
+    signOut('antigravity');
+    expect(hasStoredGrant('antigravity')).toBe(false);
+    expect(hasStoredGrant('gemini-cli')).toBe(true);
+  });
+
+  it('defaults to gemini-cli, so existing saved grants keep working', async () => {
+    localStorage.setItem('graphible-code-assist-refresh', 'b');
+    expect(hasStoredGrant()).toBe(true);
+    expect(new URL(await beginSignIn()).searchParams.get('redirect_uri'))
+      .toBe('https://codeassist.google.com/authcode');
+  });
+
+  it('builds the menu from the right catalog per client', () => {
+    expect(buildCodeAssistModelList([], 'antigravity')).toBe(ANTIGRAVITY_MODEL_LIST);
+    expect(buildCodeAssistModelList([], 'gemini-cli')).toBe(CODE_ASSIST_MODEL_LIST);
+    // Discovery still wins over either seed.
+    const discovered = buildCodeAssistModelList(['gemini-3.1-pro-high'], 'antigravity');
+    expect(discovered.map((m) => m.id)).toEqual(['gemini-3.1-pro-high']);
+    expect(discovered[0].recommended).toBe(true);
   });
 });
