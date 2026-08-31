@@ -266,20 +266,30 @@ test.describe('setup wizard', () => {
     await expect(page.getByRole('button', { name: /Sign in to Gemini CLI/ })).toBeVisible();
   });
 
-  test('offers no client this browser cannot use', async ({ page }) => {
-    // Antigravity's models are served only to its own browser's User-Agent,
-    // which no web page may set. Offering them in Chromium would be offering a
-    // menu where every choice reports "not found".
+  test('offers Antigravity, and says why it will not generate here', async ({ page }) => {
+    // Its models are served only to its own browser's User-Agent, which no web
+    // page may set. Hiding the client left no trace of a whole backend; saying
+    // so is better than a menu whose every choice reports "not found".
+    await loadDemoGraph(page);
+
+    await page.locator('button').filter({ hasText: /No model detected|Demo/ }).first().click();
+    await page.getByRole('button', { name: /External API/ }).click();
+    await page.getByRole('button', { name: 'Google account' }).click();
+    await page.getByRole('button', { name: 'Antigravity', exact: true }).click();
+
+    await expect(page.getByText('Gemini 3.7 Flash', { exact: true })).toBeVisible();
+    await expect(page.getByText(/served only to Antigravity/)).toBeVisible();
+  });
+
+  test('says nothing of the sort for the client that works', async ({ page }) => {
     await loadDemoGraph(page);
 
     await page.locator('button').filter({ hasText: /No model detected|Demo/ }).first().click();
     await page.getByRole('button', { name: /External API/ }).click();
     await page.getByRole('button', { name: 'Google account' }).click();
 
-    await expect(page.getByRole('button', { name: 'Antigravity', exact: true })).toHaveCount(0);
-    await expect(page.getByText('Gemini 3.7 Flash', { exact: true })).toHaveCount(0);
-    // ...and the working client's models are what is left.
     await expect(page.getByText('Gemini 3.1 Flash Lite', { exact: true })).toBeVisible();
+    await expect(page.getByText(/served only to Antigravity/)).toHaveCount(0);
   });
 });
 

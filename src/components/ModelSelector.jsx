@@ -20,12 +20,7 @@ const ModelSelector = ({
     const [isOpen, setIsOpen] = useState(false);
     const signInAvailable = isGoogleSignInConfigured();
     const [authMethod, setAuthMethod] = useState('code-assist');
-    // Only clients this browser can actually use. Antigravity's models are
-    // served on the strength of a User-Agent no web page may set, so offering
-    // them anywhere else is offering a menu where every choice reports "not
-    // found".
-    const availableProviders = Object.entries(AUTH_PROVIDERS)
-        .filter(([, p]) => !p.requiresAntigravityAgent || canReachAntigravity());
+    const providers = Object.entries(AUTH_PROVIDERS);
 
     // Which desktop client's grant to sign in with. They are separate grants
     // reaching the same API, and Antigravity's is served newer models.
@@ -39,6 +34,18 @@ const ModelSelector = ({
         () => (isCodeAssist ? currentModel.authProvider ?? DEFAULT_PROVIDER : DEFAULT_PROVIDER)
     );
     const [caReady, setCaReady] = useState(() => caSignedIn() || hasStoredGrant());
+
+    // Read after authProvider exists: computing it above the useState threw on
+    // every render - a temporal dead zone - and a component that throws while
+    // rendering takes the whole page with it, start screen included.
+    //
+    // Antigravity's models are served on the strength of a User-Agent no web
+    // page may set, so they cannot be fetched from an ordinary browser. It is
+    // still offered rather than hidden: hiding it left no trace of a whole
+    // backend, and it is what someone opening this inside Antigravity's own
+    // browser is looking for. The panel says so instead.
+    const antigravityBlocked = AUTH_PROVIDERS[authProvider]?.requiresAntigravityAgent
+        && !canReachAntigravity();
     // Kept apart from externalConfig.model: the two backends do not accept the
     // same ids, so carrying one across would send a name the other rejects.
     const [caModel, setCaModel] = useState(
@@ -133,13 +140,6 @@ const ModelSelector = ({
     // and one they are not entitled to would be offered and fail. Empty until
     // it answers, which keeps the static list showing.
     const [discoveredModels, setDiscoveredModels] = useState([]);
-
-    // A saved config can name a client this browser cannot reach.
-    useEffect(() => {
-        if (!availableProviders.some(([key]) => key === authProvider)) {
-            setAuthProvider(availableProviders[0]?.[0] ?? DEFAULT_PROVIDER);
-        }
-    }, [availableProviders, authProvider]);
 
     // Signed in to one client says nothing about the other, and neither does
     // what the last one had access to.
@@ -596,9 +596,9 @@ const ModelSelector = ({
 
                                     {authMethod === 'code-assist' && (
                                         <div className="space-y-3">
-                                            {availableProviders.length > 1 && (
+                                            {providers.length > 1 && (
                                                 <div className="flex rounded-lg border border-slate-200 overflow-hidden text-xs">
-                                                    {availableProviders.map(([key, { label }]) => (
+                                                    {providers.map(([key, { label }]) => (
                                                         <button
                                                             key={key}
                                                             type="button"
@@ -612,6 +612,15 @@ const ModelSelector = ({
                                                     ))}
                                                 </div>
                                             )}
+                                            {antigravityBlocked && (
+                                                <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-2">
+                                                    These models are served only to Antigravity&apos;s own browser, which
+                                                    identifies itself in a header no web page is allowed to set. Sign-in
+                                                    works here, but generating will report &ldquo;not found&rdquo;. Open
+                                                    Graphible inside Antigravity to use them.
+                                                </p>
+                                            )}
+
                                             <CodeAssistSignIn
                                                 signedIn={caReady}
                                                 onSignedInChange={setCaReady}
