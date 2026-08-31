@@ -260,7 +260,7 @@ test.describe('setup wizard', () => {
     await page.getByRole('button', { name: /External API/ }).click();
     await page.getByRole('button', { name: 'Google account' }).click();
 
-    for (const id of ['Gemini 3.1 Flash Lite', 'Gemini 3 Flash', 'Gemini 3.1 Pro']) {
+    for (const id of ['Gemini 3.1 Flash Lite', 'Gemini 3 Flash Preview', 'Gemini 3.1 Pro Preview']) {
       await expect(page.getByText(id, { exact: true })).toBeVisible();
     }
     await expect(page.getByRole('button', { name: /Sign in to Gemini CLI/ })).toBeVisible();
@@ -279,8 +279,8 @@ test.describe('setup wizard', () => {
     await page.getByRole('button', { name: 'Antigravity', exact: true }).click();
 
     await expect(page.getByRole('button', { name: /Sign in to Antigravity/ })).toBeVisible();
-    await expect(page.getByText('Gemini 3.1 Flash Lite', { exact: true })).toBeVisible();
-    await expect(page.getByText('Gemini 3.7 Flash', { exact: true })).toHaveCount(0);
+    await expect(page.getByText('gemini-3.1-flash-lite', { exact: true })).toBeVisible();
+    await expect(page.getByText('gemini-3.7-flash-tiered', { exact: true })).toHaveCount(0);
     await expect(page.getByText(/same models as Gemini CLI/)).toBeVisible();
   });
 

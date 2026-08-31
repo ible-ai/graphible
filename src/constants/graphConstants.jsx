@@ -366,12 +366,12 @@ export const CODE_ASSIST_MODELS = {
     recommended: true,
   },
   'gemini-3-flash-preview': {
-    name: 'Gemini 3 Flash',
+    name: 'Gemini 3 Flash Preview',
     description: 'Balanced speed and capability',
     recommended: false,
   },
   'gemini-3.1-pro-preview': {
-    name: 'Gemini 3.1 Pro',
+    name: 'Gemini 3.1 Pro Preview',
     description: 'Newest and most capable, and the heaviest use of your allowance',
     recommended: false,
   },
@@ -382,6 +382,13 @@ export const CODE_ASSIST_MODELS = {
   },
 };
 
+// Names here are transliterations of the wire id, never marketing names. These
+// are internal ids - `-tiered`, `-high` and `-low` are routing tiers, and they
+// sit in the same quota response as `chat_20706` and `tab_flash_lite_preview` -
+// so presenting `gemini-3.7-flash-tiered` as "Gemini 3.7 Flash" would name a
+// product Google does not publish. The panel shows the id alongside the label
+// for the same reason.
+//
 // The Antigravity surface: a different and much larger catalog than Code
 // Assist's - Gemini 3.5/3.6/3.7, Claude and gpt-oss, on a separate quota. Every
 // id below was read from a live account's quota buckets and confirmed to
@@ -402,7 +409,7 @@ export const CODE_ASSIST_MODELS = {
 // "invalid argument" to this request shape, and the Claude ids want their own.
 export const ANTIGRAVITY_MODELS = {
   'gemini-3.7-flash-tiered': {
-    name: 'Gemini 3.7 Flash',
+    name: 'Gemini 3.7 Flash (tiered)',
     description: 'Newest Flash, and the lightest use of your allowance',
     recommended: true,
   },

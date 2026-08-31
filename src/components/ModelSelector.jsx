@@ -547,6 +547,9 @@ const ModelSelector = ({
                                                 <div className="flex-1">
                                                     <div className="font-medium text-sm">{model.name}</div>
                                                     <div className="text-xs text-slate-600">{model.description}</div>
+                                                    {/* The wire id, because the labels are our transliteration of it
+                                                        and some of these are internal names Google does not publish. */}
+                                                    <div className="text-[10px] text-slate-400 font-mono mt-0.5">{model.id}</div>
                                                 </div>
                                                 <div className={`w-4 h-4 border-2 rounded-full transition-all duration-200 ${selectedModel === model.id
                                                     ? 'border-purple-500 bg-purple-500'
