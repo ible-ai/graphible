@@ -266,10 +266,11 @@ test.describe('setup wizard', () => {
     await expect(page.getByRole('button', { name: /Sign in to Gemini CLI/ })).toBeVisible();
   });
 
-  test('offers Antigravity, and says why it will not generate here', async ({ page }) => {
-    // Its models are served only to its own browser's User-Agent, which no web
-    // page may set. Hiding the client left no trace of a whole backend; saying
-    // so is better than a menu whose every choice reports "not found".
+  test('offers Antigravity, listing the models it can actually serve here', async ({ page }) => {
+    // In an ordinary browser an Antigravity grant resolves the Code Assist
+    // project and its models - the sign-in works, only Antigravity's own
+    // catalogue is out of reach. Listing 3.7 Flash here would offer three
+    // models that 404.
     await loadDemoGraph(page);
 
     await page.locator('button').filter({ hasText: /No model detected|Demo/ }).first().click();
@@ -277,8 +278,10 @@ test.describe('setup wizard', () => {
     await page.getByRole('button', { name: 'Google account' }).click();
     await page.getByRole('button', { name: 'Antigravity', exact: true }).click();
 
-    await expect(page.getByText('Gemini 3.7 Flash', { exact: true })).toBeVisible();
-    await expect(page.getByText(/served only to Antigravity/)).toBeVisible();
+    await expect(page.getByRole('button', { name: /Sign in to Antigravity/ })).toBeVisible();
+    await expect(page.getByText('Gemini 3.1 Flash Lite', { exact: true })).toBeVisible();
+    await expect(page.getByText('Gemini 3.7 Flash', { exact: true })).toHaveCount(0);
+    await expect(page.getByText(/same models as Gemini CLI/)).toBeVisible();
   });
 
   test('says nothing of the sort for the client that works', async ({ page }) => {
@@ -289,7 +292,7 @@ test.describe('setup wizard', () => {
     await page.getByRole('button', { name: 'Google account' }).click();
 
     await expect(page.getByText('Gemini 3.1 Flash Lite', { exact: true })).toBeVisible();
-    await expect(page.getByText(/served only to Antigravity/)).toHaveCount(0);
+    await expect(page.getByText(/same models as Gemini CLI/)).toHaveCount(0);
   });
 });
 

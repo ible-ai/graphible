@@ -363,3 +363,24 @@ describe('which host each client talks to', () => {
     expect(endpointsFor('nonsense', 'generate')).toEqual(['https://cloudcode-pa.googleapis.com']);
   });
 });
+
+describe('Antigravity from a browser that is not Antigravity', () => {
+  // The grant still works there: it resolves the Code Assist project and that
+  // project's models, exactly as gemini-cli does. Only Antigravity's own
+  // catalogue is out of reach.
+  it('seeds the reachable catalog, not the one that would 404', () => {
+    const list = buildCodeAssistModelList([], 'antigravity', false);
+    expect(list).toBe(CODE_ASSIST_MODEL_LIST);
+    expect(list.map((m) => m.id)).not.toContain('gemini-3.7-flash-tiered');
+  });
+
+  it('still seeds Antigravity’s own catalog where it can be served', () => {
+    expect(buildCodeAssistModelList([], 'antigravity', true)).toBe(ANTIGRAVITY_MODEL_LIST);
+  });
+
+  it('lets discovery override either way', () => {
+    // Whatever the account's quota names wins over both seeds.
+    const list = buildCodeAssistModelList(['gemini-3.1-pro-preview'], 'antigravity', false);
+    expect(list.map((m) => m.id)).toEqual(['gemini-3.1-pro-preview']);
+  });
+});

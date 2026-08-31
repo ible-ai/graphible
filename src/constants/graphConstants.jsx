@@ -445,10 +445,16 @@ export const titleForModelId = (id) =>
 // access to, or one Google adds later - is titled from its id rather than
 // hidden. An empty list means discovery did not happen or failed, so the
 // static catalog stands.
-export const buildCodeAssistModelList = (discoveredIds, provider = 'gemini-cli') => {
-  const known = provider === 'antigravity' ? ANTIGRAVITY_MODELS : CODE_ASSIST_MODELS;
-  const fallback = provider === 'antigravity' ? ANTIGRAVITY_MODEL_LIST : CODE_ASSIST_MODEL_LIST;
-  const preferredId = provider === 'antigravity' ? DEFAULT_ANTIGRAVITY_MODEL : DEFAULT_CODE_ASSIST_MODEL;
+// `antigravityReachable` is whether this browser can be served Antigravity's
+// surface at all. When it cannot, an Antigravity grant still works - it simply
+// resolves the Code Assist project and its models, exactly as gemini-cli does -
+// so the Code Assist catalog is the honest seed. Offering 3.7 Flash there lists
+// three models that 404 and one that happens to be on both surfaces.
+export const buildCodeAssistModelList = (discoveredIds, provider = 'gemini-cli', antigravityReachable = true) => {
+  const antigravity = provider === 'antigravity' && antigravityReachable;
+  const known = antigravity ? ANTIGRAVITY_MODELS : CODE_ASSIST_MODELS;
+  const fallback = antigravity ? ANTIGRAVITY_MODEL_LIST : CODE_ASSIST_MODEL_LIST;
+  const preferredId = antigravity ? DEFAULT_ANTIGRAVITY_MODEL : DEFAULT_CODE_ASSIST_MODEL;
 
   if (!discoveredIds?.length) return fallback;
 

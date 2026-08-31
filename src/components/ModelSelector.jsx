@@ -163,7 +163,7 @@ const ModelSelector = ({
         return () => { cancelled = true; };
     }, [caReady, discoveredModels.length, authProvider]);
 
-    const codeAssistModels = buildCodeAssistModelList(discoveredModels, authProvider);
+    const codeAssistModels = buildCodeAssistModelList(discoveredModels, authProvider, canReachAntigravity());
 
     // Discovery can rule out the model already selected. Left alone it would sit
     // in the panel unlisted and still be what Apply sends.
@@ -613,11 +613,10 @@ const ModelSelector = ({
                                                 </div>
                                             )}
                                             {antigravityBlocked && (
-                                                <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-2">
-                                                    These models are served only to Antigravity&apos;s own browser, which
-                                                    identifies itself in a header no web page is allowed to set. Sign-in
-                                                    works here, but generating will report &ldquo;not found&rdquo;. Open
-                                                    Graphible inside Antigravity to use them.
+                                                <p className="text-xs text-slate-500">
+                                                    Works here, on the same models as Gemini CLI. Antigravity&apos;s own
+                                                    catalogue &mdash; 3.7 Flash, Claude &mdash; is served only to its own
+                                                    browser, which identifies itself in a header no web page may set.
                                                 </p>
                                             )}
 

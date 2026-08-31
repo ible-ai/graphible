@@ -144,9 +144,15 @@ Gemini 3.5/3.6/3.7, `claude-sonnet-4-6`, `claude-opus-4-6-thinking`,
 
 Since `User-Agent` is forbidden to `fetch`, a web page reaches that surface only
 when the browser it runs in already says Antigravity — its own embedded browser
-does. `canReachAntigravity()` tests for it, and `ModelSelector` **omits the
-client entirely** when it is absent, rather than offering a menu on which every
-choice reports "not found". A saved config naming it falls back to `gemini-cli`.
+does. `canReachAntigravity()` tests for it.
+
+**An Antigravity grant is not broken elsewhere**, which is easy to conclude and
+wrong: in an ordinary browser it resolves the *Code Assist* project and that
+project's models, so it works exactly as `gemini-cli` does. Only Antigravity's
+own catalogue is out of reach — and `gemini-3.1-flash-lite` sits on both
+surfaces, so a user who picks it sees no difference at all. `ModelSelector`
+therefore seeds the reachable catalog rather than listing three ids that 404,
+and says so in a line of grey text instead of a warning.
 
 | | `gemini-cli` (default) | `antigravity` |
 |---|---|---|
