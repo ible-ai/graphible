@@ -100,6 +100,24 @@ secret, both published in source; each is registered as a public client, so
 PKCE rather than the secret is what protects the exchange. Google's consent
 screen names the client, and the sign-in button says so too.
 
+**Google has retired the gemini-cli client for individuals.** Verified against
+a live account: `loadCodeAssist` returns no project, no tier, and
+
+```
+ineligibleTiers: [{ tierId: 'free-tier', reasonCode: 'UNSUPPORTED_CLIENT',
+  reasonMessage: 'This client is no longer supported for Gemini Code Assist for
+  individuals. To continue using Gemini, please migrate to the Antigravity
+  suite of products: https://antigravity.google' }]
+```
+
+`onboardUser` confirms it — `free-tier` is 403 "not eligible", `standard-tier`
+succeeds but hands back an empty project because it wants one of the user's
+own, which is the billed path this feature exists to avoid. Generation then
+fails with "You do not have a valid license (#3501)", which names neither the
+cause nor the remedy. **`ineligibleTiers[].reasonMessage` is the only place
+Google explains it, so `loadCodeAssist` surfaces it rather than discarding it.**
+`DEFAULT_PROVIDER` is `antigravity` for this reason.
+
 **Two clients reach this API** (`AUTH_PROVIDERS` in `codeAssistAuth.js`), and
 which one you present decides which models you are served:
 

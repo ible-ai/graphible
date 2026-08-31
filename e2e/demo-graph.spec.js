@@ -250,12 +250,29 @@ test.describe('setup wizard', () => {
     await expect(page.getByText(/Gemini 2\.5/)).toHaveCount(0);
   });
 
-  test('offers the Code Assist models, which are a different set', async ({ page }) => {
+  test('opens on Antigravity, the client Google still supports', async ({ page }) => {
+    // Under the gemini-cli client, loadCodeAssist reports free-tier ineligible
+    // with UNSUPPORTED_CLIENT and names Antigravity as the replacement, so
+    // that is what a new user must land on.
     await loadDemoGraph(page);
 
     await page.locator('button').filter({ hasText: /No model detected|Demo/ }).first().click();
     await page.getByRole('button', { name: /External API/ }).click();
     await page.getByRole('button', { name: 'Google account' }).click();
+
+    for (const id of ['Gemini 3 Flash', 'Gemini 3.1 Pro']) {
+      await expect(page.getByText(id, { exact: true })).toBeVisible();
+    }
+    await expect(page.getByRole('button', { name: /Sign in to Antigravity/ })).toBeVisible();
+  });
+
+  test('still offers the retired client, marked as such', async ({ page }) => {
+    await loadDemoGraph(page);
+
+    await page.locator('button').filter({ hasText: /No model detected|Demo/ }).first().click();
+    await page.getByRole('button', { name: /External API/ }).click();
+    await page.getByRole('button', { name: 'Google account' }).click();
+    await page.getByRole('button', { name: /Gemini CLI \(legacy\)/ }).click();
 
     for (const id of ['Gemini 3.1 Flash Lite', 'Gemini 3.5 Flash', 'Gemini 2.5 Pro']) {
       await expect(page.getByText(id, { exact: true })).toBeVisible();

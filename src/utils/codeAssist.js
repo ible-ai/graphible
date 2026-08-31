@@ -21,8 +21,11 @@ const ENDPOINTS = {
   antigravity: { generate: [DAILY, AUTOPUSH, PROD], load: [PROD, DAILY, AUTOPUSH] },
 };
 
-export const endpointsFor = (provider, kind) =>
-  (ENDPOINTS[provider] ?? ENDPOINTS[DEFAULT_PROVIDER])[kind];
+export // An unrecognised provider gets prod-only routing rather than whatever the
+// current default happens to be: prod is the conservative choice, and tying
+// this to DEFAULT_PROVIDER would quietly re-route it whenever that changes.
+const endpointsFor = (provider, kind) =>
+  (ENDPOINTS[provider] ?? ENDPOINTS['gemini-cli'])[kind];
 
 const methodUrl = (method, endpoint = PROD) => `${endpoint}/${VERSION}:${method}`;
 
@@ -83,8 +86,40 @@ const describeError = async (response) => {
   return message || `Code Assist request failed: ${response.status}`;
 };
 
-// Discovers the project Code Assist wants requests attributed to. Free-tier
-// accounts are handed one automatically; nothing is created here.
+// Provisions the managed project for accounts that do not have one yet.
+//
+// Without it, generation fails with "You do not have a valid license of this
+// product (#3501)" - which reads as an account problem and is really a missing
+// project. onboardUser returns a long-running operation, so it is polled until
+// it settles. The free tier must NOT name a project in the request; doing so
+// returns Precondition Failed.
+const onboardUser = async (provider, loaded) => {
+  const tier = loaded.allowedTiers?.find((t) => t.isDefault)
+    ?? { id: 'legacy-tier', userDefinedCloudaicompanionProject: true };
+
+  const body = JSON.stringify({
+    tierId: tier.id,
+    metadata: provider === 'antigravity'
+      ? { pluginType: 'GEMINI', ideType: 'ANTIGRAVITY' }
+      : { pluginType: 'GEMINI' },
+  });
+
+  let operation = await (await postToEndpoints('onboardUser', { provider, kind: 'load', body })).json();
+
+  // Bounded: an operation that never settles must not hang the first prompt.
+  for (let attempt = 0; !operation.done && operation.name && attempt < 6; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    const polled = await postToEndpoints('onboardUser', { provider, kind: 'load', body });
+    operation = await polled.json();
+  }
+
+  // A standard-tier account answers 200 with an empty project object: it wants
+  // one the user supplies, which is the billed path this avoids.
+  return operation.response?.cloudaicompanionProject?.id ?? null;
+};
+
+// Discovers the project Code Assist wants requests attributed to. Accounts
+// without one are onboarded here rather than left to fail at generation.
 export const loadCodeAssist = async (provider = DEFAULT_PROVIDER) => {
   const response = await postToEndpoints('loadCodeAssist', {
     provider,
@@ -102,8 +137,20 @@ export const loadCodeAssist = async (provider = DEFAULT_PROVIDER) => {
   if (!response.ok) throw new Error(await describeError(response));
 
   const data = await response.json();
+  const project = data.cloudaicompanionProject
+    ?? (data.currentTier ? null : await onboardUser(provider, data));
+
+  // Google explains a dead end here and nowhere else. Without this the user
+  // gets "You do not have a valid license (#3501)" at generation time, which
+  // reads as a billing problem and names no remedy - while this field says
+  // exactly which client was retired and what to move to.
+  if (!project && data.ineligibleTiers?.length) {
+    throw new Error(data.ineligibleTiers[0].reasonMessage
+      ?? 'Google will not serve this account through this sign-in.');
+  }
+
   return {
-    project: data.cloudaicompanionProject ?? null,
+    project,
     tier: data.currentTier?.id ?? data.allowedTiers?.find((t) => t.isDefault)?.id ?? null,
   };
 };

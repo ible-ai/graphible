@@ -24,20 +24,9 @@
 // asking Google's authorize endpoint and reading which ones answer
 // redirect_uri_mismatch. Do that before adding a third.
 export const AUTH_PROVIDERS = {
-  'gemini-cli': {
-    label: 'Gemini CLI',
-    // packages/core/src/code_assist/oauth2.ts
-    clientId: '681255809395-oo8ft2oprdrnp9e3aqf6av3hmdib135j.apps.googleusercontent.com',
-    clientSecret: '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',
-    redirectUri: 'https://codeassist.google.com/authcode',
-    scopes: [
-      'https://www.googleapis.com/auth/cloud-platform',
-      'https://www.googleapis.com/auth/userinfo.email',
-      'https://www.googleapis.com/auth/userinfo.profile',
-    ],
-  },
   antigravity: {
     label: 'Antigravity',
+    supported: true,
     clientId: '1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com',
     clientSecret: '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',
     // Titled "Google Antigravity Authentication", with a Copy to Clipboard
@@ -51,9 +40,24 @@ export const AUTH_PROVIDERS = {
       'https://www.googleapis.com/auth/experimentsandconfigs',
     ],
   },
+  'gemini-cli': {
+    label: 'Gemini CLI',
+    // Retired by Google for individual accounts; kept for anyone whose
+    // account still has a tier that works with it.
+    supported: false,
+    // packages/core/src/code_assist/oauth2.ts
+    clientId: '681255809395-oo8ft2oprdrnp9e3aqf6av3hmdib135j.apps.googleusercontent.com',
+    clientSecret: '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',
+    redirectUri: 'https://codeassist.google.com/authcode',
+    scopes: [
+      'https://www.googleapis.com/auth/cloud-platform',
+      'https://www.googleapis.com/auth/userinfo.email',
+      'https://www.googleapis.com/auth/userinfo.profile',
+    ],
+  },
 };
 
-export const DEFAULT_PROVIDER = 'gemini-cli';
+export const DEFAULT_PROVIDER = 'antigravity';
 
 const providerOrThrow = (key) => {
   const provider = AUTH_PROVIDERS[key];
@@ -67,12 +71,17 @@ const TOKEN_ENDPOINT = 'https://oauth2.googleapis.com/token';
 // Per provider: two grants can be live at once, and mixing a verifier or a
 // refresh token between clients fails as invalid_grant, which reads exactly
 // like an expired code.
-const verifierKey = (p) => (p === DEFAULT_PROVIDER
-  ? 'graphible-code-assist-verifier'
-  : `graphible-${p}-verifier`);
-const refreshKey = (p) => (p === DEFAULT_PROVIDER
-  ? 'graphible-code-assist-refresh'
-  : `graphible-${p}-refresh`);
+//
+// Pinned per provider rather than derived from DEFAULT_PROVIDER: deriving them
+// meant that changing the default repointed every saved grant at another
+// client's key, signing people out of a working session for no visible reason.
+const STORAGE_KEYS = {
+  'gemini-cli': { verifier: 'graphible-code-assist-verifier', refresh: 'graphible-code-assist-refresh' },
+  antigravity: { verifier: 'graphible-antigravity-verifier', refresh: 'graphible-antigravity-refresh' },
+};
+
+const verifierKey = (p) => STORAGE_KEYS[p]?.verifier ?? `graphible-${p}-verifier`;
+const refreshKey = (p) => STORAGE_KEYS[p]?.refresh ?? `graphible-${p}-refresh`;
 
 const base64Url = (bytes) =>
   btoa(String.fromCharCode(...new Uint8Array(bytes)))

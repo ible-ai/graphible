@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { textFromChunk, sseToEnvelope, modelsFromQuota, authHeaders, endpointsFor } from '../src/utils/codeAssist';
 import { buildCodeAssistModelList, titleForModelId, CODE_ASSIST_MODEL_LIST, CODE_ASSIST_MODELS, ANTIGRAVITY_MODEL_LIST } from '../src/constants/graphConstants';
-import { extractAuthCode, emailFromIdToken, describeTokenError, beginSignIn, hasStoredGrant, signOut } from '../src/utils/codeAssistAuth';
+import { extractAuthCode, emailFromIdToken, describeTokenError, beginSignIn, hasStoredGrant, signOut, DEFAULT_PROVIDER } from '../src/utils/codeAssistAuth';
 
 const drain = async (stream) => {
   const reader = stream.getReader();
@@ -173,7 +173,7 @@ describe('sign-in restarts', () => {
   });
 
   it('asks for the scopes Code Assist needs, with S256', async () => {
-    const params = new URL(await beginSignIn()).searchParams;
+    const params = new URL(await beginSignIn('gemini-cli')).searchParams;
     expect(params.get('code_challenge_method')).toBe('S256');
     expect(params.get('scope')).toContain('cloud-platform');
     expect(params.get('redirect_uri')).toBe('https://codeassist.google.com/authcode');
@@ -296,11 +296,24 @@ describe('two Google clients, one API', () => {
     expect(hasStoredGrant('gemini-cli')).toBe(true);
   });
 
-  it('defaults to gemini-cli, so existing saved grants keep working', async () => {
-    localStorage.setItem('graphible-code-assist-refresh', 'b');
-    expect(hasStoredGrant()).toBe(true);
+  it('keeps each client on its own storage key when the default moves', () => {
+    // These were once derived from DEFAULT_PROVIDER, so changing the default
+    // repointed every saved grant at the other client's key and signed people
+    // out of a working session for no visible reason.
+    localStorage.setItem('graphible-code-assist-refresh', 'gemini-cli grant');
+    expect(hasStoredGrant('gemini-cli')).toBe(true);
+    expect(hasStoredGrant('antigravity')).toBe(false);
+
+    localStorage.setItem('graphible-antigravity-refresh', 'antigravity grant');
+    expect(hasStoredGrant('antigravity')).toBe(true);
+  });
+
+  it('defaults to the client Google still supports for individuals', async () => {
+    // loadCodeAssist under gemini-cli reports free-tier ineligible with
+    // UNSUPPORTED_CLIENT, naming Antigravity as the replacement.
+    expect(DEFAULT_PROVIDER).toBe('antigravity');
     expect(new URL(await beginSignIn()).searchParams.get('redirect_uri'))
-      .toBe('https://codeassist.google.com/authcode');
+      .toBe('https://antigravity.google/oauth-callback');
   });
 
   it('builds the menu from the right catalog per client', () => {
@@ -345,7 +358,7 @@ describe('which host each client talks to', () => {
     expect(endpointsFor('gemini-cli', 'load')).toEqual(['https://cloudcode-pa.googleapis.com']);
   });
 
-  it('falls back to gemini-cli routing for an unknown provider', () => {
+  it('gives an unknown provider prod-only routing, not the default of the day', () => {
     expect(endpointsFor('nonsense', 'generate')).toEqual(['https://cloudcode-pa.googleapis.com']);
   });
 });

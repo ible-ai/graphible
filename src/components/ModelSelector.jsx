@@ -583,16 +583,19 @@ const ModelSelector = ({
                                     {authMethod === 'code-assist' && (
                                         <div className="space-y-3">
                                             <div className="flex rounded-lg border border-slate-200 overflow-hidden text-xs">
-                                                {Object.entries(AUTH_PROVIDERS).map(([key, { label }]) => (
+                                                {Object.entries(AUTH_PROVIDERS).map(([key, { label, supported }]) => (
                                                     <button
                                                         key={key}
                                                         type="button"
                                                         onClick={() => setAuthProvider(key)}
+                                                        title={supported
+                                                            ? undefined
+                                                            : 'Google has retired this sign-in for individual accounts'}
                                                         className={`flex-1 px-3 py-1.5 transition-colors ${authProvider === key
                                                             ? 'bg-slate-800 text-white'
                                                             : 'bg-white text-slate-600 hover:bg-slate-50'}`}
                                                     >
-                                                        {label}
+                                                        {label}{supported ? '' : ' (legacy)'}
                                                     </button>
                                                 ))}
                                             </div>
