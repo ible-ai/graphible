@@ -233,7 +233,30 @@ const supersededGemini = (id) => {
   return major !== undefined && Number(major) < 3;
 };
 
-const OFFERABLE = (id) => Boolean(id) && !INTERNAL.test(id) && !supersededGemini(id);
+// Ids the account has quota for that do not answer this request shape. Each
+// was tried with the generationConfig the app actually sends:
+//
+//   gemini-3.5-flash-low        500 Unknown Error
+//   gemini-3.5-flash-extra-low  500 Unknown Error
+//   gpt-oss-120b-medium         400, and a pydantic error naming `body` - it
+//                               wants a schema of its own, not this one
+//   gemini-3.1-pro-high         400 "invalid argument" on most attempts and 429
+//                               on some, from identical requests. Excluded
+//                               while it cannot be told apart from a real
+//                               rejection; -low works and is offered.
+//
+// Retest with scripts/probe-code-assist.mjs before removing anything here.
+const UNSUPPORTED = new Set([
+  'gemini-3.5-flash-low',
+  'gemini-3.5-flash-extra-low',
+  'gpt-oss-120b-medium',
+  'gemini-3.1-pro-high',
+]);
+
+const OFFERABLE = (id) => Boolean(id)
+  && !INTERNAL.test(id)
+  && !supersededGemini(id)
+  && !UNSUPPORTED.has(id);
 
 export const modelsFromQuota = (quota) => {
   const seen = new Set();

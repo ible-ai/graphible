@@ -235,6 +235,17 @@ them as a 404 on generate. If discovery fails, or takes more than four seconds,
 `SHARED_MODELS` stands in so the panel is never empty; a late answer still
 replaces it.
 
+**Every offered model has been generated with, once, for real.** The list is in
+`OFFERABLE`/`UNSUPPORTED` in `codeAssist.js`, and the exclusions are all
+empirical: `gemini-3.5-flash-low` and `-extra-low` answer 500, `gpt-oss-120b-medium`
+wants a body schema of its own, and `gemini-3.1-pro-high` alternates 400 and 429
+across identical requests. Being in the account's quota is not evidence a model
+works — four of the fourteen that survived every other filter did not.
+
+Note the request shape matters: `gemini-3.1-pro-high` 400s without a
+`generationConfig` and 429s with one, so a probe that omits what the app sends
+describes a different API.
+
 **Nothing older than Gemini 3 is offered.** `OFFERABLE` in `codeAssist.js`
 drops any `gemini-` id below major version 3, along with the internal surfaces
 that share the same quota response (`chat_20706`, `tab_flash_lite_preview`,

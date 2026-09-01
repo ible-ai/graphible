@@ -220,9 +220,10 @@ describe('model discovery, instead of guessing the catalog', () => {
   });
 
   it('keeps models that are not Gemini at all', () => {
-    // The rule is about Gemini generations; Claude and gpt-oss have their own.
-    const quota = { buckets: [{ modelId: 'claude-sonnet-4-6' }, { modelId: 'gpt-oss-120b-medium' }] };
-    expect(modelsFromQuota(quota)).toEqual(['claude-sonnet-4-6', 'gpt-oss-120b-medium']);
+    // The generation rule is about Gemini; Claude has its own. (gpt-oss is also
+    // not Gemini but is excluded separately, for wanting another body schema.)
+    const quota = { buckets: [{ modelId: 'claude-sonnet-4-6' }, { modelId: 'claude-opus-4-6-thinking' }] };
+    expect(modelsFromQuota(quota)).toEqual(['claude-sonnet-4-6', 'claude-opus-4-6-thinking']);
   });
 
   it('survives a response with no buckets rather than emptying the menu', () => {
@@ -415,5 +416,32 @@ describe('what to offer before the account has answered', () => {
       .toBe('Gemini 3.7 Flash (tiered)');
     expect(buildCodeAssistModelList(['gemini-9-unheard-of'])[0].name)
       .toBe('Gemini 9 Unheard Of');
+  });
+});
+
+describe('models the account has but this request shape cannot use', () => {
+  it('drops ids that were tried and did not answer', () => {
+    // Each of these is in a live account's quota and fails anyway:
+    // 500 for the 3.5-flash tiers, a schema error for gpt-oss, and a 400 that
+    // alternates with 429 for pro-high. Offering them lists models that break.
+    const quota = { buckets: [
+      { modelId: 'gemini-3.5-flash-low' },
+      { modelId: 'gemini-3.5-flash-extra-low' },
+      { modelId: 'gpt-oss-120b-medium' },
+      { modelId: 'gemini-3.1-pro-high' },
+      { modelId: 'gemini-3.1-pro-low' },
+    ] };
+    expect(modelsFromQuota(quota)).toEqual(['gemini-3.1-pro-low']);
+  });
+
+  it('keeps every id confirmed to generate', () => {
+    const confirmed = [
+      'claude-opus-4-6-thinking', 'claude-sonnet-4-6', 'gemini-3-flash',
+      'gemini-3.1-flash-lite', 'gemini-3.1-pro-low', 'gemini-3.6-flash-high',
+      'gemini-3.6-flash-low', 'gemini-3.6-flash-medium', 'gemini-3.6-flash-tiered',
+      'gemini-3.7-flash-tiered',
+    ];
+    expect(modelsFromQuota({ buckets: confirmed.map((id) => ({ modelId: id })) }))
+      .toEqual(confirmed);
   });
 });
