@@ -3,7 +3,7 @@
 [self-link to github repo](https://github.com/ible-ai/graphible)
 
 > [!IMPORTANT]
-> **[*ONLINE* DEMO IS LIVE](https://ible-ai.github.io/graphible)**
+> **[LIVE DEMO](https://ible-ai.github.io/graphible)**
 
 Transform any topic into an interactive, AI-powered learning graph. Explore concepts through visual node-based interfaces with real-time LLM integration.
 
@@ -24,7 +24,7 @@ Transform any topic into an interactive, AI-powered learning graph. Explore conc
 ## Quick Start
 
 ### Option 1: Live Demo (GitHub Pages)
-Visit **[our *ONLINE* demo](http://ible-ai.github.io/graphible)**
+Visit **[live demo](http://ible-ai.github.io/graphible)**
 
 ### Option 2: Local Development
 
@@ -86,7 +86,7 @@ attributed to your account's own Gemini allowance.
 5. **Save Your Work**: graphs are kept in `sessionStorage`, so they survive
    reloads but not a browser restart
 
-## 🛠 Technology Stack
+## Technology Stack
 
 - **Frontend**: React 19, Vite 6, Tailwind v4
 - **Icons**: Lucide React
@@ -142,17 +142,6 @@ Modify `colorSchemes` in constants or use the adaptive UI system for dynamic the
 4. Push to the branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
-## 📝 License
+## License
 
 Contact for licensing information.
-
-## Acknowledgments
-
-- [Ollama](https://ollama.ai) for local LLM infrastructure
-- [Lucide](https://lucide.dev) for beautiful icons
-- [TailwindCSS](https://tailwindcss.com) for styling system
-- [Vite](https://vitejs.dev) for lightning-fast development
-
----
-
-**Made with ❤️ for learners everywhere**
