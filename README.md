@@ -1,11 +1,13 @@
 # Graphible - Interactive Learning Graphs
 
+[self-link to github repo](https://github.com/ible-ai/graphible)
+
 > [!IMPORTANT]
-> **[OUR *ONLINE* DEMO IS LIVE](https://ible-ai.github.io/graphible)**
+> **[*ONLINE* DEMO IS LIVE](https://ible-ai.github.io/graphible)**
 
 Transform any topic into an interactive, AI-powered learning graph. Explore concepts through visual node-based interfaces with real-time LLM integration.
 
-## 🚀 Features
+## Features
 
 - **Bring your own Google account**: sign in and generate on your own Gemini
   allowance — no API key to create, no Cloud project to configure, and nothing
@@ -19,7 +21,7 @@ Transform any topic into an interactive, AI-powered learning graph. Explore conc
 - **Feedback System**: Rate and improve content through integrated feedback loops
 - **Save and Load**: keep graphs for the rest of the browsing session
 
-## 🎯 Quick Start
+## Quick Start
 
 ### Option 1: Live Demo (GitHub Pages)
 Visit **[our *ONLINE* demo](http://ible-ai.github.io/graphible)**
@@ -71,7 +73,7 @@ attributed to your account's own Gemini allowance.
    ```
 4. **Launch Graphible** and start exploring!
 
-## 🎮 How to Use
+## How to Use
 
 1. **Enter a Topic**: Type what you want to learn about
 2. **Watch Magic Happen**: AI generates interconnected learning nodes
@@ -93,7 +95,7 @@ attributed to your account's own Gemini allowance.
 - **Deployment**: GitHub Pages (live at [graph.ible.ai](https://graph.ible.ai))
 - **Architecture**: Modular hooks-based React architecture
 
-## 🎨 Key Components
+## Key Components
 
 - **Interactive Canvas**: Infinite zoom/pan graph visualization
 - **Real-time Generation**: Streaming LLM integration with progress tracking
@@ -101,7 +103,7 @@ attributed to your account's own Gemini allowance.
 - **Rich Node Types**: Root, concept, example, and detail node varieties
 - **Feedback Loops**: Integrated learning and improvement system
 
-## 🚀 Deployment
+## Deployment
 
 ### Automatic GitHub Pages
 Push to main branch - automatic deployment via GitHub Actions.
@@ -113,7 +115,7 @@ npm run preview  # Preview production build
 npm run deploy   # Deploy to GitHub Pages
 ```
 
-## 🔧 Configuration
+## Configuration
 
 ### LLM Settings
 Model catalogs live in `LLM_CONFIG` in `src/constants/graphConstants.jsx`, and
@@ -132,7 +134,7 @@ export const LLM_CONFIG = {
 ### Styling & Themes
 Modify `colorSchemes` in constants or use the adaptive UI system for dynamic theming.
 
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
@@ -144,7 +146,7 @@ Modify `colorSchemes` in constants or use the adaptive UI system for dynamic the
 
 Contact for licensing information.
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - [Ollama](https://ollama.ai) for local LLM infrastructure
 - [Lucide](https://lucide.dev) for beautiful icons
