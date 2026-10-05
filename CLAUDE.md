@@ -54,7 +54,7 @@ Push to `main` → `.github/workflows/deploy.yml` builds and deploys to GitHub P
 
 ## Repo map
 
-44 source files under `src/`:
+46 source files under `src/`:
 
 ```
 src/App.jsx               920 lines — the whole app shell; all UI state lives here
@@ -64,7 +64,7 @@ src/hooks/          (10)            — camera, graph state, LLM, selection, man
 src/utils/           (11)            — coordinates, LLM parsing, context building, clustering, wizard helpers, Google/Code Assist auth
 src/constants/       (3)            — graphConstants.jsx, setupWizardConstants.jsx, zLayers.js
 scripts/             (1)            — probe-code-assist.mjs, the live-API probe (see below)
-src/components/     (17)            — Minimap (784) and SetupWizard (825) are the two big ones
+src/components/     (18)            — Minimap (784) and SetupWizard (825) are the two big ones
 ```
 
 Gitignored and unimported: `src/dev/` (7 files; `src/dev/App.jsx` is a stale 1117-line fork of `App.jsx`) and `_src/`. Don't edit them for app changes.

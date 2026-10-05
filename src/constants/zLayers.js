@@ -9,6 +9,10 @@ export const Z = {
   NODE_CURRENT: 10,
   HEADER: 20,
   STATUS_BAR: 30,
+  // The corner link to the repo. Above the start screen (z-20), which is
+  // fixed over everything, and below the floating panels so a panel dragged
+  // over the corner covers it rather than the other way round.
+  CORNER_LINK: 40,
   MINIMAP: 100,
   DETAILS_PANEL: 120,
   // Menus that open from the header. They must clear the details panel, and a

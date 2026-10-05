@@ -31,6 +31,7 @@ import ConnectionManager from './components/ConnectionManager';
 import SetupWizard from './components/SetupWizard/SetupWizard';
 import ModelDownloadConsent from './components/ModelDownloadConsent';
 import Notice from './components/Notice';
+import RepoLink from './components/RepoLink';
 
 // Import constants and utilities
 import {
@@ -898,6 +899,8 @@ const Graphible = () => {
           onRemoveConnection={removeConnection}
         />
       )}
+
+      <RepoLink />
 
       <Notice notice={notice} onDismiss={() => setNotice(null)} />
 
