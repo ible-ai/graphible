@@ -3,7 +3,7 @@
 [self-link to github repo](https://github.com/ible-ai/graphible)
 
 > [!IMPORTANT]
-> **[LIVE DEMO](https://ible-ai.github.io/graphible)**
+> **[LIVE DEMO](https://graph.ible.ai)**
 
 Transform any topic into an interactive, AI-powered learning graph. Explore concepts through visual node-based interfaces with real-time LLM integration.
 
@@ -16,7 +16,6 @@ Transform any topic into an interactive, AI-powered learning graph. Explore conc
   running in your browser, or a demo graph that needs none of them
 - **Interactive Visual Interface**: Navigate through interconnected learning nodes
 - **Real-time Streaming**: Watch nodes generate in real-time as the LLM processes
-- **Adaptive UI**: Interface learns and adapts to user preferences and feedback
 - **Rich Navigation**: Mouse, keyboard, and touch controls for seamless exploration
 - **Feedback System**: Rate and improve content through integrated feedback loops
 - **Save and Load**: keep graphs for the rest of the browsing session
@@ -24,7 +23,7 @@ Transform any topic into an interactive, AI-powered learning graph. Explore conc
 ## Quick Start
 
 ### Option 1: Live Demo (GitHub Pages)
-Visit **[live demo](http://ible-ai.github.io/graphible)**
+Visit **[graph.ible.ai](https://graph.ible.ai)**
 
 ### Option 2: Local Development
 
@@ -76,7 +75,7 @@ attributed to your account's own Gemini allowance.
 ## How to Use
 
 1. **Enter a Topic**: Type what you want to learn about
-2. **Watch Magic Happen**: AI generates interconnected learning nodes
+2. **Watch it build**: the model streams nodes onto the canvas as it writes them
 3. **Navigate & Explore**: 
    - Click and drag to pan
    - Mouse wheel to zoom
@@ -99,9 +98,8 @@ attributed to your account's own Gemini allowance.
 
 - **Interactive Canvas**: Infinite zoom/pan graph visualization
 - **Real-time Generation**: Streaming LLM integration with progress tracking
-- **Adaptive UI**: Machine learning-enhanced interface personalization
 - **Rich Node Types**: Root, concept, example, and detail node varieties
-- **Feedback Loops**: Integrated learning and improvement system
+- **Feedback**: thumbs up or down on a node, which the model sorts into content, visual, layout or interaction
 
 ## Deployment
 
@@ -132,15 +130,12 @@ export const LLM_CONFIG = {
 ```
 
 ### Styling & Themes
-Modify `colorSchemes` in constants or use the adaptive UI system for dynamic theming.
+Color schemes are `colorSchemes` in `src/constants/graphConstants.jsx`.
 
 ## Contributing
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+Issues and pull requests are welcome. Run `npm run lint`, `npm run test` and
+`npm run test:e2e` before opening a pull request; CI runs the same three.
 
 ## License
 
