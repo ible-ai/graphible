@@ -663,7 +663,9 @@ const Graphible = () => {
           </div>
 
           {/* Main Content */}
-          <div className="pt-20 w-full h-full relative overflow-hidden">
+          {/* data-graph-canvas scopes wheel zoom to this element; overlays
+              outside it scroll instead. See useCanvasInteraction. */}
+          <div className="pt-20 w-full h-full relative overflow-hidden" data-graph-canvas="">
             {/* Background container that handles camera transformation */}
             <div
               className="absolute inset-0 w-full h-full"
