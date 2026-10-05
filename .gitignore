@@ -40,3 +40,6 @@ src/dev
 # Demo media: large, and not needed to build or run the app.
 *.mov
 *.gif
+
+# Session handoff notes, kept locally
+HANDOFF.md
