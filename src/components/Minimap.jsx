@@ -6,14 +6,50 @@ import { getMinimapBounds } from '../utils/coordinateUtils';
 import { applyClustering, getClusterColor } from '../utils/clusteringUtils';
 import { Z } from '../constants/zLayers';
 
+// SVG fills and strokes, which Tailwind's dark: variant cannot reach. The node
+// glows are drawn at low alpha, so dark mode lifts each hue a step to keep
+// them visible against the navy panel.
+const MINIMAP_COLORS = {
+  light: {
+    label: 'rgb(51, 65, 85)', // slate-700
+    labelHalo: 'rgba(255,255,255,0.9)',
+    edge: 'rgb(203, 213, 225)', // slate-300
+    accent: 'rgb(99, 102, 241)', // indigo-500
+    accentRgb: '99, 102, 241',
+    nodes: {
+      root: 'rgb(99, 102, 241)', // indigo-500
+      concept: 'rgb(148, 163, 184)', // slate-400
+      example: 'rgb(156, 163, 175)', // gray-400
+      detail: 'rgb(148, 163, 184)', // slate-400
+      default: 'rgb(156, 163, 175)' // gray-400
+    },
+  },
+  dark: {
+    label: 'rgb(226, 232, 240)', // slate-200
+    labelHalo: 'rgba(2,6,23,0.9)',
+    edge: 'rgb(71, 85, 105)', // slate-600
+    accent: 'rgb(129, 140, 248)', // indigo-400
+    accentRgb: '129, 140, 248',
+    nodes: {
+      root: 'rgb(129, 140, 248)', // indigo-400
+      concept: 'rgb(203, 213, 225)', // slate-300
+      example: 'rgb(209, 213, 219)', // gray-300
+      detail: 'rgb(203, 213, 225)', // slate-300
+      default: 'rgb(209, 213, 219)' // gray-300
+    },
+  },
+};
+
 const Minimap = ({
   nodes,
   connections,
   currentNodeId,
   camera,
+  isDark = false,
   onNavigateToNode,
   onCameraMove
 }) => {
+  const palette = isDark ? MINIMAP_COLORS.dark : MINIMAP_COLORS.light;
   const [minimapExpanded, setMinimapExpanded] = useState(false);
   const [minimapZoom, setMinimapZoom] = useState(1.0);
   const [clusteringMode, setClusteringMode] = useState('none');
@@ -360,7 +396,7 @@ const Minimap = ({
 
   return (
     <div
-      className="absolute bottom-6 right-6 bg-white/90 backdrop-blur-md rounded-2xl border border-slate-200/50 transition-all duration-300 minimap-container shadow-lg font-inter"
+      className="absolute bottom-6 right-6 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md rounded-2xl border border-slate-200/50 dark:border-slate-700/50 transition-all duration-300 minimap-container shadow-lg font-inter"
       style={{
         width: minimapExpanded ? 600 : 280,
         height: minimapExpanded ? 400 : 200,
@@ -370,32 +406,32 @@ const Minimap = ({
       onClick={(e) => e.stopPropagation()}
     >
       <div
-        className="p-4 flex items-center justify-between border-b border-slate-200/50 rounded-t-2xl transition-colors duration-200"
+        className="p-4 flex items-center justify-between border-b border-slate-200/50 dark:border-slate-700/50 rounded-t-2xl transition-colors duration-200"
       >
         <span
-          className="text-slate-800 text-sm font-medium cursor-pointer hover:bg-slate-50/50 px-2 py-1 rounded transition-colors"
+          className="text-slate-800 dark:text-slate-100 text-sm font-medium cursor-pointer hover:bg-slate-50/50 dark:hover:bg-slate-800/50 px-2 py-1 rounded transition-colors"
           onClick={() => setMinimapExpanded(!minimapExpanded)}
         >
           Graph Overview
         </span>
         <div className="flex items-center gap-3">
-          <span className="text-xs text-slate-600 bg-slate-100 px-2 py-1 rounded-md">
+          <span className="text-xs text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-md">
             {nodes.length} nodes
           </span>
           {minimapExpanded && (
             <>
-              <div className="flex items-center gap-1 bg-slate-100 rounded-md p-1">
+              <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 rounded-md p-1">
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     setMinimapZoom(prev => Math.max(0.5, prev * 0.8));
                   }}
-                  className="p-1 hover:bg-slate-200 rounded text-slate-600 transition-colors"
+                  className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-600 dark:text-slate-300 transition-colors"
                   title="Zoom out"
                 >
                   <ZoomOut size={12} />
                 </button>
-                <span className="text-xs text-slate-600 px-1 min-w-[32px] text-center">
+                <span className="text-xs text-slate-600 dark:text-slate-300 px-1 min-w-[32px] text-center">
                   {Math.round(minimapZoom * 100)}%
                 </span>
                 <button
@@ -403,21 +439,21 @@ const Minimap = ({
                     e.stopPropagation();
                     setMinimapZoom(prev => Math.min(3.0, prev * 1.25));
                   }}
-                  className="p-1 hover:bg-slate-200 rounded text-slate-600 transition-colors"
+                  className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-600 dark:text-slate-300 transition-colors"
                   title="Zoom in"
                 >
                   <ZoomIn size={12} />
                 </button>
               </div>
-              <div className="flex items-center gap-1 bg-slate-100 rounded-md p-1">
-                <Layers size={12} className="text-slate-600" />
+              <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 rounded-md p-1">
+                <Layers size={12} className="text-slate-600 dark:text-slate-300" />
                 <select
                   value={clusteringMode}
                   onChange={(e) => {
                     e.stopPropagation();
                     setClusteringMode(e.target.value);
                   }}
-                  className="text-xs bg-transparent text-slate-600 border-none outline-none cursor-pointer"
+                  className="text-xs bg-transparent text-slate-600 dark:text-slate-300 border-none outline-none cursor-pointer"
                   title="Clustering mode"
                 >
                   <option value="none">None</option>
@@ -431,12 +467,12 @@ const Minimap = ({
           )}
           <button
             onClick={() => setMinimapExpanded(!minimapExpanded)}
-            className="p-1 hover:bg-slate-50/50 rounded transition-colors"
+            className="p-1 hover:bg-slate-50/50 dark:hover:bg-slate-800/50 rounded transition-colors"
             title={minimapExpanded ? "Minimize" : "Maximize"}
           >
             {minimapExpanded ?
-              <Minimize2 size={16} className="text-slate-600" /> :
-              <Maximize2 size={16} className="text-slate-600" />
+              <Minimize2 size={16} className="text-slate-600 dark:text-slate-300" /> :
+              <Maximize2 size={16} className="text-slate-600 dark:text-slate-300" />
             }
           </button>
         </div>
@@ -525,13 +561,13 @@ const Minimap = ({
                       x={labelX}
                       y={labelY}
                       fontSize={fontSize}
-                      fill="rgb(51, 65, 85)"
+                      fill={palette.label}
                       textAnchor="middle"
                       className="cluster-label pointer-events-none"
                       style={{
                         fontWeight,
                         opacity: visibility.opacity,
-                        textShadow: `${3 * textScaleFactor}px ${3 * textScaleFactor}px ${6 * textScaleFactor}px rgba(255,255,255,0.9)`,
+                        textShadow: `${3 * textScaleFactor}px ${3 * textScaleFactor}px ${6 * textScaleFactor}px ${palette.labelHalo}`,
                         transition: 'opacity 0.3s ease-out'
                       }}
                     >
@@ -557,7 +593,7 @@ const Minimap = ({
                 y1={fromNode.worldY}
                 x2={toNode.worldX}
                 y2={toNode.worldY}
-                stroke="rgb(203, 213, 225)"
+                stroke={palette.edge}
                 strokeWidth="3"
                 opacity="0.4"
                 strokeLinecap="round"
@@ -627,7 +663,7 @@ const Minimap = ({
                       cx={cluster.centroid.x}
                       cy={cluster.centroid.y}
                       r={400 * textScaleFactor}
-                      fill="rgba(99, 102, 241, 0.1)"
+                      fill={`rgba(${palette.accentRgb}, 0.1)`}
                       stroke="none"
                       className="pointer-events-none"
                       style={{
@@ -674,13 +710,13 @@ const Minimap = ({
                         x={labelX}
                         y={labelY}
                         fontSize={fontSize}
-                        fill="rgb(51, 65, 85)"
+                        fill={palette.label}
                         textAnchor="middle"
                         className="pointer-events-none select-none"
                         style={{
                           fontWeight,
                           opacity: visibility.opacity,
-                          textShadow: `${3 * textScaleFactor}px ${3 * textScaleFactor}px ${6 * textScaleFactor}px rgba(255,255,255,0.9)`,
+                          textShadow: `${3 * textScaleFactor}px ${3 * textScaleFactor}px ${6 * textScaleFactor}px ${palette.labelHalo}`,
                           letterSpacing: `${2 * textScaleFactor}px`,
                           transition: 'opacity 0.3s ease-out'
                         }}
@@ -701,13 +737,7 @@ const Minimap = ({
               const isCurrent = node.id === currentNodeId;
 
               // Get base color for this node type
-              const nodeColors = {
-                root: 'rgb(99, 102, 241)', // indigo-500
-                concept: 'rgb(148, 163, 184)', // slate-400
-                example: 'rgb(156, 163, 175)', // gray-400
-                detail: 'rgb(148, 163, 184)', // slate-400
-                default: 'rgb(156, 163, 175)' // gray-400
-              };
+              const nodeColors = palette.nodes;
 
               const baseColor = nodeColors[node.type] || nodeColors.default;
 
@@ -719,7 +749,7 @@ const Minimap = ({
                       cx={node.worldX}
                       cy={node.worldY}
                       r={300 * textScaleFactor}
-                      fill="rgba(99, 102, 241, 0.15)"
+                      fill={`rgba(${palette.accentRgb}, 0.15)`}
                       stroke="none"
                       className="pointer-events-none"
                       style={{
@@ -751,7 +781,7 @@ const Minimap = ({
                       cx={node.worldX}
                       cy={node.worldY}
                       r={160 * textScaleFactor}
-                      fill="rgba(99, 102, 241, 0.3)"
+                      fill={`rgba(${palette.accentRgb}, 0.3)`}
                       stroke="none"
                       className="pointer-events-none"
                       style={{
@@ -771,13 +801,13 @@ const Minimap = ({
             width={window.innerWidth / camera.zoom}
             height={window.innerHeight / camera.zoom}
             fill="none"
-            stroke="rgb(99, 102, 241)"
+            stroke={palette.accent}
             strokeWidth="4"
             opacity="0.6"
             rx="8"
             strokeDasharray="8,4"
             style={{
-              filter: 'drop-shadow(0 2px 4px rgba(99, 102, 241, 0.2))'
+              filter: `drop-shadow(0 2px 4px rgba(${palette.accentRgb}, 0.2))`
             }}
           />
         </svg>
