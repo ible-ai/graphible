@@ -13,6 +13,7 @@ import { useSaveLoad } from './hooks/useSaveLoad';
 import { useNodeManipulation } from './hooks/useNodeManipulation';
 import { useNodeSelection } from './hooks/useNodeSelection';
 import { useCanvasInteraction } from './hooks/useCanvasInteraction';
+import { useTheme } from './hooks/useTheme';
 
 // Import components
 import CenteredPrompt from './components/CenteredPrompt';
@@ -32,10 +33,13 @@ import SetupWizard from './components/SetupWizard/SetupWizard';
 import ModelDownloadConsent from './components/ModelDownloadConsent';
 import Notice from './components/Notice';
 import RepoLink from './components/RepoLink';
+import ThemeToggle from './components/ThemeToggle';
 
 // Import constants and utilities
 import {
   colorSchemes,
+  darkColorSchemes,
+  EDGE_COLORS,
   RESPONSE_MODES,
   RESPONSE_MODE_LABELS,
   DEFAULT_RESPONSE_MODE,
@@ -106,6 +110,7 @@ const Graphible = () => {
   const connectionErrorRef = useRef(null);
 
   // Custom hooks
+  const { isDark, toggleTheme } = useTheme();
   const { camera, setCameraImmediate, setCameraTarget } = useCamera();
 
   const {
@@ -345,7 +350,11 @@ const Graphible = () => {
   }, [nodes, currentNodeId, connections, updateAutoContext]);
 
   // Use UI personality color scheme, fall back to preferences, then default
-  const currentScheme = colorSchemes[preferences.colorScheme || 'default'];
+  // Nodes and edges are painted with inline colors, which Tailwind's dark:
+  // variant cannot reach, so the theme picks their palette here.
+  const schemeKey = preferences.colorScheme || 'default';
+  const currentScheme = isDark ? darkColorSchemes[schemeKey] : colorSchemes[schemeKey];
+  const edgeColors = isDark ? EDGE_COLORS.dark : EDGE_COLORS.light;
 
   useEffect(() => {
     connectionErrorRef.current = connectionError;
@@ -495,7 +504,7 @@ const Graphible = () => {
   };
 
   return (
-    <div className="w-screen h-screen relative bg-gradient-to-br from-slate-50 to-slate-100 font-inter">
+    <div className="w-screen h-screen relative bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-[#0b1120] font-inter">
       <GenerationStatusBar
         generationStatus={generationStatus}
         streamingContent={streamingContent}
@@ -519,6 +528,8 @@ const Graphible = () => {
         webllmLoadState={webllmLoadState}
         responseMode={responseMode}
         onToggleResponseMode={toggleResponseMode}
+        isDark={isDark}
+        onToggleTheme={toggleTheme}
         />
 
       {!showPromptCenter && (
@@ -528,7 +539,7 @@ const Graphible = () => {
               never rise above the details panel on its own. Raising the header
               itself is what lets the menu's controls stay clickable. */}
           <div
-            className="absolute top-0 left-0 right-0 bg-white/80 backdrop-blur-md border-b border-slate-200/50 p-4 shadow-sm"
+            className="absolute top-0 left-0 right-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200/50 dark:border-slate-700/50 p-4 shadow-sm"
             style={{ zIndex: modelMenuOpen ? Z.DROPDOWN : Z.HEADER }}
           >
             <div className="flex items-center justify-between">
@@ -536,13 +547,13 @@ const Graphible = () => {
                 <div className="flex items-center gap-3">
                   <button
                     onClick={handleReturnToStart}
-                    className="flex items-center gap-2 px-3 py-2 text-slate-600 rounded-lg hover:bg-slate-100 hover:text-slate-800 transition-all duration-200"
+                    className="flex items-center gap-2 px-3 py-2 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-100 transition-all duration-200"
                     title="Back to the start screen (your graph is kept)"
                     aria-label="Back to the start screen"
                   >
                     <House size={16} />
                   </button>
-                  <h1 className="text-xl font-light text-slate-800 tracking-tight">graph.ible</h1>
+                  <h1 className="text-xl font-light text-slate-800 dark:text-slate-100 tracking-tight">graph.ible</h1>
                 </div>
 
                 <ModelSelector
@@ -557,7 +568,7 @@ const Graphible = () => {
               </div>
               <button
                 onClick={() => setShowSetupWizard(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 hover:border-slate-300 transition-all duration-200 shadow-sm"
+                className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 transition-all duration-200 shadow-sm"
                 style={{ fontSize: '12px' }}
                 title="Reconfigure AI model"
               >
@@ -567,14 +578,14 @@ const Graphible = () => {
 
               <div className="flex items-center gap-3">
                 {/* Mode toggle buttons */}
-                <div className="flex bg-white border border-slate-200 rounded-lg p-1">
+                <div className="flex bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-1">
                   <button
                     onClick={() => {
                       setContextMode('auto');
                     }}
                     className={`flex items-center gap-2 px-3 py-1 rounded-md text-sm transition-all duration-200 ${contextMode === 'auto'
-                      ? 'bg-slate-100 text-slate-800'
-                      : 'text-slate-600 hover:text-slate-800'
+                      ? 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100'
+                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:hover:text-slate-100'
                       }`}
                     title="Normal mode"
                   >
@@ -583,7 +594,7 @@ const Graphible = () => {
                   </button>
                   <button
                     onClick={toggleContextMode}
-                    className="flex items-center gap-2 px-3 py-1 rounded-md text-sm transition-all duration-200 bg-indigo-100 text-indigo-800"
+                    className="flex items-center gap-2 px-3 py-1 rounded-md text-sm transition-all duration-200 bg-indigo-100 dark:bg-indigo-500/15 text-indigo-800 dark:text-indigo-200"
                     title={`Context: ${CONTEXT_MODE_LABELS[contextMode]?.title ?? contextMode}`}
                   >
                     {contextMode === 'auto' && <><Circle size={14} />Auto</>}
@@ -602,8 +613,8 @@ const Graphible = () => {
                 <button
                   onClick={toggleResponseMode}
                   className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-all duration-200 shadow-sm ${responseMode === RESPONSE_MODES.SINGLE
-                    ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                    ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/30 text-emerald-800 dark:text-emerald-200'
+                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
                     }`}
                   style={{ fontSize: '12px' }}
                   title={`${RESPONSE_MODE_LABELS[responseMode].name}: ${RESPONSE_MODE_LABELS[responseMode].description}. Click to switch.`}
@@ -619,7 +630,7 @@ const Graphible = () => {
                   onClick={applyLayoutOptimizationWithSelection}
                   disabled={nodes.length < 2}
                   style={{ fontSize: '12px' }}
-                  className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 hover:border-slate-300 transition-all duration-200 disabled:opacity-50 shadow-sm"
+                  className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 transition-all duration-200 disabled:opacity-50 shadow-sm"
                 >
                   <Circle size={16} />
                   Optimize Layout
@@ -627,7 +638,7 @@ const Graphible = () => {
 
                 <button
                   onClick={() => setShowConnectionManager(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 hover:border-slate-300 transition-all duration-200 shadow-sm"
+                  className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 transition-all duration-200 shadow-sm"
                   style={{ fontSize: '12px' }}
                 >
                   <Link size={16} />
@@ -637,7 +648,7 @@ const Graphible = () => {
                 <button
                   onClick={() => setShowDeletionStore(true)}
                   style={{ fontSize: '12px' }}
-                  className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 hover:border-slate-300 transition-all duration-200 shadow-sm"
+                  className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 transition-all duration-200 shadow-sm"
                 >
                   <Trash2 size={16} /> Deleted ({deletedNodes.size})
                 </button>
@@ -645,7 +656,7 @@ const Graphible = () => {
                 <button
                   onClick={resetCamera}
                   style={{ fontSize: '12px' }}
-                  className="flex items-center gap-2 px-2 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 hover:border-slate-300 transition-all duration-200 shadow-sm"
+                  className="flex items-center gap-2 px-2 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 transition-all duration-200 shadow-sm"
                 >
                   <RotateCcw size={16} />
                   Reset View
@@ -654,11 +665,13 @@ const Graphible = () => {
                 <button
                   onClick={() => setShowSaveLoad(true)}
                   style={{ fontSize: '12px' }}
-                  className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 hover:border-slate-300 transition-all duration-200 shadow-sm"
+                  className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 transition-all duration-200 shadow-sm"
                 >
                   <Save size={16} />
                   Save/Load
                 </button>
+
+                <ThemeToggle isDark={isDark} onToggle={toggleTheme} />
               </div>
             </div>
           </div>
@@ -700,7 +713,7 @@ const Graphible = () => {
                   >
                     <polygon
                       points="0 0, 10 3.5, 0 7"
-                      fill="rgb(148, 163, 184)"
+                      fill={edgeColors.stroke}
                     />
                   </marker>
                 </defs>
@@ -739,14 +752,14 @@ const Graphible = () => {
                     <g key={index}>
                       <path
                         d={path}
-                        stroke="rgb(148, 163, 184)"
+                        stroke={edgeColors.stroke}
                         strokeWidth={2 / camera.zoom} // Scale stroke width with zoom
                         fill="none"
-                        strokeOpacity="0.6"
+                        strokeOpacity={edgeColors.opacity}
                         markerEnd="url(#arrowhead)"
                         strokeLinecap="round"
                         style={{
-                          filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1))',
+                          filter: edgeColors.shadow,
                         }}
                       />
 
@@ -754,22 +767,22 @@ const Graphible = () => {
                         cx={fromX}
                         cy={fromY}
                         r={4 / camera.zoom}
-                        fill="rgb(148, 163, 184)"
-                        stroke="white"
+                        fill={edgeColors.start}
+                        stroke={edgeColors.ring}
                         strokeWidth={2 / camera.zoom}
                         style={{
-                          filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1))',
+                          filter: edgeColors.shadow,
                         }}
                       />
                       <circle
                         cx={toX}
                         cy={toY}
                         r={4 / camera.zoom}
-                        fill="rgb(59, 130, 246)"
-                        stroke="white"
+                        fill={edgeColors.end}
+                        stroke={edgeColors.ring}
                         strokeWidth={2 / camera.zoom}
                         style={{
-                          filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1))',
+                          filter: edgeColors.shadow,
                         }}
                       />
                     </g>
@@ -828,6 +841,7 @@ const Graphible = () => {
             connections={connections}
             currentNodeId={currentNodeId}
             camera={camera}
+            isDark={isDark}
             onNavigateToNode={(nodeId) => {
               const node = nodes.find(n => n.id === nodeId);
               if (node) {
