@@ -102,15 +102,15 @@ const WebLLMProgressTracker = ({
     const getPhaseIcon = () => {
         switch (currentPhase) {
             case 'preparing':
-                return <Brain className="text-blue-600 animate-pulse" size={24} />;
+                return <Brain className="text-blue-600 dark:text-blue-400 animate-pulse" size={24} />;
             case 'downloading':
-                return <Download className="text-blue-600 animate-bounce" size={24} />;
+                return <Download className="text-blue-600 dark:text-blue-400 animate-bounce" size={24} />;
             case 'loading':
-                return <Brain className="text-blue-600 animate-spin" size={24} />;
+                return <Brain className="text-blue-600 dark:text-blue-400 animate-spin" size={24} />;
             case 'complete':
-                return <CheckCircle className="text-green-600" size={24} />;
+                return <CheckCircle className="text-green-600 dark:text-green-400" size={24} />;
             default:
-                return <AlertTriangle className="text-amber-600" size={24} />;
+                return <AlertTriangle className="text-amber-600 dark:text-amber-400" size={24} />;
         }
     };
 
@@ -118,18 +118,18 @@ const WebLLMProgressTracker = ({
 
     return (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[200] p-4">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md border border-slate-200">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md border border-slate-200 dark:border-slate-700">
                 {/* Header */}
-                <div className="p-6 border-b border-slate-200">
+                <div className="p-6 border-b border-slate-200 dark:border-slate-700">
                     <div className="flex items-center gap-3 mb-3">
-                        <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                        <div className="w-12 h-12 bg-blue-100 dark:bg-blue-500/15 rounded-xl flex items-center justify-center">
                             {getPhaseIcon()}
                         </div>
                         <div>
-                            <h3 className="text-lg font-semibold text-slate-800">
+                            <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100">
                                 Setting up Browser AI
                             </h3>
-                            <p className="text-sm text-slate-600">
+                            <p className="text-sm text-slate-600 dark:text-slate-300">
                                 {modelName}
                             </p>
                         </div>
@@ -140,12 +140,12 @@ const WebLLMProgressTracker = ({
                 <div className="p-6">
                     {/* Status Message */}
                     <div className="text-center mb-6">
-                        <p className="text-slate-700 font-medium mb-2">
+                        <p className="text-slate-700 dark:text-slate-200 font-medium mb-2">
                             {getPhaseMessage()}
                         </p>
 
                         {currentPhase === 'downloading' && (
-                            <p className="text-sm text-slate-500">
+                            <p className="text-sm text-slate-500 dark:text-slate-400">
                                 This happens once and works offline afterward
                             </p>
                         )}
@@ -154,12 +154,12 @@ const WebLLMProgressTracker = ({
                     {/* Progress Bar */}
                     {progress && (
                         <div className="mb-6">
-                            <div className="flex justify-between text-sm text-slate-600 mb-2">
+                            <div className="flex justify-between text-sm text-slate-600 dark:text-slate-300 mb-2">
                                 <span>Progress</span>
                                 <span>{Math.round((progress.progress || 0) * 100)}%</span>
                             </div>
 
-                            <div className="w-full bg-slate-200 rounded-full h-3 overflow-hidden">
+                            <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-3 overflow-hidden">
                                 <div
                                     className="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-300 ease-out"
                                     style={{ width: `${Math.round((progress.progress || 0) * 100)}%` }}
@@ -172,20 +172,20 @@ const WebLLMProgressTracker = ({
                     {currentPhase === 'downloading' && downloadedMB > 0 && (
                         <div className="grid grid-cols-2 gap-4 mb-6">
                             <div className="text-center">
-                                <div className="text-lg font-semibold text-slate-800">
+                                <div className="text-lg font-semibold text-slate-800 dark:text-slate-100">
                                     {downloadedMB} MB
                                 </div>
-                                <div className="text-xs text-slate-500">
+                                <div className="text-xs text-slate-500 dark:text-slate-400">
                                     of {totalMB} MB
                                 </div>
                             </div>
 
                             {downloadSpeed > 0 && (
                                 <div className="text-center">
-                                    <div className="text-lg font-semibold text-slate-800">
+                                    <div className="text-lg font-semibold text-slate-800 dark:text-slate-100">
                                         {formatSpeed(downloadSpeed)}
                                     </div>
-                                    <div className="text-xs text-slate-500">
+                                    <div className="text-xs text-slate-500 dark:text-slate-400">
                                         download speed
                                     </div>
                                 </div>
@@ -196,15 +196,15 @@ const WebLLMProgressTracker = ({
                     {/* Time Estimate */}
                     {estimatedTimeLeft && estimatedTimeLeft > 5 && (
                         <div className="text-center mb-4">
-                            <p className="text-sm text-slate-600">
+                            <p className="text-sm text-slate-600 dark:text-slate-300">
                                 About {formatTime(estimatedTimeLeft)} remaining
                             </p>
                         </div>
                     )}
 
                     {/* Phase-specific information */}
-                    <div className="bg-blue-50 rounded-xl p-4">
-                        <div className="text-sm text-blue-800">
+                    <div className="bg-blue-50 dark:bg-blue-500/10 rounded-xl p-4">
+                        <div className="text-sm text-blue-800 dark:text-blue-200">
                             {currentPhase === 'preparing' && (
                                 <div>
                                     <div className="font-medium mb-1">Getting ready...</div>
@@ -237,7 +237,7 @@ const WebLLMProgressTracker = ({
 
                     {/* Progress indicators */}
                     {currentPhase === 'downloading' && (
-                        <div className="flex items-center justify-center gap-2 text-slate-600 mt-4">
+                        <div className="flex items-center justify-center gap-2 text-slate-600 dark:text-slate-300 mt-4">
                             <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
                             <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
                             <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />

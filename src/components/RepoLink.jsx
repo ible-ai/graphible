@@ -22,7 +22,7 @@ const RepoLink = () => (
     href={REPO_URL}
     target="_blank"
     rel="noopener noreferrer"
-    className="fixed bottom-4 left-4 flex items-center justify-center w-9 h-9 bg-white/80 backdrop-blur-sm border border-slate-200 text-slate-500 rounded-lg hover:bg-white hover:text-slate-800 transition-all duration-200 shadow-sm"
+    className="fixed bottom-4 left-4 flex items-center justify-center w-9 h-9 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 rounded-lg hover:bg-white dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-100 transition-all duration-200 shadow-sm"
     style={{ zIndex: Z.CORNER_LINK }}
     title="Source on GitHub"
     aria-label="Source on GitHub"
