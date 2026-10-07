@@ -1,4 +1,4 @@
-# Graphible - Interactive Learning Graphs
+# graphible - Interactive Learning Graphs
 
 [self-link to github repo](https://github.com/ible-ai/graphible)
 
@@ -70,7 +70,7 @@ attributed to your account's own Gemini allowance.
    ollama pull gemma3:4b
    ollama pull gemma3:270m   # the lightweight option, 292MB
    ```
-4. **Launch Graphible** and start exploring!
+4. **Launch graphible** and start exploring!
 
 ## How to Use
 
