@@ -23,11 +23,11 @@ No TypeScript — `.js`/`.jsx` only. **Node >= 22.22.2** — jsdom 30 accepts on
 startup (`webidl.util.markAsUncloneable is not a function`) before a test runs.
 Both workflows pin Node 24.
 
-**Testing.** `test/` holds 286 Vitest unit tests: the streaming JSON parser, context
+**Testing.** `test/` holds 290 Vitest unit tests: the streaming JSON parser, context
 building, coordinates, clustering, the generation pipeline in `useGraphState`
 (driven with a fake backend emitting the real envelope), the selection and
 manipulation hooks, `BrowserLLMEngine`'s provider dispatch, and the shared
-backend envelope via the demo model. `e2e/` holds 85 Playwright tests that drive a real build in
+backend envelope via the demo model. `e2e/` holds 89 Playwright tests that drive a real build in
 headless Chromium through the demo backend, which needs no Ollama, API key or
 WebGPU — so the graph, camera, node controls and wizard are all exercisable
 offline. Chromium launches with WebGPU enabled, and the browser-model capability
@@ -54,14 +54,14 @@ Push to `main` → `.github/workflows/deploy.yml` builds and deploys to GitHub P
 
 ## Repo map
 
-48 source files under `src/`:
+49 source files under `src/`:
 
 ```
 src/App.jsx               920 lines — the whole app shell; all UI state lives here
 src/main.jsx                        — React root; hides index.html's #loading div
 src/index.css                       — Tailwind + KaTeX imports, dark variant, hit-test classes, hand-rolled .prose
 src/hooks/          (11)            — camera, graph state, LLM, selection, manipulation, feedback, save/load, keyboard, browser-LLM engine, theme
-src/utils/           (11)            — coordinates, LLM parsing, context building, clustering, wizard helpers, Google/Code Assist auth
+src/utils/           (12)            — coordinates, LLM parsing, context building, clustering, wizard helpers, Google/Code Assist auth, color alpha
 src/constants/       (3)            — graphConstants.jsx, setupWizardConstants.jsx, zLayers.js
 scripts/             (1)            — probe-code-assist.mjs, the live-API probe (see below)
 src/components/     (20)            — Minimap (784) and SetupWizard (825) are the two big ones
@@ -418,7 +418,11 @@ Persistence is browser-only — there is no server:
 
 Tailwind v4 via `@tailwindcss/vite`; there is **no `tailwind.config.js`**. Global styles live in `src/index.css`, which imports Tailwind and `katex/dist/katex.min.css`, defines the `.node-component` / `.minimap-container` / `.details-panel` classes that the pointer hit-testing depends on, and **hand-writes the `.prose` rules** used by `NodeDetailsPanel` — `@tailwindcss/typography` is not a dependency, so the `prose-slate` utility class does nothing. Graph and node theming is inline styles from `uiPersonality` + `colorSchemes`, not Tailwind classes.
 
-**Dark mode** is a `dark` class on `<html>`, which `@custom-variant dark` in `index.css` keys Tailwind's `dark:` variant on. `useTheme` sets it from `prefers-color-scheme`, follows OS changes live, and lets the sun/moon `ThemeToggle` (toolbar and start screen) override it in `localStorage`; choosing the OS's own theme clears the override rather than pinning it. An inline script in `index.html` applies the same rule before first paint. Anything painted with inline colors cannot use `dark:`, so it takes a palette from the theme instead: nodes read `darkColorSchemes` (same keys as `colorSchemes`), edges read `EDGE_COLORS`, and the minimap has `MINIMAP_COLORS`. **A new inline color needs a dark value in one of those**, and a new class color needs a `dark:` partner. The unlayered `.prose` rules in `index.css` beat `dark:` utilities on the same element, so dark prose is spelled out there too. Light values were left exactly as they were.
+**Dark mode** is a `dark` class on `<html>`, which `@custom-variant dark` in `index.css` keys Tailwind's `dark:` variant on. `useTheme` sets it from `prefers-color-scheme`, follows OS changes live, and lets the sun/moon `ThemeToggle` (toolbar and start screen) override it in `localStorage`; choosing the OS's own theme clears the override rather than pinning it. An inline script in `index.html` applies the same rule before first paint. Anything painted with inline colors cannot use `dark:`, so it takes a palette from the theme instead: nodes read `darkColorSchemes` (same keys as `colorSchemes`), edges read `EDGE_COLORS`, and the minimap has `MINIMAP_COLORS`. **A new inline color needs a dark value in one of those**, and a new class color needs a `dark:` partner. The unlayered `.prose` rules in `index.css` beat `dark:` utilities on the same element, so dark prose is spelled out there too.
+
+Dark is **neutral black, not slate or navy**: a #0a0a0a canvas, `neutral-900` panels, nodes around #171717 to #1e1e1e, and `neutral` text and borders. Tailwind's `slate` and `gray` both carry a blue cast, so dark partners use `neutral` (borders a step darker than the light shade would suggest, so they stay quiet on black). Color appears only where it means something: the current and root nodes, selection, focus, primary actions, and status (success, warning, error). Keep it that way when adding UI.
+
+**Node glows.** The root always glows faintly in its scheme color, and the current node gets a 3px ring plus a soft halo. Both are built in `NodeComponent` with `withAlpha` (`src/utils/colorUtils.js`) from the scheme's `glow` alphas (`rest`, `halo`, `ring`) and its neutral `lift` shadow; each theme has its own values. They used to append a hex alpha to an `rgb()` color (`rgb(59, 130, 246)40`), which is invalid CSS, so the browser dropped the whole `box-shadow` and **neither glow ever rendered**. When React assigns an invalid style the browser keeps the previous value, so the failure is silent. `e2e/node-glow.spec.js` checks the computed shadow in both themes; never concatenate an alpha onto a color string.
 
 `index.html` paints a dark full-screen `#loading` spinner that `main.jsx` hides once React mounts, and inlines its own scrollbar/body CSS. It also has duplicated `<meta charset>`/`viewport` tags and links two favicon PNGs (`favicon-32x32.png`, `favicon-16x16.png`) that don't exist in `public/` — only `favicon.svg` and `brain-icon.svg` do. `src/App.css` is untouched Vite-template boilerplate imported nowhere.
 
@@ -499,11 +503,6 @@ Verified by reading and by test runs. `git log` has what was fixed and why.
 - `NodeComponent` syncs width/height from props inside a `useMemo` used as an
   effect.
 - 2 `react-hooks/exhaustive-deps` warnings in `SetupWizard`.
-- `NodeComponent`'s current-node and root-node glows append a hex alpha to the
-  scheme color (`${colorScheme.primary}33`), but the light schemes are `rgb()`
-  strings, so the result is invalid CSS and the browser drops the whole
-  `box-shadow`. Light current and root nodes have never had their glow. The
-  dark schemes use hex, so it works there; fixing light would change its look.
 - `react-markdown` runs without `remark-gfm`, so Markdown tables render as
   pipe-separated text, in either theme.
 - `LLM_CONFIG` still carries a flat backwards-compatibility block that nothing
