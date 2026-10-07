@@ -21,6 +21,19 @@
   <meta property="og:image" content="/icon-512.png" />
   <meta property="og:type" content="website" />
   <meta name="twitter:card" content="summary" />
+  <script>
+    // The theme rule from src/hooks/useTheme.js, applied before first paint so
+    // a dark page does not flash light while the bundle loads.
+    try {
+      var theme = localStorage.getItem('graphible-theme');
+      if (theme !== 'light' && theme !== 'dark') {
+        theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }
+      if (theme === 'dark') document.documentElement.classList.add('dark');
+    } catch (e) {
+      // No storage or no matchMedia: stay light, and let React decide.
+    }
+  </script>
   <style>
     body {
       margin: 0;
