@@ -83,6 +83,14 @@
       animation: spin 1s linear infinite;
     }
 
+    /* Dark mode is near-black, not the slate the loading screen uses in
+       light, so the page does not shift hue when React takes over. */
+    html.dark,
+    html.dark body,
+    html.dark #loading {
+      background: #0a0a0a;
+    }
+
     @keyframes spin {
       0% {
         transform: rotate(0deg);

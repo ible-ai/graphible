@@ -87,13 +87,13 @@ const CodeAssistSignIn = ({ signedIn, onSignedInChange, provider = DEFAULT_PROVI
       <button
         type="button"
         onClick={openGoogle}
-        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-200 font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-slate-300 dark:border-neutral-700 rounded-lg text-slate-700 dark:text-neutral-200 font-medium hover:bg-slate-50 dark:hover:bg-neutral-800 transition-colors"
       >
         <ExternalLink size={15} />
         Sign in to {AUTH_PROVIDERS[provider].label}
       </button>
 
-      <p className="text-xs text-slate-500 dark:text-slate-400">
+      <p className="text-xs text-slate-500 dark:text-neutral-400">
         Uses your own Google account&apos;s Gemini allowance. Google&apos;s page will
         name <span className="font-medium">{AUTH_PROVIDERS[provider].label}</span>{' '}
         &mdash; that is the application you are granting access to.
@@ -111,7 +111,7 @@ const CodeAssistSignIn = ({ signedIn, onSignedInChange, provider = DEFAULT_PROVI
 
       {stage === 'awaiting-code' && (
         <div className="space-y-2 pt-1">
-          <label className="block text-xs font-medium text-slate-600 dark:text-slate-300">
+          <label className="block text-xs font-medium text-slate-600 dark:text-neutral-300">
             Paste the code Google shows you
             <input
               type="text"
@@ -123,7 +123,7 @@ const CodeAssistSignIn = ({ signedIn, onSignedInChange, provider = DEFAULT_PROVI
               }}
               placeholder="4/0AVMBsJ…"
               autoFocus
-              className="mt-1 w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:border-indigo-500 focus:outline-none"
+              className="mt-1 w-full px-3 py-2 bg-white dark:bg-neutral-900 border border-slate-300 dark:border-neutral-700 rounded-lg text-slate-800 dark:text-neutral-100 placeholder-slate-400 focus:border-indigo-500 focus:outline-none"
             />
           </label>
           <button

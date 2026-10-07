@@ -69,12 +69,12 @@ const SaveLoadModal = ({
   if (!showSaveLoad) return null;
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[200]">
-      <div className="bg-gray-900 rounded-lg p-6 max-w-md w-full mx-4 border border-gray-600 max-h-[80vh] overflow-y-auto">
+      <div className="bg-gray-900 dark:bg-neutral-900 rounded-lg p-6 max-w-md w-full mx-4 border border-gray-600 dark:border-neutral-700 max-h-[80vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-white font-bold text-lg">Saved Graphs</h3>
           <button
             onClick={handleClose}
-            className="text-gray-400 hover:text-white transition-colors"
+            className="text-gray-400 dark:text-neutral-400 hover:text-white transition-colors"
           >
             <X size={20} />
           </button>
@@ -92,7 +92,7 @@ const SaveLoadModal = ({
             <button
               onClick={() => onExport?.()}
               title="Download the current graph as a file"
-              className="px-4 py-2 bg-gray-700 text-gray-100 rounded hover:bg-gray-600 transition-colors flex items-center gap-2"
+              className="px-4 py-2 bg-gray-700 dark:bg-neutral-700 text-gray-100 dark:text-neutral-100 rounded hover:bg-gray-600 dark:hover:bg-neutral-600 transition-colors flex items-center gap-2"
             >
               <Download size={16} />
               Export
@@ -103,7 +103,7 @@ const SaveLoadModal = ({
         <div className="mb-4">
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="w-full px-4 py-2 bg-gray-800 text-gray-200 rounded hover:bg-gray-700 transition-colors flex items-center justify-center gap-2 border border-gray-600"
+            className="w-full px-4 py-2 bg-gray-800 dark:bg-neutral-800 text-gray-200 dark:text-neutral-200 rounded hover:bg-gray-700 dark:hover:bg-neutral-700 transition-colors flex items-center justify-center gap-2 border border-gray-600 dark:border-neutral-700"
           >
             <Upload size={16} />
             Import from file
@@ -123,10 +123,10 @@ const SaveLoadModal = ({
 
         <div className="space-y-2">
           {savedGraphs.length === 0 ? (
-            <p className="text-gray-400 text-center py-4">No saved graphs yet</p>
+            <p className="text-gray-400 dark:text-neutral-400 text-center py-4">No saved graphs yet</p>
           ) : (
             savedGraphs.map((graph) => (
-              <div key={graph.id} className="bg-gray-800 rounded p-3">
+              <div key={graph.id} className="bg-gray-800 dark:bg-neutral-800 rounded p-3">
                 <div className="flex items-center justify-between mb-2">
                   <h4 className="text-white font-semibold text-sm truncate">
                     {graph.name}
@@ -138,7 +138,7 @@ const SaveLoadModal = ({
                     <X size={16} />
                   </button>
                 </div>
-                <p className="text-gray-400 text-xs mb-2">
+                <p className="text-gray-400 dark:text-neutral-400 text-xs mb-2">
                   {new Date(graph.timestamp).toLocaleDateString()} • {graph.nodes.length} nodes
                 </p>
                 <div className="flex gap-2">
@@ -151,7 +151,7 @@ const SaveLoadModal = ({
                   <button
                     onClick={() => onExport?.(graph)}
                     title="Download this graph as a file"
-                    className="px-3 py-1 bg-gray-700 text-gray-200 rounded hover:bg-gray-600 transition-colors text-sm"
+                    className="px-3 py-1 bg-gray-700 dark:bg-neutral-700 text-gray-200 dark:text-neutral-200 rounded hover:bg-gray-600 dark:hover:bg-neutral-600 transition-colors text-sm"
                   >
                     <Download size={14} />
                   </button>

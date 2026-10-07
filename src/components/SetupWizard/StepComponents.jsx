@@ -27,11 +27,11 @@ export const WelcomeStep = ({ onNext }) => (
             <Compass className="text-blue-600 dark:text-blue-400" size={32} />
         </div>
 
-        <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-100 mb-3">
+        <h1 className="text-2xl font-semibold text-slate-800 dark:text-neutral-100 mb-3">
             Turn conversations into knowledge graphs
         </h1>
 
-        <p className="text-slate-600 dark:text-slate-300 mb-8 leading-relaxed">
+        <p className="text-slate-600 dark:text-neutral-300 mb-8 leading-relaxed">
             graph.ible helps you explore ideas by creating visual, interactive knowledge maps from AI conversations. Let's get you set up in under a minute.
         </p>
 
@@ -50,8 +50,8 @@ export const ChoiceStep = ({ detectionResults, onSelect }) => {
     return (
         <div className="w-full max-w-lg">
             <div className="text-center mb-8">
-                <h3 className="text-lg font-medium text-slate-800 dark:text-slate-100 mb-2">Choose your AI source</h3>
-                <p className="text-slate-600 dark:text-slate-300 text-sm">Pick the option that works best for you</p>
+                <h3 className="text-lg font-medium text-slate-800 dark:text-neutral-100 mb-2">Choose your AI source</h3>
+                <p className="text-slate-600 dark:text-neutral-300 text-sm">Pick the option that works best for you</p>
             </div>
 
             <div className="space-y-3">
@@ -66,15 +66,15 @@ export const ChoiceStep = ({ detectionResults, onSelect }) => {
                         </div>
                         <div className="flex-1">
                             <div className="flex items-center gap-2 mb-2">
-                                <h4 className="font-semibold text-slate-800 dark:text-slate-100">Try the demo</h4>
+                                <h4 className="font-semibold text-slate-800 dark:text-neutral-100">Try the demo</h4>
                                 <span className="px-2 py-1 bg-amber-500 text-white rounded-full text-xs font-medium">
                                     No setup
                                 </span>
                             </div>
-                            <p className="text-slate-600 dark:text-slate-300 text-sm mb-3">
+                            <p className="text-slate-600 dark:text-neutral-300 text-sm mb-3">
                                 Explore with pre-loaded content first. No downloads or setup required.
                             </p>
-                            <div className="flex items-center gap-4 text-xs text-slate-500 dark:text-slate-400">
+                            <div className="flex items-center gap-4 text-xs text-slate-500 dark:text-neutral-400">
                                 <span>✓ Instant start</span>
                                 <span>✓ No downloads</span>
                                 <span>✓ See how it works</span>
@@ -86,39 +86,39 @@ export const ChoiceStep = ({ detectionResults, onSelect }) => {
                 {/* Browser option */}
                 <button
                     onClick={() => onSelect('browser')}
-                    className="w-full p-4 border border-slate-200 dark:border-slate-700 rounded-xl text-left hover:border-slate-300 dark:hover:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
+                    className="w-full p-4 border border-slate-200 dark:border-neutral-800 rounded-xl text-left hover:border-slate-300 dark:hover:border-neutral-700 hover:bg-slate-50 dark:hover:bg-neutral-800 transition-all"
                 >
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-blue-100 dark:bg-blue-500/15 rounded-lg flex items-center justify-center">
                             <Compass className="text-blue-600 dark:text-blue-400" size={20} />
                         </div>
                         <div>
-                            <h4 className="font-medium text-slate-800 dark:text-slate-100">AI in your browser</h4>
-                            <p className="text-slate-600 dark:text-slate-300 text-sm">Private AI that runs in your browser ({DEFAULT_WEBLLM_MODEL_INFO.size} download)</p>
+                            <h4 className="font-medium text-slate-800 dark:text-neutral-100">AI in your browser</h4>
+                            <p className="text-slate-600 dark:text-neutral-300 text-sm">Private AI that runs in your browser ({DEFAULT_WEBLLM_MODEL_INFO.size} download)</p>
                         </div>
                     </div>
                 </button>
 
                 {/* Advanced options - collapsed by default */}
                 <details className="w-full">
-                    <summary className="cursor-pointer p-4 border border-slate-200 dark:border-slate-700 rounded-xl hover:border-slate-300 dark:hover:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">
-                        <span className="font-medium text-slate-700 dark:text-slate-200">Advanced options</span>
-                        <span className="text-slate-500 dark:text-slate-400 text-sm ml-2">For power users</span>
+                    <summary className="cursor-pointer p-4 border border-slate-200 dark:border-neutral-800 rounded-xl hover:border-slate-300 dark:hover:border-neutral-700 hover:bg-slate-50 dark:hover:bg-neutral-800 transition-all">
+                        <span className="font-medium text-slate-700 dark:text-neutral-200">Advanced options</span>
+                        <span className="text-slate-500 dark:text-neutral-400 text-sm ml-2">For power users</span>
                     </summary>
 
                     <div className="mt-2 space-y-2">
                         {/* Cloud option */}
                         <button
                             onClick={() => onSelect('cloud')}
-                            className="w-full p-4 border border-slate-200 dark:border-slate-700 rounded-xl text-left hover:border-slate-300 dark:hover:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
+                            className="w-full p-4 border border-slate-200 dark:border-neutral-800 rounded-xl text-left hover:border-slate-300 dark:hover:border-neutral-700 hover:bg-slate-50 dark:hover:bg-neutral-800 transition-all"
                         >
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 bg-purple-100 dark:bg-purple-500/15 rounded-lg flex items-center justify-center">
                                     <Globe className="text-purple-600 dark:text-purple-400" size={20} />
                                 </div>
                                 <div>
-                                    <h4 className="font-medium text-slate-800 dark:text-slate-100">Cloud AI</h4>
-                                    <p className="text-slate-600 dark:text-slate-300 text-sm">Use Google's AI models (requires API key)</p>
+                                    <h4 className="font-medium text-slate-800 dark:text-neutral-100">Cloud AI</h4>
+                                    <p className="text-slate-600 dark:text-neutral-300 text-sm">Use Google's AI models (requires API key)</p>
                                 </div>
                             </div>
                         </button>
@@ -126,16 +126,16 @@ export const ChoiceStep = ({ detectionResults, onSelect }) => {
                         {/* Local option */}
                         <button
                             onClick={() => onSelect('local')}
-                            className="w-full p-4 border border-slate-200 dark:border-slate-700 rounded-xl text-left hover:border-slate-300 dark:hover:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-full p-4 border border-slate-200 dark:border-neutral-800 rounded-xl text-left hover:border-slate-300 dark:hover:border-neutral-700 hover:bg-slate-50 dark:hover:bg-neutral-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                             disabled={!hasLocal}
                         >
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center">
-                                    <Server className="text-slate-600 dark:text-slate-300" size={20} />
+                                <div className="w-10 h-10 bg-slate-100 dark:bg-neutral-800 rounded-lg flex items-center justify-center">
+                                    <Server className="text-slate-600 dark:text-neutral-300" size={20} />
                                 </div>
                                 <div>
-                                    <h4 className="font-medium text-slate-800 dark:text-slate-100">Local server</h4>
-                                    <p className="text-slate-600 dark:text-slate-300 text-sm">
+                                    <h4 className="font-medium text-slate-800 dark:text-neutral-100">Local server</h4>
+                                    <p className="text-slate-600 dark:text-neutral-300 text-sm">
                                         {hasLocal ? 'Use your Ollama installation' : 'Requires Ollama setup'}
                                     </p>
                                 </div>
@@ -167,8 +167,8 @@ export const ConsentStep = ({ option, consentData, onConsentDecision }) => {
             case 'local':
                 return {
                     title: 'Local AI Setup',
-                    icon: <Server className="text-slate-600 dark:text-slate-300" size={32} />,
-                    iconBg: 'bg-slate-100 dark:bg-slate-800'
+                    icon: <Server className="text-slate-600 dark:text-neutral-300" size={32} />,
+                    iconBg: 'bg-slate-100 dark:bg-neutral-800'
                 };
             default:
                 return {
@@ -187,7 +187,7 @@ export const ConsentStep = ({ option, consentData, onConsentDecision }) => {
                 <div className={`w-16 h-16 mx-auto mb-4 ${details.iconBg} rounded-2xl flex items-center justify-center`}>
                     {details.icon}
                 </div>
-                <h3 className="text-xl font-semibold text-slate-800 dark:text-slate-100 mb-2">{details.title}</h3>
+                <h3 className="text-xl font-semibold text-slate-800 dark:text-neutral-100 mb-2">{details.title}</h3>
             </div>
 
             <div className="space-y-6">
@@ -238,7 +238,7 @@ export const ConsentStep = ({ option, consentData, onConsentDecision }) => {
                 </div>
 
                 {/* Consent Actions */}
-                <div className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 rounded-xl p-6">
+                <div className="bg-white dark:bg-neutral-900 border-2 border-slate-200 dark:border-neutral-800 rounded-xl p-6">
                     <div className="flex gap-3">
                         <button
                             onClick={() => onConsentDecision(true)}
@@ -249,13 +249,13 @@ export const ConsentStep = ({ option, consentData, onConsentDecision }) => {
                         </button>
                         <button
                             onClick={() => onConsentDecision(false)}
-                            className="flex-1 px-6 py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors font-medium"
+                            className="flex-1 px-6 py-3 bg-slate-100 dark:bg-neutral-800 text-slate-700 dark:text-neutral-200 rounded-xl hover:bg-slate-200 dark:hover:bg-neutral-700 transition-colors font-medium"
                         >
                             Go Back
                         </button>
                     </div>
 
-                    <div className="text-xs text-slate-500 dark:text-slate-400 text-center mt-3">
+                    <div className="text-xs text-slate-500 dark:text-neutral-400 text-center mt-3">
                         You'll download your own copy of open source model weights. This is not an executable.
                     </div>
                 </div>
@@ -272,11 +272,11 @@ export const SetupStep = ({ option, apiKey, onApiKeyChange, onSetup, detectionRe
                     <Compass className="text-blue-600 dark:text-blue-400" size={32} />
                 </div>
 
-                <h3 className="text-xl font-semibold text-slate-800 dark:text-slate-100 mb-3">
+                <h3 className="text-xl font-semibold text-slate-800 dark:text-neutral-100 mb-3">
                     Ready to Download In-Browser AI
                 </h3>
 
-                <p className="text-slate-600 dark:text-slate-300 mb-6">
+                <p className="text-slate-600 dark:text-neutral-300 mb-6">
                     Thank you for your consent. The AI model will now download automatically when you continue.
                 </p>
 
@@ -313,13 +313,13 @@ export const SetupStep = ({ option, apiKey, onApiKeyChange, onSetup, detectionRe
                     <div className="w-16 h-16 mx-auto mb-4 bg-purple-100 dark:bg-purple-500/15 rounded-2xl flex items-center justify-center">
                         <Globe className="text-purple-600 dark:text-purple-400" size={32} />
                     </div>
-                    <h3 className="text-xl font-semibold text-slate-800 dark:text-slate-100 mb-2">Connect to Google AI</h3>
-                    <p className="text-slate-600 dark:text-slate-300 text-sm">Enter your API key to get started</p>
+                    <h3 className="text-xl font-semibold text-slate-800 dark:text-neutral-100 mb-2">Connect to Google AI</h3>
+                    <p className="text-slate-600 dark:text-neutral-300 text-sm">Enter your API key to get started</p>
                 </div>
 
                 <div className="space-y-4">
                     <div>
-                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">
+                        <label className="block text-sm font-medium text-slate-700 dark:text-neutral-200 mb-2">
                             Google AI API Key
                         </label>
                         <input
@@ -327,11 +327,11 @@ export const SetupStep = ({ option, apiKey, onApiKeyChange, onSetup, detectionRe
                             value={apiKey}
                             onChange={(e) => onApiKeyChange(e.target.value)}
                             placeholder="Enter your API key..."
-                            className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                            className="w-full px-4 py-3 border border-slate-300 dark:border-neutral-700 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                         />
                     </div>
 
-                    <div className="text-xs text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/50 rounded-lg p-3">
+                    <div className="text-xs text-slate-500 dark:text-neutral-400 bg-slate-50 dark:bg-neutral-800/50 rounded-lg p-3">
                         <div className="font-medium mb-1">Need an API key?</div>
                         <div>Get one free at <span className="text-purple-600 dark:text-purple-400">aistudio.google.com</span></div>
                     </div>
@@ -358,20 +358,20 @@ export const SetupStep = ({ option, apiKey, onApiKeyChange, onSetup, detectionRe
     if (option === 'local') {
         return (
             <div className="text-center max-w-md">
-                <div className="w-16 h-16 mx-auto mb-6 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center">
-                    <Server className="text-slate-600 dark:text-slate-300" size={32} />
+                <div className="w-16 h-16 mx-auto mb-6 bg-slate-100 dark:bg-neutral-800 rounded-2xl flex items-center justify-center">
+                    <Server className="text-slate-600 dark:text-neutral-300" size={32} />
                 </div>
 
-                <h3 className="text-xl font-semibold text-slate-800 dark:text-slate-100 mb-3">
+                <h3 className="text-xl font-semibold text-slate-800 dark:text-neutral-100 mb-3">
                     Connect to Local Ollama
                 </h3>
 
-                <p className="text-slate-600 dark:text-slate-300 mb-6">
+                <p className="text-slate-600 dark:text-neutral-300 mb-6">
                     We found Ollama running on your machine. Ready to connect!
                 </p>
 
-                <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 mb-6 text-left text-sm">
-                    <div className="text-slate-700 dark:text-slate-200 space-y-1">
+                <div className="bg-slate-50 dark:bg-neutral-800/50 rounded-xl p-4 mb-6 text-left text-sm">
+                    <div className="text-slate-700 dark:text-neutral-200 space-y-1">
                         <div>• Server: localhost:11434</div>
                         <div>• Model: {detectionResults?.local?.models?.[0]?.name || 'gemma3:4b'}</div>
                         <div>• Status: Ready</div>
@@ -410,20 +410,20 @@ export const TestingStep = ({ config, isTesting, testResults }) => (
             )}
         </div>
 
-        <h3 className="text-xl font-semibold text-slate-800 dark:text-slate-100 mb-3">
+        <h3 className="text-xl font-semibold text-slate-800 dark:text-neutral-100 mb-3">
             {isTesting ? 'Setting up your AI...' :
                 testResults?.success ? 'Setup complete!' : 'Setup failed'}
         </h3>
 
-        <p className="text-slate-600 dark:text-slate-300 mb-6">
+        <p className="text-slate-600 dark:text-neutral-300 mb-6">
             {isTesting ? 'This may take a few moments' :
                 testResults?.success ? 'Your AI is ready to use' :
                     'Something went wrong during setup'}
         </p>
 
         {config && (
-            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 text-sm">
-                <div className="text-slate-700 dark:text-slate-200">
+            <div className="bg-slate-50 dark:bg-neutral-800/50 rounded-xl p-4 text-sm">
+                <div className="text-slate-700 dark:text-neutral-200">
                     <div className="font-medium mb-2">Configuration:</div>
                     <div>Type: {config.type === 'webllm' ? 'In-Browser AI' :
                         config.type === 'external' ? 'Cloud AI' : 'Local AI'}</div>
@@ -433,7 +433,7 @@ export const TestingStep = ({ config, isTesting, testResults }) => (
         )}
 
         {isTesting && (
-            <div className="flex items-center justify-center gap-2 text-slate-600 dark:text-slate-300 mt-6">
+            <div className="flex items-center justify-center gap-2 text-slate-600 dark:text-neutral-300 mt-6">
                 <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
                 <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
                 <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
@@ -449,11 +449,11 @@ export const SuccessStep = ({ onFinish }) => (
             <CheckCircle className="text-green-600 dark:text-green-400" size={32} />
         </div>
 
-        <h3 className="text-xl font-semibold text-slate-800 dark:text-slate-100 mb-3">
+        <h3 className="text-xl font-semibold text-slate-800 dark:text-neutral-100 mb-3">
             You're all set!
         </h3>
 
-        <p className="text-slate-600 dark:text-slate-300 mb-6">
+        <p className="text-slate-600 dark:text-neutral-300 mb-6">
             Your AI is connected and ready. Start exploring ideas by typing any topic you're curious about.
         </p>
 

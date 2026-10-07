@@ -16,26 +16,26 @@ const ModelDownloadConsent = ({ request, onDecide }) => {
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[300] p-4">
       <div
-        className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md border border-slate-200 dark:border-slate-700"
+        className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-md border border-slate-200 dark:border-neutral-800"
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="model-consent-title"
       >
-        <div className="flex items-start justify-between p-6 border-b border-slate-200 dark:border-slate-700">
+        <div className="flex items-start justify-between p-6 border-b border-slate-200 dark:border-neutral-800">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 bg-blue-100 dark:bg-blue-500/15 rounded-xl flex items-center justify-center flex-shrink-0">
               <Download className="text-blue-600 dark:text-blue-400" size={22} />
             </div>
             <div>
-              <h3 id="model-consent-title" className="text-lg font-semibold text-slate-800 dark:text-slate-100">
+              <h3 id="model-consent-title" className="text-lg font-semibold text-slate-800 dark:text-neutral-100">
                 Download {name}?
               </h3>
-              <p className="text-sm text-slate-600 dark:text-slate-300">{size}, once</p>
+              <p className="text-sm text-slate-600 dark:text-neutral-300">{size}, once</p>
             </div>
           </div>
           <button
             onClick={() => onDecide(false)}
-            className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+            className="text-slate-400 dark:text-neutral-500 hover:text-slate-600 dark:hover:text-neutral-300 p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-neutral-800"
             aria-label="Cancel download"
           >
             <X size={20} />
@@ -43,7 +43,7 @@ const ModelDownloadConsent = ({ request, onDecide }) => {
         </div>
 
         <div className="p-6 space-y-3">
-          <p className="text-sm text-slate-700 dark:text-slate-200">
+          <p className="text-sm text-slate-700 dark:text-neutral-200">
             This model runs entirely in your browser. Downloading it takes a few
             minutes on a typical connection, and only happens once.
           </p>
@@ -63,7 +63,7 @@ const ModelDownloadConsent = ({ request, onDecide }) => {
             </div>
           </div>
 
-          <p className="text-xs text-slate-500 dark:text-slate-400">
+          <p className="text-xs text-slate-500 dark:text-neutral-400">
             Prefer not to? Cancel and pick Demo mode, a cloud model, or a local
             Ollama server from the model menu instead.
           </p>
@@ -78,7 +78,7 @@ const ModelDownloadConsent = ({ request, onDecide }) => {
           </button>
           <button
             onClick={() => onDecide(false)}
-            className="px-6 py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors font-medium"
+            className="px-6 py-3 bg-slate-100 dark:bg-neutral-800 text-slate-700 dark:text-neutral-200 rounded-xl hover:bg-slate-200 dark:hover:bg-neutral-700 transition-colors font-medium"
           >
             Not now
           </button>

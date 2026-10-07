@@ -8,6 +8,7 @@
 
 .dark {
   color-scheme: dark;
+  background-color: #0a0a0a;
 }
 
 
@@ -65,15 +66,15 @@
 }
 
 .dark .overflow-y-auto {
-  scrollbar-color: rgba(100, 116, 139, 0.45) transparent;
+  scrollbar-color: rgba(115, 115, 115, 0.45) transparent;
 }
 
 .dark .overflow-y-auto::-webkit-scrollbar-track {
-  background: rgba(30, 41, 59, 0.5);
+  background: rgba(38, 38, 38, 0.5);
 }
 
 .dark .overflow-y-auto::-webkit-scrollbar-thumb {
-  background: rgba(100, 116, 139, 0.45);
+  background: rgba(115, 115, 115, 0.45);
 }
 
 /* Ensure smooth animations */
@@ -155,23 +156,23 @@ body {
 /* The rules above are unlayered, so they beat Tailwind's dark: utilities on the
    same element; the dark prose has to be spelled out here too. */
 .dark .prose {
-  color: rgb(203, 213, 225);
+  color: rgb(212, 212, 212);
 }
 
 .dark .prose h1, .dark .prose h2, .dark .prose h3,
 .dark .prose h4, .dark .prose h5, .dark .prose h6,
 .dark .prose strong {
-  color: rgb(241, 245, 249);
+  color: rgb(245, 245, 245);
 }
 
 .dark .prose code {
-  background-color: rgba(51, 65, 85, 0.6);
-  color: rgb(226, 232, 240);
+  background-color: rgba(64, 64, 64, 0.55);
+  color: rgb(229, 229, 229);
 }
 
 .dark .prose pre {
-  background-color: rgba(2, 6, 23, 0.5);
-  border-color: rgb(51, 65, 85);
+  background-color: rgba(0, 0, 0, 0.45);
+  border-color: rgb(38, 38, 38);
 }
 
 .dark .prose pre code {
@@ -179,10 +180,10 @@ body {
 }
 
 .dark .prose blockquote {
-  border-left-color: rgb(71, 85, 105);
-  color: rgb(148, 163, 184);
+  border-left-color: rgb(82, 82, 82);
+  color: rgb(163, 163, 163);
 }
 
 .dark .prose hr {
-  border-color: rgb(51, 65, 85);
+  border-color: rgb(38, 38, 38);
 }

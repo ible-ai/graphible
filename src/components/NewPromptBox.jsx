@@ -36,7 +36,7 @@ const NewPromptBox = ({
   }, [includeContext, currentNodeId, nodes, connections]);
 
   const styleEffect = useCallback((nodeId) => {
-    return contextNodeIds.has(nodeId) ? 'bg-blue-500' : 'bg-gray-300';
+    return contextNodeIds.has(nodeId) ? 'bg-blue-500' : 'bg-gray-300 dark:bg-neutral-300';
   }, [contextNodeIds]);
 
   useEffect(() => {
@@ -111,14 +111,14 @@ const NewPromptBox = ({
   return (
     <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center font-inter z-200">
       <div className="w-full max-w-3xl mx-4">
-        <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md rounded-2xl border border-slate-200/50 dark:border-slate-700/50 shadow-xl overflow-hidden">
+        <div className="bg-white/90 dark:bg-neutral-900/90 backdrop-blur-md rounded-2xl border border-slate-200/50 dark:border-neutral-800/50 shadow-xl overflow-hidden">
           {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b border-slate-200/50 dark:border-slate-700/50">
+          <div className="flex items-center justify-between p-6 border-b border-slate-200/50 dark:border-neutral-800/50">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 bg-gradient-to-br from-indigo-100 to-indigo-200 dark:from-indigo-500/20 dark:to-indigo-500/30 rounded-xl flex items-center justify-center">
                 <Sparkles className="text-indigo-600 dark:text-indigo-400" size={16} />
               </div>
-              <h3 className="text-slate-800 dark:text-slate-100 text-lg font-medium">Continue Exploring</h3>
+              <h3 className="text-slate-800 dark:text-neutral-100 text-lg font-medium">Continue Exploring</h3>
               {selectedNodeIds.size > 0 && (
                 <div className="text-sm text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 px-2 py-1 rounded-lg">
                   {selectedNodeIds.size} node{selectedNodeIds.size !== 1 ? 's' : ''} selected
@@ -127,7 +127,7 @@ const NewPromptBox = ({
             </div>
             <button
               onClick={handleClose}
-              className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors p-2 rounded-lg hover:bg-slate-100/50 dark:hover:bg-slate-800/50"
+              className="text-slate-400 dark:text-neutral-500 hover:text-slate-600 dark:hover:text-neutral-300 transition-colors p-2 rounded-lg hover:bg-slate-100/50 dark:hover:bg-neutral-800/50"
               title="Close (ESC)"
             >
               <X size={20} />
@@ -185,7 +185,7 @@ const NewPromptBox = ({
                   {showSelectedPreview && (
                     <div className="max-h-32 overflow-y-auto space-y-2">
                       {selectedNodes.map((node, index) => (
-                        <div key={node.id} className="text-xs bg-white/60 dark:bg-slate-900/60 rounded p-2">
+                        <div key={node.id} className="text-xs bg-white/60 dark:bg-neutral-900/60 rounded p-2">
                           <div className="font-medium text-blue-800 dark:text-blue-200">
                             {index + 1}. {node.label || `Node ${node.id}`}
                           </div>
@@ -202,12 +202,12 @@ const NewPromptBox = ({
 
             {/* Context Controls */}
             <div className="mb-4 space-y-3">
-              <label className="flex items-center text-slate-600 dark:text-slate-300 cursor-pointer group">
+              <label className="flex items-center text-slate-600 dark:text-neutral-300 cursor-pointer group">
                 <input
                   type="checkbox"
                   checked={includeContext}
                   onChange={(e) => setIncludeContext(e.target.checked)}
-                  className="mr-3 rounded border-slate-300 dark:border-slate-600"
+                  className="mr-3 rounded border-slate-300 dark:border-neutral-700"
                 />
                 <span>Include conversation context up to current node</span>
               </label>
@@ -222,12 +222,12 @@ const NewPromptBox = ({
                   </button>
 
                   {showContextPreview && (
-                    <div className="mt-2 p-3 bg-slate-50 dark:bg-slate-800/50 rounded border dark:border-slate-700 text-sm">
+                    <div className="mt-2 p-3 bg-slate-50 dark:bg-neutral-800/50 rounded border dark:border-neutral-800 text-sm">
                       <div className="font-medium mb-1">
                         Context nodes ({contextNodeIds.size} selected):
                       </div>
                       {buildContextUpToNode(currentNodeId, nodes, connections).map((node, i) => (
-                        <div key={node.id} className="flex items-center gap-2 text-slate-600 dark:text-slate-300 py-1">
+                        <div key={node.id} className="flex items-center gap-2 text-slate-600 dark:text-neutral-300 py-1">
                           <div className={`w-2 h-2 rounded-full ${styleEffect(node.id)}`} />
                           <span>{i + 1}. "{node.label}"</span>
                         </div>
@@ -244,7 +244,7 @@ const NewPromptBox = ({
                 value={newPromptInput}
                 onChange={(e) => setNewPromptInput(e.target.value)}
                 placeholder="What would you like to explore next?"
-                className="w-full px-4 py-3 bg-slate-50/50 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/50 rounded-xl text-slate-800 dark:text-slate-100 placeholder-slate-500 text-base focus:border-indigo-300 dark:focus:border-indigo-400/50 focus:bg-white/80 dark:focus:bg-slate-900/80 focus:outline-none transition-all duration-200 shadow-sm resize-none"
+                className="w-full px-4 py-3 bg-slate-50/50 dark:bg-neutral-800/50 border border-slate-200/50 dark:border-neutral-800/50 rounded-xl text-slate-800 dark:text-neutral-100 placeholder-slate-500 text-base focus:border-indigo-300 dark:focus:border-indigo-400/50 focus:bg-white/80 dark:focus:bg-neutral-900/80 focus:outline-none transition-all duration-200 shadow-sm resize-none"
                 rows="3"
                 autoFocus
                 onKeyDown={handleKeyPress}
@@ -253,7 +253,7 @@ const NewPromptBox = ({
 
             {/* Keyboard shortcuts hint */}
             <div className="flex justify-end mb-6">
-              <div className="text-xs text-slate-500 dark:text-slate-400">
+              <div className="text-xs text-slate-500 dark:text-neutral-400">
                 Press Enter to continue • ESC to cancel
               </div>
             </div>
@@ -263,7 +263,7 @@ const NewPromptBox = ({
               <button
                 onClick={handleSubmit}
                 disabled={!newPromptInput.trim() || generationStatus.isGenerating}
-                className="flex-1 px-6 py-3 bg-slate-800 dark:bg-slate-100 text-white dark:text-slate-900 rounded-xl hover:bg-slate-700 dark:hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 transition-all duration-200 font-medium shadow-lg"
+                className="flex-1 px-6 py-3 bg-slate-800 dark:bg-neutral-100 text-white dark:text-neutral-900 rounded-xl hover:bg-slate-700 dark:hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 transition-all duration-200 font-medium shadow-lg"
               >
                 {generationStatus.isGenerating ? (
                   <>
@@ -279,7 +279,7 @@ const NewPromptBox = ({
               </button>
               <button
                 onClick={handleClose}
-                className="px-6 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 transition-all duration-200 font-medium shadow-sm"
+                className="px-6 py-3 bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 text-slate-600 dark:text-neutral-300 rounded-xl hover:bg-slate-50 dark:hover:bg-neutral-800 hover:border-slate-300 dark:hover:border-neutral-700 transition-all duration-200 font-medium shadow-sm"
               >
                 Cancel
               </button>

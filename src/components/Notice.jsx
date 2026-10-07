@@ -12,7 +12,7 @@ const Notice = ({ notice, onDismiss }) => {
 
   return (
     <div
-      className="fixed bottom-6 left-6 max-w-md bg-white dark:bg-slate-900 rounded-2xl border border-rose-200 dark:border-rose-500/30 shadow-xl p-4"
+      className="fixed bottom-6 left-6 max-w-md bg-white dark:bg-neutral-900 rounded-2xl border border-rose-200 dark:border-rose-500/30 shadow-xl p-4"
       style={{ zIndex: Z.MODAL }}
       role="alert"
     >
@@ -21,18 +21,18 @@ const Notice = ({ notice, onDismiss }) => {
           <AlertTriangle className="text-rose-600 dark:text-rose-400" size={16} />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-slate-800 dark:text-slate-100">{notice.title}</p>
+          <p className="text-sm font-medium text-slate-800 dark:text-neutral-100">{notice.title}</p>
           {notice.detail && (
-            <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 break-words">{notice.detail}</p>
+            <p className="text-xs text-slate-600 dark:text-neutral-300 mt-1 break-words">{notice.detail}</p>
           )}
           {notice.hint && (
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">{notice.hint}</p>
+            <p className="text-xs text-slate-500 dark:text-neutral-400 mt-2">{notice.hint}</p>
           )}
         </div>
         <button
           onClick={onDismiss}
           aria-label="Dismiss notice"
-          className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 flex-shrink-0"
+          className="text-slate-400 dark:text-neutral-500 hover:text-slate-600 dark:hover:text-neutral-300 p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-neutral-800 flex-shrink-0"
         >
           <X size={16} />
         </button>

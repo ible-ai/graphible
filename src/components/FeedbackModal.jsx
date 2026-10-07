@@ -55,7 +55,7 @@ const FeedbackModal = ({
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[200]">
       <div
-        className="bg-gray-900 rounded-lg p-6 max-w-md w-full mx-4 border border-gray-600"
+        className="bg-gray-900 dark:bg-neutral-900 rounded-lg p-6 max-w-md w-full mx-4 border border-gray-600 dark:border-neutral-700"
       >
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-white font-bold text-lg">
@@ -63,7 +63,7 @@ const FeedbackModal = ({
           </h3>
           <button
             onClick={handleClose}
-            className="text-gray-400 hover:text-white transition-colors"
+            className="text-gray-400 dark:text-neutral-400 hover:text-white transition-colors"
           >
             <X size={20} />
           </button>
@@ -71,13 +71,13 @@ const FeedbackModal = ({
 
         {quickOptions.length > 0 && (
           <div className="mb-4">
-            <p className="text-gray-300 text-sm mb-2">Quick options:</p>
+            <p className="text-gray-300 dark:text-neutral-300 text-sm mb-2">Quick options:</p>
             <div className="space-y-2">
               {quickOptions.map((option, index) => (
                 <button
                   key={index}
                   onClick={() => handleQuickSubmit(option)}
-                  className="w-full text-left p-2 bg-gray-800 hover:bg-gray-700 rounded text-sm text-white transition-colors"
+                  className="w-full text-left p-2 bg-gray-800 dark:bg-neutral-800 hover:bg-gray-700 dark:hover:bg-neutral-700 rounded text-sm text-white transition-colors"
                 >
                   {option}
                 </button>
@@ -87,7 +87,7 @@ const FeedbackModal = ({
         )}
 
         <div className="mb-4">
-          <label className="block text-gray-300 text-sm mb-2">
+          <label className="block text-gray-300 dark:text-neutral-300 text-sm mb-2">
             Or describe specifically (try mentioning visual preferences like "make it more gothic" or "use red colors"):
           </label>
           <input
@@ -96,7 +96,7 @@ const FeedbackModal = ({
             value={feedbackText}
             onChange={(e) => setFeedbackText(e.target.value)}
             placeholder={isPositive ? "What did you like? Any style preferences?" : "What should be improved? Any visual changes?"}
-            className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none"
+            className="w-full px-3 py-2 bg-gray-800 dark:bg-neutral-800 border border-gray-600 dark:border-neutral-700 rounded text-white placeholder-gray-400 dark:placeholder-neutral-400 focus:border-blue-500 focus:outline-none"
             autoFocus
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
@@ -118,7 +118,7 @@ const FeedbackModal = ({
           </button>
           <button
             onClick={handleClose}
-            className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors"
+            className="px-4 py-2 bg-gray-600 dark:bg-neutral-600 text-white rounded hover:bg-gray-700 dark:hover:bg-neutral-700 transition-colors"
           >
             Cancel
           </button>

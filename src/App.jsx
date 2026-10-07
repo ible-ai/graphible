@@ -504,7 +504,7 @@ const Graphible = () => {
   };
 
   return (
-    <div className="w-screen h-screen relative bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-[#0b1120] font-inter">
+    <div className="w-screen h-screen relative bg-gradient-to-br from-slate-50 to-slate-100 dark:from-neutral-950 dark:to-[#050505] font-inter">
       <GenerationStatusBar
         generationStatus={generationStatus}
         streamingContent={streamingContent}
@@ -539,7 +539,7 @@ const Graphible = () => {
               never rise above the details panel on its own. Raising the header
               itself is what lets the menu's controls stay clickable. */}
           <div
-            className="absolute top-0 left-0 right-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200/50 dark:border-slate-700/50 p-4 shadow-sm"
+            className="absolute top-0 left-0 right-0 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-md border-b border-slate-200/50 dark:border-neutral-800/50 p-4 shadow-sm"
             style={{ zIndex: modelMenuOpen ? Z.DROPDOWN : Z.HEADER }}
           >
             <div className="flex items-center justify-between">
@@ -547,13 +547,13 @@ const Graphible = () => {
                 <div className="flex items-center gap-3">
                   <button
                     onClick={handleReturnToStart}
-                    className="flex items-center gap-2 px-3 py-2 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-100 transition-all duration-200"
+                    className="flex items-center gap-2 px-3 py-2 text-slate-600 dark:text-neutral-300 rounded-lg hover:bg-slate-100 dark:hover:bg-neutral-800 hover:text-slate-800 dark:hover:text-neutral-100 transition-all duration-200"
                     title="Back to the start screen (your graph is kept)"
                     aria-label="Back to the start screen"
                   >
                     <House size={16} />
                   </button>
-                  <h1 className="text-xl font-light text-slate-800 dark:text-slate-100 tracking-tight">graph.ible</h1>
+                  <h1 className="text-xl font-light text-slate-800 dark:text-neutral-100 tracking-tight">graph.ible</h1>
                 </div>
 
                 <ModelSelector
@@ -568,7 +568,7 @@ const Graphible = () => {
               </div>
               <button
                 onClick={() => setShowSetupWizard(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 transition-all duration-200 shadow-sm"
+                className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 text-slate-600 dark:text-neutral-300 rounded-lg hover:bg-slate-50 dark:hover:bg-neutral-800 hover:border-slate-300 dark:hover:border-neutral-700 transition-all duration-200 shadow-sm"
                 style={{ fontSize: '12px' }}
                 title="Reconfigure AI model"
               >
@@ -578,14 +578,14 @@ const Graphible = () => {
 
               <div className="flex items-center gap-3">
                 {/* Mode toggle buttons */}
-                <div className="flex bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-1">
+                <div className="flex bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 rounded-lg p-1">
                   <button
                     onClick={() => {
                       setContextMode('auto');
                     }}
                     className={`flex items-center gap-2 px-3 py-1 rounded-md text-sm transition-all duration-200 ${contextMode === 'auto'
-                      ? 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100'
-                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:hover:text-slate-100'
+                      ? 'bg-slate-100 dark:bg-neutral-800 text-slate-800 dark:text-neutral-100'
+                      : 'text-slate-600 dark:text-neutral-300 hover:text-slate-800 dark:hover:text-neutral-100'
                       }`}
                     title="Normal mode"
                   >
@@ -614,7 +614,7 @@ const Graphible = () => {
                   onClick={toggleResponseMode}
                   className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-all duration-200 shadow-sm ${responseMode === RESPONSE_MODES.SINGLE
                     ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/30 text-emerald-800 dark:text-emerald-200'
-                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
+                    : 'bg-white dark:bg-neutral-900 border-slate-200 dark:border-neutral-800 text-slate-600 dark:text-neutral-300 hover:bg-slate-50 dark:hover:bg-neutral-800'
                     }`}
                   style={{ fontSize: '12px' }}
                   title={`${RESPONSE_MODE_LABELS[responseMode].name}: ${RESPONSE_MODE_LABELS[responseMode].description}. Click to switch.`}
@@ -630,7 +630,7 @@ const Graphible = () => {
                   onClick={applyLayoutOptimizationWithSelection}
                   disabled={nodes.length < 2}
                   style={{ fontSize: '12px' }}
-                  className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 transition-all duration-200 disabled:opacity-50 shadow-sm"
+                  className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 text-slate-600 dark:text-neutral-300 rounded-lg hover:bg-slate-50 dark:hover:bg-neutral-800 hover:border-slate-300 dark:hover:border-neutral-700 transition-all duration-200 disabled:opacity-50 shadow-sm"
                 >
                   <Circle size={16} />
                   Optimize Layout
@@ -638,7 +638,7 @@ const Graphible = () => {
 
                 <button
                   onClick={() => setShowConnectionManager(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 transition-all duration-200 shadow-sm"
+                  className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 text-slate-600 dark:text-neutral-300 rounded-lg hover:bg-slate-50 dark:hover:bg-neutral-800 hover:border-slate-300 dark:hover:border-neutral-700 transition-all duration-200 shadow-sm"
                   style={{ fontSize: '12px' }}
                 >
                   <Link size={16} />
@@ -648,7 +648,7 @@ const Graphible = () => {
                 <button
                   onClick={() => setShowDeletionStore(true)}
                   style={{ fontSize: '12px' }}
-                  className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 transition-all duration-200 shadow-sm"
+                  className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 text-slate-600 dark:text-neutral-300 rounded-lg hover:bg-slate-50 dark:hover:bg-neutral-800 hover:border-slate-300 dark:hover:border-neutral-700 transition-all duration-200 shadow-sm"
                 >
                   <Trash2 size={16} /> Deleted ({deletedNodes.size})
                 </button>
@@ -656,7 +656,7 @@ const Graphible = () => {
                 <button
                   onClick={resetCamera}
                   style={{ fontSize: '12px' }}
-                  className="flex items-center gap-2 px-2 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 transition-all duration-200 shadow-sm"
+                  className="flex items-center gap-2 px-2 py-2 bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 text-slate-600 dark:text-neutral-300 rounded-lg hover:bg-slate-50 dark:hover:bg-neutral-800 hover:border-slate-300 dark:hover:border-neutral-700 transition-all duration-200 shadow-sm"
                 >
                   <RotateCcw size={16} />
                   Reset View
@@ -665,7 +665,7 @@ const Graphible = () => {
                 <button
                   onClick={() => setShowSaveLoad(true)}
                   style={{ fontSize: '12px' }}
-                  className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 transition-all duration-200 shadow-sm"
+                  className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 text-slate-600 dark:text-neutral-300 rounded-lg hover:bg-slate-50 dark:hover:bg-neutral-800 hover:border-slate-300 dark:hover:border-neutral-700 transition-all duration-200 shadow-sm"
                 >
                   <Save size={16} />
                   Save/Load
