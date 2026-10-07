@@ -23,11 +23,11 @@ No TypeScript — `.js`/`.jsx` only. **Node >= 22.22.2** — jsdom 30 accepts on
 startup (`webidl.util.markAsUncloneable is not a function`) before a test runs.
 Both workflows pin Node 24.
 
-**Testing.** `test/` holds 261 Vitest unit tests: the streaming JSON parser, context
+**Testing.** `test/` holds 286 Vitest unit tests: the streaming JSON parser, context
 building, coordinates, clustering, the generation pipeline in `useGraphState`
 (driven with a fake backend emitting the real envelope), the selection and
 manipulation hooks, `BrowserLLMEngine`'s provider dispatch, and the shared
-backend envelope via the demo model. `e2e/` holds 68 Playwright tests that drive a real build in
+backend envelope via the demo model. `e2e/` holds 85 Playwright tests that drive a real build in
 headless Chromium through the demo backend, which needs no Ollama, API key or
 WebGPU — so the graph, camera, node controls and wizard are all exercisable
 offline. Chromium launches with WebGPU enabled, and the browser-model capability
@@ -54,17 +54,17 @@ Push to `main` → `.github/workflows/deploy.yml` builds and deploys to GitHub P
 
 ## Repo map
 
-46 source files under `src/`:
+48 source files under `src/`:
 
 ```
 src/App.jsx               920 lines — the whole app shell; all UI state lives here
 src/main.jsx                        — React root; hides index.html's #loading div
-src/index.css                       — Tailwind + KaTeX imports, hit-test classes, hand-rolled .prose
-src/hooks/          (10)            — camera, graph state, LLM, selection, manipulation, feedback, save/load, keyboard, browser-LLM engine
+src/index.css                       — Tailwind + KaTeX imports, dark variant, hit-test classes, hand-rolled .prose
+src/hooks/          (11)            — camera, graph state, LLM, selection, manipulation, feedback, save/load, keyboard, browser-LLM engine, theme
 src/utils/           (11)            — coordinates, LLM parsing, context building, clustering, wizard helpers, Google/Code Assist auth
 src/constants/       (3)            — graphConstants.jsx, setupWizardConstants.jsx, zLayers.js
 scripts/             (1)            — probe-code-assist.mjs, the live-API probe (see below)
-src/components/     (18)            — Minimap (784) and SetupWizard (825) are the two big ones
+src/components/     (20)            — Minimap (784) and SetupWizard (825) are the two big ones
 ```
 
 Gitignored and unimported: `src/dev/` (7 files; `src/dev/App.jsx` is a stale 1117-line fork of `App.jsx`) and `_src/`. Don't edit them for app changes.
@@ -403,7 +403,7 @@ generating — a kept graph can be returned to, but never appended to.
 
 Persistence is browser-only — there is no server:
 
-- `localStorage` — `graphible-model-config`, `graphible-google-api-key`, `graphible-setup-complete`, `graphible-setup-timestamp`, `graphible-webllm-consent`, `graphible-consent-<option>`. `saveSetupConfig` deliberately strips `apiKey` out of the main config blob and stores it under its own key.
+- `localStorage` — `graphible-model-config`, `graphible-google-api-key`, `graphible-setup-complete`, `graphible-setup-timestamp`, `graphible-webllm-consent`, `graphible-consent-<option>`, `graphible-theme` (only while the theme differs from the OS's). `saveSetupConfig` deliberately strips `apiKey` out of the main config blob and stores it under its own key.
 - `sessionStorage` — `graphible`, the saved-graph list via `useSaveLoad`. **Saved graphs do not survive a browser restart.**
 
 ### 8. Feedback and adaptive UI
@@ -417,6 +417,8 @@ Persistence is browser-only — there is no server:
 ### 9. Styling and page shell
 
 Tailwind v4 via `@tailwindcss/vite`; there is **no `tailwind.config.js`**. Global styles live in `src/index.css`, which imports Tailwind and `katex/dist/katex.min.css`, defines the `.node-component` / `.minimap-container` / `.details-panel` classes that the pointer hit-testing depends on, and **hand-writes the `.prose` rules** used by `NodeDetailsPanel` — `@tailwindcss/typography` is not a dependency, so the `prose-slate` utility class does nothing. Graph and node theming is inline styles from `uiPersonality` + `colorSchemes`, not Tailwind classes.
+
+**Dark mode** is a `dark` class on `<html>`, which `@custom-variant dark` in `index.css` keys Tailwind's `dark:` variant on. `useTheme` sets it from `prefers-color-scheme`, follows OS changes live, and lets the sun/moon `ThemeToggle` (toolbar and start screen) override it in `localStorage`; choosing the OS's own theme clears the override rather than pinning it. An inline script in `index.html` applies the same rule before first paint. Anything painted with inline colors cannot use `dark:`, so it takes a palette from the theme instead: nodes read `darkColorSchemes` (same keys as `colorSchemes`), edges read `EDGE_COLORS`, and the minimap has `MINIMAP_COLORS`. **A new inline color needs a dark value in one of those**, and a new class color needs a `dark:` partner. The unlayered `.prose` rules in `index.css` beat `dark:` utilities on the same element, so dark prose is spelled out there too. Light values were left exactly as they were.
 
 `index.html` paints a dark full-screen `#loading` spinner that `main.jsx` hides once React mounts, and inlines its own scrollbar/body CSS. It also has duplicated `<meta charset>`/`viewport` tags and links two favicon PNGs (`favicon-32x32.png`, `favicon-16x16.png`) that don't exist in `public/` — only `favicon.svg` and `brain-icon.svg` do. `src/App.css` is untouched Vite-template boilerplate imported nowhere.
 
@@ -497,6 +499,13 @@ Verified by reading and by test runs. `git log` has what was fixed and why.
 - `NodeComponent` syncs width/height from props inside a `useMemo` used as an
   effect.
 - 2 `react-hooks/exhaustive-deps` warnings in `SetupWizard`.
+- `NodeComponent`'s current-node and root-node glows append a hex alpha to the
+  scheme color (`${colorScheme.primary}33`), but the light schemes are `rgb()`
+  strings, so the result is invalid CSS and the browser drops the whole
+  `box-shadow`. Light current and root nodes have never had their glow. The
+  dark schemes use hex, so it works there; fixing light would change its look.
+- `react-markdown` runs without `remark-gfm`, so Markdown tables render as
+  pipe-separated text, in either theme.
 - `LLM_CONFIG` still carries a flat backwards-compatibility block that nothing
   reads, and `setupWizardConstants.jsx` exports several unused objects.
 - `App.jsx` is still ~920 lines. The pointer layer is extracted; the model and
