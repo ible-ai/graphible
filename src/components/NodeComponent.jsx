@@ -3,6 +3,7 @@
 import { useState, memo, useMemo, useCallback } from 'react';
 import { Circle, ThumbsUp, ThumbsDown, X } from 'lucide-react';
 import { NODE_SIZE } from '../constants/graphConstants';
+import { withAlpha } from '../utils/colorUtils';
 
 const NodeComponent = memo(({
   node,
@@ -64,42 +65,46 @@ const NodeComponent = memo(({
       // Positioning is handled by parent container
     };
 
-    // Selection styling with glow effect
+    // Selection enlarges the node; its colors come from the scheme below.
     if (isSelected) {
-      baseStyles.borderColor = '#3B82F6';
-      baseStyles.backgroundColor = 'rgba(59, 130, 246, 0.1)';
-      baseStyles.boxShadow = '0 0 0 4px rgba(59, 130, 246, 0.5), 0 0 30px rgba(59, 130, 246, 0.6), 0 12px 40px rgba(59, 130, 246, 0.3)';
       baseStyles.transform = `scale(${isCurrent ? 1.05 : 1.0})`;
     }
+
+    // The root always glows faintly in its own color, and the current node,
+    // root or not, gets a ring and a stronger halo. These used to append a hex
+    // alpha to an rgb() color, which is invalid CSS, so neither ever rendered.
+    const { glow } = colorScheme;
+    const ringAndHalo = (color) =>
+      `0 0 0 3px ${withAlpha(color, glow.ring)}, 0 6px 30px ${withAlpha(color, glow.halo)}`;
 
     // Root node styling
     if (node.type === 'root') {
       baseStyles = {
         ...baseStyles,
         backgroundColor: isSelected
-          ? 'rgba(59, 130, 246, 0.15)'
+          ? colorScheme.selectedRootBg
           : colorScheme.rootBg,
-        borderColor: isSelected ? '#3B82F6' : colorScheme.rootBorder,
+        borderColor: isSelected ? colorScheme.selectedBorder : colorScheme.rootBorder,
         color: colorScheme.rootText,
         boxShadow: isSelected
-          ? '0 0 0 4px rgba(59, 130, 246, 0.5), 0 0 30px rgba(59, 130, 246, 0.6), 0 12px 40px rgba(59, 130, 246, 0.3)'
+          ? colorScheme.selectedShadow
           : (isCurrent
-            ? `0 8px 32px ${colorScheme.rootBorder}40, 0 0 0 2px ${colorScheme.rootBorder}50`
-            : `0 4px 16px ${colorScheme.rootBorder}25`),
+            ? `${colorScheme.lift}, ${ringAndHalo(colorScheme.rootBorder)}`
+            : `${colorScheme.shadow}, 0 0 22px ${withAlpha(colorScheme.rootBorder, glow.rest)}`),
       };
     } else {
       baseStyles = {
         ...baseStyles,
         backgroundColor: isSelected
-          ? 'rgba(59, 130, 246, 0.08)'
-          : (isCurrent ? colorScheme.surface : 'rgba(255, 255, 255, 0.85)'),
-        borderColor: isSelected ? '#3B82F6' : (isCurrent ? colorScheme.primary : colorScheme.border),
+          ? colorScheme.selectedBg
+          : (isCurrent ? colorScheme.surface : colorScheme.surfaceMuted),
+        borderColor: isSelected ? colorScheme.selectedBorder : (isCurrent ? colorScheme.primary : colorScheme.border),
         color: colorScheme.text,
         boxShadow: isSelected
-          ? '0 0 0 4px rgba(59, 130, 246, 0.5), 0 0 30px rgba(59, 130, 246, 0.6), 0 12px 40px rgba(59, 130, 246, 0.3)'
+          ? colorScheme.selectedShadow
           : (isCurrent
-            ? `0 12px 24px rgba(0, 0, 0, 0.08), 0 0 0 2px ${colorScheme.primary}33`
-            : '0 4px 12px rgba(0, 0, 0, 0.04), 0 2px 4px rgba(0, 0, 0, 0.06)'),
+            ? `${colorScheme.lift}, ${ringAndHalo(colorScheme.primary)}`
+            : colorScheme.shadow),
       };
     }
 
@@ -174,7 +179,7 @@ const NodeComponent = memo(({
           {isStreaming && (
             <div className="flex items-center gap-1">
               <Circle className="animate-pulse text-indigo-500" size={8} />
-              <span className="text-xs text-indigo-600 font-medium">Generating...</span>
+              <span className="text-xs text-indigo-600 dark:text-indigo-400 font-medium">Generating...</span>
             </div>
           )}
         </div>
@@ -197,13 +202,13 @@ const NodeComponent = memo(({
 
       {/* Control buttons */}
       {(showControls || isSelected) && (
-        <div className="node-controls absolute top-2 right-2 flex gap-1 bg-white/95 rounded-lg p-1 shadow-lg border border-slate-200">
+        <div className="node-controls absolute top-2 right-2 flex gap-1 bg-white/95 dark:bg-neutral-900/95 rounded-lg p-1 shadow-lg border border-slate-200 dark:border-neutral-800">
           <button
             onClick={(e) => {
               e.stopPropagation();
               onFeedback?.(node.id, true);
             }}
-            className="p-1.5 hover:bg-emerald-100 rounded text-emerald-600 transition-colors"
+            className="p-1.5 hover:bg-emerald-100 dark:hover:bg-emerald-500/15 rounded text-emerald-600 dark:text-emerald-400 transition-colors"
             title="This was helpful"
           >
             <ThumbsUp size={14} />
@@ -213,7 +218,7 @@ const NodeComponent = memo(({
               e.stopPropagation();
               onFeedback?.(node.id, false);
             }}
-            className="p-1.5 hover:bg-amber-100 rounded text-amber-600 transition-colors"
+            className="p-1.5 hover:bg-amber-100 dark:hover:bg-amber-500/15 rounded text-amber-600 dark:text-amber-400 transition-colors"
             title="This needs improvement"
           >
             <ThumbsDown size={14} />
@@ -223,7 +228,7 @@ const NodeComponent = memo(({
               e.stopPropagation();
               onDelete?.(node.id);
             }}
-            className="p-1.5 hover:bg-red-100 rounded text-red-600 transition-colors"
+            className="p-1.5 hover:bg-red-100 dark:hover:bg-red-500/15 rounded text-red-600 dark:text-red-400 transition-colors"
             title="Delete node"
           >
             <X size={14} />
@@ -234,11 +239,11 @@ const NodeComponent = memo(({
       {/* Resize handle */}
       {(showControls || isSelected) && (
         <div
-          className="resize-handle absolute bottom-1 right-1 w-5 h-5 cursor-se-resize bg-slate-300/80 rounded-tl-lg hover:bg-slate-400/80 transition-colors border border-slate-400/50 flex items-center justify-center"
+          className="resize-handle absolute bottom-1 right-1 w-5 h-5 cursor-se-resize bg-slate-300/80 dark:bg-neutral-600/80 rounded-tl-lg hover:bg-slate-400/80 dark:hover:bg-neutral-500/80 transition-colors border border-slate-400/50 dark:border-neutral-600/50 flex items-center justify-center"
           onMouseDown={handleResizeMouseDown}
           title="Resize node"
         >
-          <div className="w-2 h-2 border-r-2 border-b-2 border-slate-600 opacity-60"></div>
+          <div className="w-2 h-2 border-r-2 border-b-2 border-slate-600 dark:border-neutral-300 opacity-60"></div>
         </div>
       )}
 
@@ -252,7 +257,7 @@ const NodeComponent = memo(({
 
       {/* Drag instruction hint */}
       {showControls && (
-        <div className="absolute -bottom-6 left-0 text-xs text-slate-500 bg-white/90 px-2 py-1 rounded shadow-sm whitespace-nowrap">
+        <div className="absolute -bottom-6 left-0 text-xs text-slate-500 dark:text-neutral-400 bg-white/90 dark:bg-neutral-900/90 px-2 py-1 rounded shadow-sm whitespace-nowrap">
           Shift + click to drag
         </div>
       )}
@@ -270,7 +275,10 @@ const NodeComponent = memo(({
     prevProps.isCurrent === nextProps.isCurrent &&
     prevProps.isStreaming === nextProps.isStreaming &&
     prevProps.isSelected === nextProps.isSelected &&
-    prevProps.showPromptCenter === nextProps.showPromptCenter
+    prevProps.showPromptCenter === nextProps.showPromptCenter &&
+    // The light and dark palettes are separate objects, so this is what
+    // repaints the nodes when the theme changes.
+    prevProps.colorScheme === nextProps.colorScheme
   );
 });
 

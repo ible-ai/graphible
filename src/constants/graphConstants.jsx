@@ -10,6 +10,24 @@ export const NODE_SPACING = { x: NODE_SIZE.width * 0.5, y: NODE_SIZE.height * 0.
 // visually distinct from the previous.
 export const RAD_PER_DEPTH = Math.PI / 3;
 
+// The resting (not current) node fill and shadow, the current and root
+// glows, and the selected state.
+// NodeComponent used to hard-code these, which left dark mode no way to
+// replace them.
+const LIGHT_NODE_STATES = {
+  surfaceMuted: 'rgba(255, 255, 255, 0.85)',
+  shadow: '0 4px 12px rgba(0, 0, 0, 0.04), 0 2px 4px rgba(0, 0, 0, 0.06)',
+  selectedBorder: '#3B82F6',
+  selectedBg: 'rgba(59, 130, 246, 0.08)',
+  selectedRootBg: 'rgba(59, 130, 246, 0.15)',
+  selectedShadow: '0 0 0 4px rgba(59, 130, 246, 0.5), 0 0 30px rgba(59, 130, 246, 0.6), 0 12px 40px rgba(59, 130, 246, 0.3)',
+  // The current node's neutral lift, under its colored ring and halo.
+  lift: '0 12px 24px rgba(0, 0, 0, 0.08)',
+  // Alphas for the root and current glows, applied to the scheme's own color:
+  // rest is the root at rest, halo the soft spread, ring the tight outline.
+  glow: { rest: 0.2, halo: 0.3, ring: 0.3 },
+};
+
 export const colorSchemes = {
   default: {
     primary: 'rgb(100, 116, 139)', // slate-500
@@ -28,6 +46,7 @@ export const colorSchemes = {
     rootBg: 'rgba(99, 102, 241, 0.08)', // indigo with transparency
     rootBorder: 'rgb(99, 102, 241)', // indigo-500
     rootText: 'rgb(67, 56, 202)', // indigo-700
+    ...LIGHT_NODE_STATES,
   },
   blue: {
     primary: 'rgb(59, 130, 246)', // blue-500
@@ -45,6 +64,7 @@ export const colorSchemes = {
     rootBg: 'rgba(59, 130, 246, 0.08)',
     rootBorder: 'rgb(59, 130, 246)',
     rootText: 'rgb(30, 58, 138)',
+    ...LIGHT_NODE_STATES,
   },
   purple: {
     primary: 'rgb(139, 92, 246)', // violet-500
@@ -62,6 +82,7 @@ export const colorSchemes = {
     rootBg: 'rgba(139, 92, 246, 0.08)',
     rootBorder: 'rgb(139, 92, 246)',
     rootText: 'rgb(91, 33, 182)',
+    ...LIGHT_NODE_STATES,
   },
   green: {
     primary: 'rgb(34, 197, 94)', // green-500
@@ -79,6 +100,7 @@ export const colorSchemes = {
     rootBg: 'rgba(34, 197, 94, 0.08)',
     rootBorder: 'rgb(34, 197, 94)',
     rootText: 'rgb(20, 83, 45)',
+    ...LIGHT_NODE_STATES,
   },
   orange: {
     primary: 'rgb(249, 115, 22)', // orange-500
@@ -96,7 +118,80 @@ export const colorSchemes = {
     rootBg: 'rgba(249, 115, 22, 0.08)',
     rootBorder: 'rgb(249, 115, 22)',
     rootText: 'rgb(154, 52, 18)',
+    ...LIGHT_NODE_STATES,
   }
+};
+
+// Dark counterparts of colorSchemes, keyed the same. Dark mode is neutral
+// black rather than navy: nodes are raised greys on a near-black canvas, with
+// neutral text and hairline borders. The scheme's hue appears only where it
+// means something: the current node's border, the root's border, both glows,
+// and selection.
+//
+// Fills are close to opaque. Edges run to node centers, and on a dark canvas
+// a translucent node shows the line passing underneath it.
+const DARK_CANVAS = [10, 10, 10];
+const tintOverCanvas = (rgb, amount) => {
+  const mixed = rgb.split(',').map((c, i) =>
+    Math.round(DARK_CANVAS[i] + (Number(c) - DARK_CANVAS[i]) * amount));
+  return `rgba(${mixed.join(', ')}, 0.96)`;
+};
+
+const darkScheme = ({ primary, root = primary }) => ({
+  primary,
+  secondary: primary,
+  accent: primary,
+  bg: 'rgb(10, 10, 10)',
+  surface: 'rgb(30, 30, 30)',
+  surfaceMuted: 'rgba(23, 23, 23, 0.96)',
+  text: 'rgb(229, 229, 229)', // neutral-200
+  textMuted: 'rgb(163, 163, 163)', // neutral-400
+  border: 'rgba(255, 255, 255, 0.1)',
+  success: 'rgb(74, 222, 128)', // green-400
+  warning: 'rgb(251, 191, 36)', // amber-400
+  error: 'rgb(248, 113, 113)', // red-400
+  info: primary,
+  rootBg: 'rgba(28, 28, 28, 0.96)',
+  rootBorder: root,
+  rootText: 'rgb(250, 250, 250)', // neutral-50
+  shadow: '0 4px 14px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.6)',
+  lift: '0 12px 28px rgba(0, 0, 0, 0.6)',
+  // Black swallows a soft halo faster than white does, so the halo and the
+  // resting glow are a touch stronger here, and the ring is brighter.
+  glow: { rest: 0.32, halo: 0.34, ring: 0.4 },
+  selectedBorder: '#3B82F6',
+  selectedBg: tintOverCanvas('59, 130, 246', 0.08),
+  selectedRootBg: tintOverCanvas('59, 130, 246', 0.14),
+  selectedShadow: '0 0 0 3px rgba(59, 130, 246, 0.35), 0 0 22px rgba(59, 130, 246, 0.25), 0 12px 32px rgba(0, 0, 0, 0.6)',
+});
+
+export const darkColorSchemes = {
+  default: darkScheme({ primary: 'rgb(163, 163, 163)', root: 'rgb(129, 140, 248)' }),
+  blue: darkScheme({ primary: 'rgb(96, 165, 250)' }), // blue-400
+  purple: darkScheme({ primary: 'rgb(167, 139, 250)' }), // violet-400
+  green: darkScheme({ primary: 'rgb(74, 222, 128)' }), // green-400
+  orange: darkScheme({ primary: 'rgb(251, 146, 60)' }), // orange-400
+};
+
+// Edges on the canvas: the curve, its arrowhead, and the dots at each end.
+// The ring around each dot is the canvas color, so it reads as a cut-out.
+export const EDGE_COLORS = {
+  light: {
+    stroke: 'rgb(148, 163, 184)', // slate-400
+    opacity: '0.6',
+    start: 'rgb(148, 163, 184)',
+    end: 'rgb(59, 130, 246)', // blue-500
+    ring: 'white',
+    shadow: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1))',
+  },
+  dark: {
+    stroke: 'rgb(115, 115, 115)', // neutral-500
+    opacity: '0.6',
+    start: 'rgb(115, 115, 115)',
+    end: 'rgb(96, 165, 250)', // blue-400
+    ring: 'rgb(10, 10, 10)',
+    shadow: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6))',
+  },
 };
 
 export const ANIMATION_SETTINGS = {

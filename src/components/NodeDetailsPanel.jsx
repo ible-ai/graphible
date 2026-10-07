@@ -115,7 +115,7 @@ const NodeDetailsPanel = ({
   return (
     <div
       ref={panelRef}
-      className="absolute bg-white/90 backdrop-blur-md rounded-2xl border border-slate-200/50 shadow-xl z-50 details-panel font-inter"
+      className="absolute bg-white/90 dark:bg-neutral-900/90 backdrop-blur-md rounded-2xl border border-slate-200/50 dark:border-neutral-800/50 shadow-xl z-50 details-panel font-inter"
       style={{
         left: position.x,
         top: position.y,
@@ -128,20 +128,20 @@ const NodeDetailsPanel = ({
     >
       {/* Header with drag handle */}
       <div
-        className="flex items-center justify-between p-4 border-b border-slate-200/50 cursor-move select-none"
+        className="flex items-center justify-between p-4 border-b border-slate-200/50 dark:border-neutral-800/50 cursor-move select-none"
         onMouseDown={(e) => handleMouseDown(e, 'drag')}
       >
         <div className="flex items-center gap-2 min-w-0">
-          <h3 className="text-slate-800 font-medium text-lg truncate">{nodeDetails.label}</h3>
+          <h3 className="text-slate-800 dark:text-neutral-100 font-medium text-lg truncate">{nodeDetails.label}</h3>
         </div>
         <div className="flex items-center gap-1 flex-shrink-0">
           {siblings.length > 1 && (
-            <div className="flex items-center gap-1 mr-1 text-xs text-slate-500">
+            <div className="flex items-center gap-1 mr-1 text-xs text-slate-500 dark:text-neutral-400">
               <button
                 onClick={() => onNavigateToNode?.(siblings[(siblingIndex - 1 + siblings.length) % siblings.length].id)}
                 aria-label="Previous alternative"
                 title="Previous answer from the same point"
-                className="p-1 rounded hover:bg-slate-100 text-slate-500"
+                className="p-1 rounded hover:bg-slate-100 dark:hover:bg-neutral-800 text-slate-500 dark:text-neutral-400"
               >
                 <ChevronLeft size={16} />
               </button>
@@ -152,7 +152,7 @@ const NodeDetailsPanel = ({
                 onClick={() => onNavigateToNode?.(siblings[(siblingIndex + 1) % siblings.length].id)}
                 aria-label="Next alternative"
                 title="Next answer from the same point"
-                className="p-1 rounded hover:bg-slate-100 text-slate-500"
+                className="p-1 rounded hover:bg-slate-100 dark:hover:bg-neutral-800 text-slate-500 dark:text-neutral-400"
               >
                 <ChevronRight size={16} />
               </button>
@@ -163,8 +163,8 @@ const NodeDetailsPanel = ({
             aria-label={view === 'thread' ? 'Show this node only' : 'Show the whole thread'}
             title={view === 'thread' ? 'Show this node only' : 'Read the whole thread'}
             className={`p-1.5 rounded-lg transition-colors ${view === 'thread'
-              ? 'bg-indigo-100 text-indigo-700'
-              : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}
+              ? 'bg-indigo-100 dark:bg-indigo-500/15 text-indigo-700 dark:text-indigo-300'
+              : 'text-slate-400 dark:text-neutral-500 hover:text-slate-600 dark:hover:text-neutral-300 hover:bg-slate-100 dark:hover:bg-neutral-800'}`}
           >
             <ListTree size={16} />
           </button>
@@ -172,7 +172,7 @@ const NodeDetailsPanel = ({
           onClick={onClose}
           aria-label="Close details"
           title="Close details"
-          className="text-slate-400 hover:text-slate-600 transition-colors p-1 rounded-lg hover:bg-slate-100"
+          className="text-slate-400 dark:text-neutral-500 hover:text-slate-600 dark:hover:text-neutral-300 transition-colors p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-neutral-800"
         >
           <X size={18} />
         </button>
@@ -192,16 +192,16 @@ const NodeDetailsPanel = ({
                 <div
                   key={entry.id}
                   className={`rounded-xl border p-3 ${entry.id === nodeDetails.id
-                    ? 'border-indigo-200 bg-indigo-50/40'
-                    : 'border-slate-200/60 bg-white/60'}`}
+                    ? 'border-indigo-200 dark:border-indigo-500/30 bg-indigo-50/40 dark:bg-indigo-500/10'
+                    : 'border-slate-200/60 dark:border-neutral-800/60 bg-white/60 dark:bg-neutral-900/60'}`}
                 >
                   <button
                     onClick={() => onNavigateToNode?.(entry.id)}
-                    className="text-xs font-medium text-slate-500 hover:text-slate-800 mb-2 block text-left"
+                    className="text-xs font-medium text-slate-500 dark:text-neutral-400 hover:text-slate-800 dark:hover:text-neutral-100 mb-2 block text-left"
                   >
                     {index + 1}. {entry.label}
                   </button>
-                  <div className="text-slate-700 text-sm leading-relaxed prose prose-slate prose-sm max-w-none break-words">
+                  <div className="text-slate-700 dark:text-neutral-200 text-sm leading-relaxed prose prose-slate prose-sm max-w-none break-words">
                     <ReactMarkdown
                       remarkPlugins={[RemarkMathPlugin]}
                       rehypePlugins={[RehypeKatex]}
@@ -211,7 +211,7 @@ const NodeDetailsPanel = ({
               ))}
             </div>
           ) : (
-            <div className="text-slate-700 text-sm leading-relaxed prose prose-slate max-w-none break-words">
+            <div className="text-slate-700 dark:text-neutral-200 text-sm leading-relaxed prose prose-slate max-w-none break-words">
               <ReactMarkdown
                 remarkPlugins={[RemarkMathPlugin]}
                 rehypePlugins={[RehypeKatex]}
@@ -221,8 +221,8 @@ const NodeDetailsPanel = ({
 
           {/* Feedback history for this node */}
           {nodeFeedback.length > 0 && (
-            <div className="mt-4 bg-slate-50/50 rounded-xl p-4 border border-slate-200/30">
-              <p className="text-slate-800 font-medium mb-3 text-sm">Feedback History:</p>
+            <div className="mt-4 bg-slate-50/50 dark:bg-neutral-800/50 rounded-xl p-4 border border-slate-200/30 dark:border-neutral-800/30">
+              <p className="text-slate-800 dark:text-neutral-100 font-medium mb-3 text-sm">Feedback History:</p>
               <div className="space-y-2 max-h-32 overflow-y-auto">
                 {nodeFeedback
                   .slice(-3)
@@ -232,7 +232,7 @@ const NodeDetailsPanel = ({
                         }`}>
                         {feedback.isPositive ? '👍' : '👎'}
                       </span>
-                      <span className="text-slate-600 flex-1 leading-relaxed">{feedback.text}</span>
+                      <span className="text-slate-600 dark:text-neutral-300 flex-1 leading-relaxed">{feedback.text}</span>
                     </div>
                   ))}
               </div>
@@ -241,9 +241,9 @@ const NodeDetailsPanel = ({
         </div>
 
         {selection && onBranchFromQuote && (
-          <div className="border-t border-slate-200/60 bg-indigo-50/60 p-3 flex items-start gap-3">
+          <div className="border-t border-slate-200/60 dark:border-neutral-800/60 bg-indigo-50/60 dark:bg-indigo-500/10 p-3 flex items-start gap-3">
             <MessageSquareQuote size={16} className="text-indigo-500 mt-0.5 flex-shrink-0" />
-            <p className="text-xs text-indigo-900 flex-1 line-clamp-2 break-words">
+            <p className="text-xs text-indigo-900 dark:text-indigo-100 flex-1 line-clamp-2 break-words">
               &ldquo;{selection.length > 140 ? selection.slice(0, 140) + '\u2026' : selection}&rdquo;
             </p>
             <button
@@ -255,7 +255,7 @@ const NodeDetailsPanel = ({
             <button
               onClick={() => setSelection('')}
               aria-label="Dismiss quote"
-              className="text-indigo-400 hover:text-indigo-600 flex-shrink-0"
+              className="text-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-300 flex-shrink-0"
             >
               <X size={14} />
             </button>
@@ -264,7 +264,7 @@ const NodeDetailsPanel = ({
 
         {/* Resize handle */}
         <div
-          className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize bg-slate-200 rounded-tl-lg hover:bg-slate-300 transition-colors"
+          className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize bg-slate-200 dark:bg-neutral-700 rounded-tl-lg hover:bg-slate-300 dark:hover:bg-neutral-600 transition-colors"
           onMouseDown={(e) => handleMouseDown(e, 'resize')}
         >
           <div className="absolute bottom-1 right-1 w-1 h-1 bg-slate-400 rounded-full"></div>

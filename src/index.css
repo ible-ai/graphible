@@ -1,6 +1,16 @@
 @import "tailwindcss";
 @import "katex/dist/katex.min.css";
 
+/* Dark mode is a class on <html>, not a media query, so the toolbar toggle can
+   force either theme. useTheme sets it from the OS preference unless the user
+   has chosen, and index.html sets it before first paint. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+.dark {
+  color-scheme: dark;
+  background-color: #0a0a0a;
+}
+
 
 #root {
   max-width: 100vw;
@@ -53,6 +63,18 @@
 
 .overflow-y-auto::-webkit-scrollbar-thumb:hover {
   background: rgba(148, 163, 184, 0.6);
+}
+
+.dark .overflow-y-auto {
+  scrollbar-color: rgba(115, 115, 115, 0.45) transparent;
+}
+
+.dark .overflow-y-auto::-webkit-scrollbar-track {
+  background: rgba(38, 38, 38, 0.5);
+}
+
+.dark .overflow-y-auto::-webkit-scrollbar-thumb {
+  background: rgba(115, 115, 115, 0.45);
 }
 
 /* Ensure smooth animations */
@@ -130,4 +152,38 @@ body {
   margin: 1.5em 0;
   font-style: italic;
   color: rgb(100, 116, 139);
+}
+/* The rules above are unlayered, so they beat Tailwind's dark: utilities on the
+   same element; the dark prose has to be spelled out here too. */
+.dark .prose {
+  color: rgb(212, 212, 212);
+}
+
+.dark .prose h1, .dark .prose h2, .dark .prose h3,
+.dark .prose h4, .dark .prose h5, .dark .prose h6,
+.dark .prose strong {
+  color: rgb(245, 245, 245);
+}
+
+.dark .prose code {
+  background-color: rgba(64, 64, 64, 0.55);
+  color: rgb(229, 229, 229);
+}
+
+.dark .prose pre {
+  background-color: rgba(0, 0, 0, 0.45);
+  border-color: rgb(38, 38, 38);
+}
+
+.dark .prose pre code {
+  background-color: transparent;
+}
+
+.dark .prose blockquote {
+  border-left-color: rgb(82, 82, 82);
+  color: rgb(163, 163, 163);
+}
+
+.dark .prose hr {
+  border-color: rgb(38, 38, 38);
 }

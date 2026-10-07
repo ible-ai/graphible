@@ -64,17 +64,17 @@ const CodeAssistSignIn = ({ signedIn, onSignedInChange, provider = DEFAULT_PROVI
 
   if (signedIn) {
     return (
-      <div className="flex items-center justify-between gap-3 px-3 py-2.5 bg-emerald-50 border border-emerald-200 rounded-lg">
+      <div className="flex items-center justify-between gap-3 px-3 py-2.5 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 rounded-lg">
         <div className="flex items-center gap-2 min-w-0">
-          <Check size={16} className="text-emerald-600 flex-shrink-0" />
-          <span className="text-sm text-emerald-900 truncate">
+          <Check size={16} className="text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
+          <span className="text-sm text-emerald-900 dark:text-emerald-100 truncate">
             {getAccountEmail(provider) ?? 'Signed in to Google'}
           </span>
         </div>
         <button
           type="button"
           onClick={() => { signOut(provider); onSignedInChange(false); }}
-          className="text-xs text-emerald-700 hover:text-emerald-900 underline flex-shrink-0"
+          className="text-xs text-emerald-700 dark:text-emerald-300 hover:text-emerald-900 dark:hover:text-emerald-100 underline flex-shrink-0"
         >
           Sign out
         </button>
@@ -87,20 +87,20 @@ const CodeAssistSignIn = ({ signedIn, onSignedInChange, provider = DEFAULT_PROVI
       <button
         type="button"
         onClick={openGoogle}
-        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-slate-300 rounded-lg text-slate-700 font-medium hover:bg-slate-50 transition-colors"
+        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-slate-300 dark:border-neutral-700 rounded-lg text-slate-700 dark:text-neutral-200 font-medium hover:bg-slate-50 dark:hover:bg-neutral-800 transition-colors"
       >
         <ExternalLink size={15} />
         Sign in to {AUTH_PROVIDERS[provider].label}
       </button>
 
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-slate-500 dark:text-neutral-400">
         Uses your own Google account&apos;s Gemini allowance. Google&apos;s page will
         name <span className="font-medium">{AUTH_PROVIDERS[provider].label}</span>{' '}
         &mdash; that is the application you are granting access to.
       </p>
 
       {blockedUrl && (
-        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2">
+        <p className="text-xs text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 rounded-lg p-2">
           Your browser blocked the pop-up.{' '}
           <a href={blockedUrl} target="_blank" rel="noreferrer" className="underline font-medium">
             Open the Google sign-in page
@@ -111,7 +111,7 @@ const CodeAssistSignIn = ({ signedIn, onSignedInChange, provider = DEFAULT_PROVI
 
       {stage === 'awaiting-code' && (
         <div className="space-y-2 pt-1">
-          <label className="block text-xs font-medium text-slate-600">
+          <label className="block text-xs font-medium text-slate-600 dark:text-neutral-300">
             Paste the code Google shows you
             <input
               type="text"
@@ -123,7 +123,7 @@ const CodeAssistSignIn = ({ signedIn, onSignedInChange, provider = DEFAULT_PROVI
               }}
               placeholder="4/0AVMBsJ…"
               autoFocus
-              className="mt-1 w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 placeholder-slate-400 focus:border-indigo-500 focus:outline-none"
+              className="mt-1 w-full px-3 py-2 bg-white dark:bg-neutral-900 border border-slate-300 dark:border-neutral-700 rounded-lg text-slate-800 dark:text-neutral-100 placeholder-slate-400 focus:border-indigo-500 focus:outline-none"
             />
           </label>
           <button
@@ -137,7 +137,7 @@ const CodeAssistSignIn = ({ signedIn, onSignedInChange, provider = DEFAULT_PROVI
         </div>
       )}
 
-      {error && <p className="text-xs text-rose-600">{error}</p>}
+      {error && <p className="text-xs text-rose-600 dark:text-rose-400">{error}</p>}
     </div>
   );
 };

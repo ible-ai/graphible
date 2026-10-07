@@ -55,23 +55,23 @@ const DeletionStoreModal = ({
 
     return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[200] font-inter">
-            <div className="bg-white rounded-2xl shadow-xl max-w-4xl w-full mx-4 max-h-[80vh] overflow-hidden">
+            <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-xl max-w-4xl w-full mx-4 max-h-[80vh] overflow-hidden">
                 {/* Header */}
-                <div className="flex items-center justify-between p-6 border-b border-slate-200">
+                <div className="flex items-center justify-between p-6 border-b border-slate-200 dark:border-neutral-800">
                     <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
-                            <Trash2 className="text-red-600" size={16} />
+                        <div className="w-8 h-8 bg-red-100 dark:bg-red-500/15 rounded-lg flex items-center justify-center">
+                            <Trash2 className="text-red-600 dark:text-red-400" size={16} />
                         </div>
                         <div>
-                            <h2 className="text-lg font-semibold text-slate-800">Deleted Nodes</h2>
-                            <p className="text-sm text-slate-600">
+                            <h2 className="text-lg font-semibold text-slate-800 dark:text-neutral-100">Deleted Nodes</h2>
+                            <p className="text-sm text-slate-600 dark:text-neutral-300">
                                 {deletedNodesList.length} deleted node{deletedNodesList.length !== 1 ? 's' : ''}
                             </p>
                         </div>
                     </div>
                     <button
                         onClick={onClose}
-                        className="text-slate-400 hover:text-slate-600 transition-colors p-2 rounded-lg hover:bg-slate-100"
+                        className="text-slate-400 dark:text-neutral-500 hover:text-slate-600 dark:hover:text-neutral-300 transition-colors p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-neutral-800"
                     >
                         <X size={20} />
                     </button>
@@ -79,9 +79,9 @@ const DeletionStoreModal = ({
 
                 {/* Bulk actions */}
                 {selectedItems.size > 0 && (
-                    <div className="p-4 bg-blue-50 border-b border-blue-200">
+                    <div className="p-4 bg-blue-50 dark:bg-blue-500/10 border-b border-blue-200 dark:border-blue-500/30">
                         <div className="flex items-center justify-between">
-                            <span className="text-sm text-blue-800">
+                            <span className="text-sm text-blue-800 dark:text-blue-200">
                                 {selectedItems.size} item{selectedItems.size !== 1 ? 's' : ''} selected
                             </span>
                             <div className="flex gap-2">
@@ -108,9 +108,9 @@ const DeletionStoreModal = ({
                 <div className="p-6 max-h-[60vh] overflow-y-auto">
                     {deletedNodesList.length === 0 ? (
                         <div className="text-center py-12">
-                            <Trash2 className="mx-auto text-slate-300 mb-4" size={48} />
-                            <p className="text-slate-500">No deleted nodes</p>
-                            <p className="text-sm text-slate-400 mt-1">
+                            <Trash2 className="mx-auto text-slate-300 dark:text-neutral-600 mb-4" size={48} />
+                            <p className="text-slate-500 dark:text-neutral-400">No deleted nodes</p>
+                            <p className="text-sm text-slate-400 dark:text-neutral-500 mt-1">
                                 Deleted nodes will appear here for easy restoration
                             </p>
                         </div>
@@ -122,8 +122,8 @@ const DeletionStoreModal = ({
                                     <div
                                         key={item.node.id}
                                         className={`border rounded-xl p-4 transition-all duration-200 ${selectedItems.has(item.node.id)
-                                                ? 'border-blue-300 bg-blue-50'
-                                                : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                                                ? 'border-blue-300 dark:border-blue-500/40 bg-blue-50 dark:bg-blue-500/10'
+                                                : 'border-slate-200 dark:border-neutral-800 hover:border-slate-300 dark:hover:border-neutral-700 hover:bg-slate-50 dark:hover:bg-neutral-800'
                                             }`}
                                     >
                                         <div className="flex items-start gap-4">
@@ -133,7 +133,7 @@ const DeletionStoreModal = ({
                                                     type="checkbox"
                                                     checked={selectedItems.has(item.node.id)}
                                                     onChange={() => toggleSelection(item.node.id)}
-                                                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                                                    className="w-4 h-4 text-blue-600 dark:text-blue-400 rounded focus:ring-blue-500"
                                                 />
                                             </label>
 
@@ -141,10 +141,10 @@ const DeletionStoreModal = ({
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-start justify-between mb-2">
                                                     <div>
-                                                        <h3 className="font-semibold text-slate-800 mb-1">
+                                                        <h3 className="font-semibold text-slate-800 dark:text-neutral-100 mb-1">
                                                             {item.node.label || `Node ${item.node.id}`}
                                                         </h3>
-                                                        <div className="flex items-center gap-4 text-xs text-slate-500">
+                                                        <div className="flex items-center gap-4 text-xs text-slate-500 dark:text-neutral-400">
                                                             <span className="flex items-center gap-1">
                                                                 <Clock size={12} />
                                                                 {formatTimestamp(item.deletedAt)}
@@ -158,7 +158,7 @@ const DeletionStoreModal = ({
                                                     <div className="flex gap-2 ml-4">
                                                         <button
                                                             onClick={() => onRestoreNode(item.node.id)}
-                                                            className="px-3 py-1 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors text-sm flex items-center gap-1"
+                                                            className="px-3 py-1 bg-green-100 dark:bg-green-500/15 text-green-700 dark:text-green-300 rounded-lg hover:bg-green-200 dark:hover:bg-green-500/25 transition-colors text-sm flex items-center gap-1"
                                                         >
                                                             <RotateCcw size={12} />
                                                             Restore
@@ -169,14 +169,14 @@ const DeletionStoreModal = ({
                                                                     onPermanentlyDeleteNode(item.node.id);
                                                                 }
                                                             }}
-                                                            className="px-3 py-1 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors text-sm flex items-center gap-1"
+                                                            className="px-3 py-1 bg-red-100 dark:bg-red-500/15 text-red-700 dark:text-red-300 rounded-lg hover:bg-red-200 dark:hover:bg-red-500/25 transition-colors text-sm flex items-center gap-1"
                                                         >
                                                             <Trash2 size={12} />
                                                             Delete Forever
                                                         </button>
                                                     </div>
                                                 </div>
-                                                <p className="text-sm text-slate-600 line-clamp-2">
+                                                <p className="text-sm text-slate-600 dark:text-neutral-300 line-clamp-2">
                                                     {item.node.description || 'No description'}
                                                 </p>
                                             </div>
@@ -188,14 +188,14 @@ const DeletionStoreModal = ({
                 </div>
 
                 {/* Footer */}
-                <div className="border-t border-slate-200 p-4">
-                    <div className="flex justify-between items-center text-sm text-slate-500">
+                <div className="border-t border-slate-200 dark:border-neutral-800 p-4">
+                    <div className="flex justify-between items-center text-sm text-slate-500 dark:text-neutral-400">
                         <span>
                             Tip: Select multiple nodes to restore or delete them in bulk
                         </span>
                         <button
                             onClick={onClose}
-                            className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors"
+                            className="px-4 py-2 bg-slate-100 dark:bg-neutral-800 text-slate-700 dark:text-neutral-200 rounded-lg hover:bg-slate-200 dark:hover:bg-neutral-700 transition-colors"
                         >
                             Close
                         </button>

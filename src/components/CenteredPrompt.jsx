@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Waypoints, FolderOpen, Zap, Settings, FileText, ArrowLeft } from 'lucide-react';
 import ModelSelector from './ModelSelector';
+import ThemeToggle from './ThemeToggle';
 import { RESPONSE_MODES, RESPONSE_MODE_LABELS } from '../constants/graphConstants';
 
 const CenteredPrompt = ({
@@ -22,6 +23,8 @@ const CenteredPrompt = ({
   webllmLoadState,
   responseMode,
   onToggleResponseMode,
+  isDark = false,
+  onToggleTheme,
 }) => {
   const [inputPrompt, setInputPrompt] = useState(
     'I want to understand the transformer architecture.'
@@ -135,20 +138,23 @@ const CenteredPrompt = ({
 
   if (!showPromptCenter) return null;
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-20 bg-gradient-to-br from-slate-50 to-slate-100 font-inter">
+    <div className="fixed inset-0 flex items-center justify-center z-20 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-neutral-950 dark:to-[#050505] font-inter">
       {/* Model Selector - positioned same as in main interface */}
-      {hasGraph && (
-        <button
-          type="button"
-          onClick={returnToGraph}
-          className="absolute top-6 right-6 z-30 flex items-center gap-2 px-4 py-2 bg-white/80 backdrop-blur-sm border border-slate-200 text-slate-600 rounded-lg hover:bg-white hover:text-slate-800 transition-all duration-200 shadow-sm"
-          style={{ fontSize: '12px' }}
-          title="Return to the graph you were exploring (Esc)"
-        >
-          <ArrowLeft size={16} />
-          Back to graph
-        </button>
-      )}
+      <div className="absolute top-6 right-6 z-30 flex items-center gap-2">
+        {hasGraph && (
+          <button
+            type="button"
+            onClick={returnToGraph}
+            className="flex items-center gap-2 px-4 py-2 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-sm border border-slate-200 dark:border-neutral-800 text-slate-600 dark:text-neutral-300 rounded-lg hover:bg-white dark:hover:bg-neutral-800 hover:text-slate-800 dark:hover:text-neutral-100 transition-all duration-200 shadow-sm"
+            style={{ fontSize: '12px' }}
+            title="Return to the graph you were exploring (Esc)"
+          >
+            <ArrowLeft size={16} />
+            Back to graph
+          </button>
+        )}
+        {onToggleTheme && <ThemeToggle isDark={isDark} onToggle={onToggleTheme} />}
+      </div>
 
       <div className="absolute top-6 left-6 z-30">
         <ModelSelector
@@ -171,34 +177,34 @@ const CenteredPrompt = ({
                transform: `scale(${Math.max(0.9, 1 - getTypingProgress() * 0.1)})`,
                filter: `blur(${getTypingProgress() * 3}px) saturate(${Math.max(0.5, 1 - getTypingProgress() * 0.5)})`
              }}>
-          <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-slate-200 to-slate-300 rounded-2xl shadow-sm flex items-center justify-center transition-all duration-500"
+          <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-slate-200 to-slate-300 dark:from-neutral-700 dark:to-neutral-800 rounded-2xl shadow-sm flex items-center justify-center transition-all duration-500"
                style={{
                  opacity: Math.max(0.2, 1 - getTypingProgress() * 0.8),
                  filter: `blur(${getTypingProgress() * 2}px)`
                }}>
-            <Waypoints className="text-slate-600" size={40} />
+            <Waypoints className="text-slate-600 dark:text-neutral-300" size={40} />
           </div>
-          <h1 className="text-5xl font-medium text-slate-800 mb-4 tracking-tight transition-all duration-700 ease-out"
+          <h1 className="text-5xl font-medium text-slate-800 dark:text-neutral-100 mb-4 tracking-tight transition-all duration-700 ease-out"
               style={{
                 opacity: Math.max(0.1, 1 - getTypingProgress() * 0.9),
                 filter: `blur(${getTypingProgress() * 4}px) contrast(${Math.max(0.3, 1 - getTypingProgress() * 0.7)})`,
                 textShadow: getTypingProgress() > 0.5 ? '0 0 20px rgba(148, 163, 184, 0.3)' : 'none'
               }}>graph.ible</h1>
-          <p className="text-slate-600 text-lg transition-all duration-500"
+          <p className="text-slate-600 dark:text-neutral-300 text-lg transition-all duration-500"
              style={{
                opacity: Math.max(0.2, 1 - getTypingProgress() * 0.8),
                filter: `blur(${getTypingProgress() * 2}px)`
              }}>Follow what makes you curious.</p>
         </div>
 
-        <div className={`w-full bg-white/70 backdrop-blur-sm rounded-2xl p-8 border border-slate-200/50 shadow-lg transition-all duration-500 ${isTyping ? 'shadow-xl bg-white/90 border-slate-300/70' : ''}`}>
+        <div className={`w-full bg-white/70 dark:bg-neutral-900/70 backdrop-blur-sm rounded-2xl p-8 border border-slate-200/50 dark:border-neutral-800/50 shadow-lg transition-all duration-500 ${isTyping ? 'shadow-xl bg-white/90 dark:bg-neutral-900/90 border-slate-300/70 dark:border-neutral-700/70' : ''}`}>
           <div className="mb-6">
             <textarea
               id="main-prompt"
               onChange={handleInputChange}
               value={inputPrompt}
               placeholder="Enter your new prompt here..."
-              className={`w-full px-6 bg-white/80 border border-slate-200/50 rounded-xl text-slate-800 placeholder-slate-500 text-lg focus:border-slate-400 focus:outline-none shadow-sm transition-all duration-300 font-inter resize-none overflow-hidden ${isTyping ? 'bg-white/95 border-slate-300/80' : ''}`}
+              className={`w-full px-6 bg-white/80 dark:bg-neutral-900/80 border border-slate-200/50 dark:border-neutral-800/50 rounded-xl text-slate-800 dark:text-neutral-100 placeholder-slate-500 text-lg focus:border-slate-400 dark:focus:border-neutral-600 focus:outline-none shadow-sm transition-all duration-300 font-inter resize-none overflow-hidden ${isTyping ? 'bg-white/95 dark:bg-neutral-900/95 border-slate-300/80 dark:border-neutral-700/80' : ''}`}
               autoFocus
               onKeyUp={handleKeyPress}
               onFocus={handleInputFocus}
@@ -218,21 +224,21 @@ const CenteredPrompt = ({
           <div className="flex gap-3 mb-6">
             <button
               onClick={() => onSubmit(inputPrompt)}
-              className="flex-1 px-8 py-4 bg-slate-800 text-white rounded-xl hover:bg-slate-700 transition-all duration-200 font-medium flex items-center justify-center gap-3 shadow-lg font-inter"
+              className="flex-1 px-8 py-4 bg-slate-800 dark:bg-neutral-100 text-white dark:text-neutral-900 rounded-xl hover:bg-slate-700 dark:hover:bg-white transition-all duration-200 font-medium flex items-center justify-center gap-3 shadow-lg font-inter"
             >
               <Zap size={20} />
               Start Exploring
             </button>
             <button
               onClick={onShowSaveLoad}
-              className="px-6 py-4 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 hover:border-slate-300 flex items-center gap-3 transition-all duration-200 shadow-sm font-inter"
+              className="px-6 py-4 bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 text-slate-600 dark:text-neutral-300 rounded-xl hover:bg-slate-50 dark:hover:bg-neutral-800 hover:border-slate-300 dark:hover:border-neutral-700 flex items-center gap-3 transition-all duration-200 shadow-sm font-inter"
             >
               <FolderOpen size={18} />
               Load
             </button>
             <button
               onClick={onShowSetupWizard}
-              className="px-6 py-4 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-xl hover:bg-indigo-100 hover:border-indigo-300 flex items-center gap-3 transition-all duration-200 shadow-sm font-inter"
+              className="px-6 py-4 bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/30 text-indigo-700 dark:text-indigo-300 rounded-xl hover:bg-indigo-100 dark:hover:bg-indigo-500/15 hover:border-indigo-300 dark:hover:border-indigo-400/50 flex items-center gap-3 transition-all duration-200 shadow-sm font-inter"
               title="Setup Wizard"
             >
               <Settings size={18} />
@@ -242,19 +248,19 @@ const CenteredPrompt = ({
 
           {onToggleResponseMode && (
             <div className="flex items-center justify-center gap-2 mb-6 text-sm">
-              <span className="text-slate-500">Answers:</span>
+              <span className="text-slate-500 dark:text-neutral-400">Answers:</span>
               <button
                 onClick={onToggleResponseMode}
                 className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all duration-200 ${responseMode === RESPONSE_MODES.SINGLE
-                  ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                  : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                  ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/30 text-emerald-800 dark:text-emerald-200'
+                  : 'bg-white dark:bg-neutral-900 border-slate-200 dark:border-neutral-800 text-slate-600 dark:text-neutral-300 hover:bg-slate-50 dark:hover:bg-neutral-800'
                   }`}
                 title="Click to switch"
               >
                 {responseMode === RESPONSE_MODES.SINGLE ? <FileText size={14} /> : <Waypoints size={14} />}
                 {RESPONSE_MODE_LABELS[responseMode]?.name}
               </button>
-              <span className="text-slate-400">
+              <span className="text-slate-400 dark:text-neutral-500">
                 {RESPONSE_MODE_LABELS[responseMode]?.description}
               </span>
             </div>
@@ -262,17 +268,17 @@ const CenteredPrompt = ({
 
           {/* Connection Status */}
           {llmConnected === 'disconnected' && (
-            <div className="bg-rose-50/50 backdrop-blur-sm rounded-xl p-4 border border-rose-200/30">
+            <div className="bg-rose-50/50 dark:bg-rose-500/10 backdrop-blur-sm rounded-xl p-4 border border-rose-200/30 dark:border-rose-500/30">
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-2 h-2 bg-rose-500 rounded-full shadow-rose-500/50 shadow-sm"></div>
-                <span className="text-rose-700 font-medium text-sm">No model connected</span>
+                <span className="text-rose-700 dark:text-rose-300 font-medium text-sm">No model connected</span>
               </div>
 
-              <div className="text-sm text-slate-600">
+              <div className="text-sm text-slate-600 dark:text-neutral-300">
                 <div className="mb-2">You can still try to generate content, or configure a model first:</div>
                 <button
                   onClick={onShowInstallationGuide}
-                  className="text-indigo-600 hover:text-indigo-500 underline text-sm font-medium inline-block"
+                  className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300 underline text-sm font-medium inline-block"
                 >
                   View setup guide →
                 </button>

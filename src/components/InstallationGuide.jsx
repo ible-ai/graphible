@@ -19,13 +19,13 @@ const InstallationGuide = ({ showGuide, onClose }) => {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[200] p-4">
-      <div className="bg-gray-900 rounded-lg border border-gray-600 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-gray-900 dark:bg-neutral-900 rounded-lg border border-gray-600 dark:border-neutral-700 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-700">
+        <div className="flex items-center justify-between p-6 border-b border-gray-700 dark:border-neutral-800">
           <h2 className="text-2xl font-bold text-white">Setup Guide</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white transition-colors"
+            className="text-gray-400 dark:text-neutral-400 hover:text-white transition-colors"
           >
             <X size={24} />
           </button>
@@ -39,11 +39,11 @@ const InstallationGuide = ({ showGuide, onClose }) => {
               Local Model Setup (Ollama)
             </h3>
 
-            <div className="bg-gray-800/50 rounded-lg p-4 space-y-4">
+            <div className="bg-gray-800/50 dark:bg-neutral-800/50 rounded-lg p-4 space-y-4">
               <div className="space-y-3">
                 <div>
                   <h4 className="text-white font-medium mb-2">1. Install Ollama</h4>
-                  <p className="text-gray-300 text-sm mb-2">
+                  <p className="text-gray-300 dark:text-neutral-300 text-sm mb-2">
                     Download and install Ollama from the official website:
                   </p>
                   <a
@@ -59,11 +59,11 @@ const InstallationGuide = ({ showGuide, onClose }) => {
 
                 <div>
                   <h4 className="text-white font-medium mb-2">2. Start Ollama Server</h4>
-                  <div className="flex items-center gap-2 bg-gray-900 p-3 rounded font-mono text-sm">
+                  <div className="flex items-center gap-2 bg-gray-900 dark:bg-neutral-900 p-3 rounded font-mono text-sm">
                     <code className="text-green-400 flex-1">OLLAMA_ORIGINS=* ollama serve</code>
                     <button
                       onClick={() => copyToClipboard('OLLAMA_ORIGINS=* ollama serve', 'ollama-serve')}
-                      className="text-gray-400 hover:text-white transition-colors"
+                      className="text-gray-400 dark:text-neutral-400 hover:text-white transition-colors"
                       title="Copy command"
                     >
                       {copiedText === 'ollama-serve' ? <Check size={16} /> : <Copy size={16} />}
@@ -79,12 +79,12 @@ const InstallationGuide = ({ showGuide, onClose }) => {
                       { cmd: 'ollama pull gemma3:270m', desc: 'Lightweight · 292MB' },
                       { cmd: 'ollama pull gemma4:e4b', desc: 'Newest · 7GB+ · multimodal' },
                     ].map((model, idx) => (
-                      <div key={idx} className="flex items-center gap-2 bg-gray-900 p-3 rounded">
+                      <div key={idx} className="flex items-center gap-2 bg-gray-900 dark:bg-neutral-900 p-3 rounded">
                         <code className="text-green-400 flex-1 font-mono text-sm">{model.cmd}</code>
-                        <span className="text-gray-400 text-xs">{model.desc}</span>
+                        <span className="text-gray-400 dark:text-neutral-400 text-xs">{model.desc}</span>
                         <button
                           onClick={() => copyToClipboard(model.cmd, `model-${idx}`)}
-                          className="text-gray-400 hover:text-white transition-colors"
+                          className="text-gray-400 dark:text-neutral-400 hover:text-white transition-colors"
                         >
                           {copiedText === `model-${idx}` ? <Check size={16} /> : <Copy size={16} />}
                         </button>
@@ -103,12 +103,12 @@ const InstallationGuide = ({ showGuide, onClose }) => {
               External API Setup (Google AI)
             </h3>
 
-            <div className="bg-gray-800/50 rounded-lg p-4 space-y-4">
+            <div className="bg-gray-800/50 dark:bg-neutral-800/50 rounded-lg p-4 space-y-4">
               <div className="space-y-3">
                 <div>
                   <h4 className="text-white font-medium mb-2">1. Get API Key</h4>
                   <div className="space-y-2">
-                    <p className="text-gray-300 text-sm">
+                    <p className="text-gray-300 dark:text-neutral-300 text-sm">
                       Get your free API key from Google AI Studio:
                     </p>
                     <a
@@ -127,10 +127,10 @@ const InstallationGuide = ({ showGuide, onClose }) => {
                   <h4 className="text-white font-medium mb-2">2. Available Models</h4>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     {GOOGLE_MODEL_LIST.map((model) => (
-                      <div key={model.id} className="bg-gray-900 p-4 rounded border border-gray-700">
+                      <div key={model.id} className="bg-gray-900 dark:bg-neutral-900 p-4 rounded border border-gray-700 dark:border-neutral-800">
                         <h5 className="text-purple-400 font-medium text-sm">{model.name}</h5>
-                        <p className="text-gray-400 text-xs mt-1">{model.description}</p>
-                        <p className="text-gray-500 text-xs mt-2 font-mono">{model.id}</p>
+                        <p className="text-gray-400 dark:text-neutral-400 text-xs mt-1">{model.description}</p>
+                        <p className="text-gray-500 dark:text-neutral-500 text-xs mt-2 font-mono">{model.id}</p>
                       </div>
                     ))}
                   </div>
@@ -142,11 +142,11 @@ const InstallationGuide = ({ showGuide, onClose }) => {
           {/* Troubleshooting */}
           <section>
             <h3 className="text-xl font-semibold text-white mb-4">Troubleshooting</h3>
-            <div className="bg-gray-800/50 rounded-lg p-4">
+            <div className="bg-gray-800/50 dark:bg-neutral-800/50 rounded-lg p-4">
               <div className="space-y-4">
                 <div>
                   <h4 className="text-red-400 font-medium mb-2">Local Connection Issues</h4>
-                  <ul className="text-gray-300 text-sm space-y-1 ml-4">
+                  <ul className="text-gray-300 dark:text-neutral-300 text-sm space-y-1 ml-4">
                     <li>• Ensure Ollama is running with CORS enabled</li>
                     <li>• Check if the model is downloaded</li>
                     <li>• Verify the server address in settings</li>
@@ -156,7 +156,7 @@ const InstallationGuide = ({ showGuide, onClose }) => {
 
                 <div>
                   <h4 className="text-red-400 font-medium mb-2">API Connection Issues</h4>
-                  <ul className="text-gray-300 text-sm space-y-1 ml-4">
+                  <ul className="text-gray-300 dark:text-neutral-300 text-sm space-y-1 ml-4">
                     <li>• Verify your API key is correct</li>
                     <li>• Check internet connection</li>
                     <li>• Ensure selected model is available</li>
@@ -169,7 +169,7 @@ const InstallationGuide = ({ showGuide, onClose }) => {
         </div>
 
         {/* Footer */}
-        <div className="border-t border-gray-700 p-6">
+        <div className="border-t border-gray-700 dark:border-neutral-800 p-6">
           <button
             onClick={onClose}
             className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"

@@ -259,9 +259,9 @@ const ModelSelector = ({
 
     const getStatusColor = () => {
         switch (connectionStatus) {
-            case 'connected': return 'text-emerald-600';
-            case 'pending': return 'text-amber-600';
-            default: return 'text-rose-600';
+            case 'connected': return 'text-emerald-600 dark:text-emerald-400';
+            case 'pending': return 'text-amber-600 dark:text-amber-400';
+            default: return 'text-rose-600 dark:text-rose-400';
         }
     };
 
@@ -289,16 +289,16 @@ const ModelSelector = ({
             {/* Main Button */}
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="flex items-center gap-3 px-4 py-2 bg-white/80 border border-slate-200 rounded-lg text-slate-700 hover:border-slate-300 hover:bg-white transition-all duration-300 shadow-sm"
+                className="flex items-center gap-3 px-4 py-2 bg-white/80 dark:bg-neutral-900/80 border border-slate-200 dark:border-neutral-800 rounded-lg text-slate-700 dark:text-neutral-200 hover:border-slate-300 dark:hover:border-neutral-700 hover:bg-white dark:hover:bg-neutral-800 transition-all duration-300 shadow-sm"
                 style={{
                     boxShadow: isOpen ? '0 0 0 3px rgb(148 163 184 / 0.1)' : undefined,
                 }}
             >
                 <div className="flex items-center gap-2">
                     <DisplayIcon size={16} className={
-                        ['external', 'google-oauth', 'code-assist'].includes(currentModel.type) ? 'text-indigo-600' :
-                            currentModel.type === 'webllm' ? 'text-purple-600' :
-                                'text-slate-600'
+                        ['external', 'google-oauth', 'code-assist'].includes(currentModel.type) ? 'text-indigo-600 dark:text-indigo-400' :
+                            currentModel.type === 'webllm' ? 'text-purple-600 dark:text-purple-400' :
+                                'text-slate-600 dark:text-neutral-300'
                     } />
                     <span className="text-sm font-medium">{getDisplayName()}</span>
                     <div className={`w-2 h-2 rounded-full ${getStatusColor().replace('text-', 'bg-').replace('400', '500')}`} />
@@ -319,16 +319,16 @@ const ModelSelector = ({
                     // laptop screen, and the page itself does not scroll, so an
                     // unbounded panel put "Apply Settings" permanently out of
                     // reach and the chosen model could never be applied.
-                    className="absolute top-full left-0 mt-2 w-96 bg-white border border-slate-200 rounded-xl shadow-xl flex flex-col max-h-[calc(100vh-6rem)]"
+                    className="absolute top-full left-0 mt-2 w-96 bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 rounded-xl shadow-xl flex flex-col max-h-[calc(100vh-6rem)]"
                     style={{ zIndex: Z.DROPDOWN }}
                 >
                     {/* Tab Headers */}
-                    <div className="flex border-b border-slate-200 flex-shrink-0 rounded-t-xl overflow-hidden">
+                    <div className="flex border-b border-slate-200 dark:border-neutral-800 flex-shrink-0 rounded-t-xl overflow-hidden">
                         <button
                             onClick={() => setActiveTab('webllm')}
                             className={`flex-1 px-3 py-3 text-sm font-medium transition-all duration-200 relative ${activeTab === 'webllm'
-                                ? 'text-purple-700 bg-purple-50'
-                                : 'text-slate-600 hover:text-slate-800 hover:bg-slate-50'
+                                ? 'text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-500/10'
+                                : 'text-slate-600 dark:text-neutral-300 hover:text-slate-800 dark:hover:text-neutral-100 hover:bg-slate-50 dark:hover:bg-neutral-800'
                                 }`}
                         >
                             <div className="flex items-center gap-2 justify-center">
@@ -343,8 +343,8 @@ const ModelSelector = ({
                         <button
                             onClick={() => setActiveTab('local')}
                             className={`flex-1 px-4 py-3 text-sm font-medium transition-all duration-200 relative ${activeTab === 'local'
-                                ? 'text-slate-800 bg-slate-50'
-                                : 'text-slate-600 hover:text-slate-800 hover:bg-slate-50'
+                                ? 'text-slate-800 dark:text-neutral-100 bg-slate-50 dark:bg-neutral-800/50'
+                                : 'text-slate-600 dark:text-neutral-300 hover:text-slate-800 dark:hover:text-neutral-100 hover:bg-slate-50 dark:hover:bg-neutral-800'
                                 }`}
                         >
                             <div className="flex items-center gap-2 justify-center z-2">
@@ -359,8 +359,8 @@ const ModelSelector = ({
                         <button
                             onClick={() => setActiveTab('external')}
                             className={`flex-1 px-4 py-3 text-sm font-medium transition-all duration-200 relative ${activeTab === 'external'
-                                ? 'text-indigo-700 bg-indigo-50'
-                                : 'text-slate-600 hover:text-slate-800 hover:bg-slate-50'
+                                ? 'text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-500/10'
+                                : 'text-slate-600 dark:text-neutral-300 hover:text-slate-800 dark:hover:text-neutral-100 hover:bg-slate-50 dark:hover:bg-neutral-800'
                                 }`}
                         >
                             <div className="flex items-center gap-2 justify-center">
@@ -377,12 +377,12 @@ const ModelSelector = ({
                     <div className="p-4 overflow-y-auto flex-1 min-h-0">
                         {activeTab === 'webllm' && (
                             <div className="space-y-4">
-                                <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mb-4">
+                                <div className="bg-purple-50 dark:bg-purple-500/10 border border-purple-200 dark:border-purple-500/30 rounded-lg p-3 mb-4">
                                     <div className="flex items-start gap-2">
-                                        <Compass className="text-purple-600 flex-shrink-0 mt-0.5" size={16} />
+                                        <Compass className="text-purple-600 dark:text-purple-400 flex-shrink-0 mt-0.5" size={16} />
                                         <div>
-                                            <h3 className="font-semibold text-purple-800 mb-1 text-sm">AI in Your Browser</h3>
-                                            <div className="text-purple-700 text-xs space-y-1">
+                                            <h3 className="font-semibold text-purple-800 dark:text-purple-200 mb-1 text-sm">AI in Your Browser</h3>
+                                            <div className="text-purple-700 dark:text-purple-300 text-xs space-y-1">
                                                 <div className="flex items-center gap-1">
                                                     <CheckCircle size={10} />
                                                     <span>No installation required</span>
@@ -401,7 +401,7 @@ const ModelSelector = ({
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                                    <label className="block text-sm font-medium text-slate-700 dark:text-neutral-200 mb-2">
                                         Select Model
                                     </label>
                                     <div className="space-y-2">
@@ -409,31 +409,31 @@ const ModelSelector = ({
                                             <label
                                                 key={modelId}
                                                 className={`flex items-center p-3 border rounded cursor-pointer transition-all duration-200 ${webllmConfig.model === modelId
-                                                    ? 'border-purple-500 bg-purple-50'
-                                                    : 'border-slate-200 hover:border-purple-300 hover:bg-purple-25'
+                                                    ? 'border-purple-500 bg-purple-50 dark:bg-purple-500/10'
+                                                    : 'border-slate-200 dark:border-neutral-800 hover:border-purple-300 dark:hover:border-purple-400/50 hover:bg-purple-25 dark:hover:bg-purple-500/5'
                                                     }`}
                                                 onClick={() => setWebllmConfig(prev => ({ ...prev, model: modelId }))}
                                             >
                                                 <div className="flex-1">
                                                     <div className="flex items-center gap-2 mb-1">
-                                                        <div className="font-medium text-sm text-slate-800">{modelInfo.name}</div>
+                                                        <div className="font-medium text-sm text-slate-800 dark:text-neutral-100">{modelInfo.name}</div>
                                                         {modelInfo.recommended && (
-                                                            <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full text-xs font-medium">
+                                                            <span className="px-2 py-0.5 bg-purple-100 dark:bg-purple-500/15 text-purple-700 dark:text-purple-300 rounded-full text-xs font-medium">
                                                                 Recommended
                                                             </span>
                                                         )}
                                                     </div>
-                                                    <div className="flex items-center gap-3 text-xs text-slate-500">
+                                                    <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-neutral-400">
                                                         <span>Size: {modelInfo.size}</span>
                                                         <span>Performance: {modelInfo.performance}</span>
                                                     </div>
                                                 </div>
                                                 <div className={`w-4 h-4 border-2 rounded-full transition-all duration-200 ${webllmConfig.model === modelId
                                                     ? 'border-purple-500 bg-purple-500'
-                                                    : 'border-slate-300'
+                                                    : 'border-slate-300 dark:border-neutral-700'
                                                     }`}>
                                                     {webllmConfig.model === modelId && (
-                                                        <div className="w-2 h-2 bg-white rounded-full m-0.5" />
+                                                        <div className="w-2 h-2 bg-white dark:bg-neutral-900 rounded-full m-0.5" />
                                                     )}
                                                 </div>
                                             </label>
@@ -441,10 +441,10 @@ const ModelSelector = ({
                                     </div>
                                 </div>
 
-                                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                                <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 rounded-lg p-3">
                                     <div className="flex items-start gap-2">
-                                        <AlertCircle className="text-amber-600 flex-shrink-0 mt-0.5" size={14} />
-                                        <div className="text-amber-700 text-xs">
+                                        <AlertCircle className="text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" size={14} />
+                                        <div className="text-amber-700 dark:text-amber-300 text-xs">
                                             <div className="font-semibold mb-1">Requirements:</div>
                                             <div>• Chrome/Edge 113+, Firefox 141+, or Safari 26+</div>
                                             <div>• First download may take 1-3 minutes</div>
@@ -467,7 +467,7 @@ const ModelSelector = ({
                                         onChange={(e) => setLocalConfig(prev => ({ ...prev, address: e.target.value }))}
                                         onKeyDown={(e) => e.stopPropagation()}
                                         placeholder="http://localhost:11434"
-                                        className="w-full px-3 py-2 bg-white-800 border border-gray-600 rounded text-black placeholder-gray-400 focus:border-blue-500 focus:outline-none transition-all duration-200 group"
+                                        className="w-full px-3 py-2 bg-white-800 dark:bg-neutral-900 border border-gray-600 dark:border-neutral-700 rounded text-black dark:text-neutral-100 placeholder-gray-400 dark:placeholder-neutral-500 focus:border-blue-500 focus:outline-none transition-all duration-200 group"
                                         onFocus={(e) => {
                                             e.target.style.boxShadow = '0 0 15px rgba(59, 130, 246, 0.2)';
                                         }}
@@ -487,7 +487,7 @@ const ModelSelector = ({
                                         onChange={(e) => setLocalConfig(prev => ({ ...prev, model: e.target.value }))}
                                         onKeyDown={(e) => e.stopPropagation()}
                                         placeholder={DEFAULT_MODEL_CONFIG.model}
-                                        className="w-full px-3 py-2 bg-white-800 border border-gray-600 rounded text-black placeholder-gray-400 focus:border-blue-500 focus:outline-none transition-all duration-200"
+                                        className="w-full px-3 py-2 bg-white-800 dark:bg-neutral-900 border border-gray-600 dark:border-neutral-700 rounded text-black dark:text-neutral-100 placeholder-gray-400 dark:placeholder-neutral-500 focus:border-blue-500 focus:outline-none transition-all duration-200"
                                         onFocus={(e) => {
                                             e.target.style.boxShadow = '0 0 15px rgba(59, 130, 246, 0.2)';
                                         }}
@@ -500,8 +500,8 @@ const ModelSelector = ({
                                 <div className="text-xs text-black-400 bg-white-800/50 p-3 rounded">
                                     <div className="font-semibold mb-1">Local Setup Instructions:</div>
                                     <div>1. Install <span className="text-blue-400">Ollama</span></div>
-                                    <div>2. Run: <code className="bg-gray-100 px-1 rounded">OLLAMA_ORIGINS=* ollama serve</code></div>
-                                    <div>3. Pull model: <code className="bg-gray-100 px-1 rounded">ollama pull {LLM_CONFIG.LOCAL.DEFAULT_MODEL}</code></div>
+                                    <div>2. Run: <code className="bg-gray-100 dark:bg-neutral-800 dark:text-neutral-200 px-1 rounded">OLLAMA_ORIGINS=* ollama serve</code></div>
+                                    <div>3. Pull model: <code className="bg-gray-100 dark:bg-neutral-800 dark:text-neutral-200 px-1 rounded">ollama pull {LLM_CONFIG.LOCAL.DEFAULT_MODEL}</code></div>
                                 </div>
                             </div>
                         )}
@@ -514,7 +514,7 @@ const ModelSelector = ({
                                     externalConfig.provider still defaults to 'google'.
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                                    <label className="block text-sm font-medium text-gray-300 dark:text-neutral-300 mb-2">
                                         Provider
                                     </label>
                                     <div className="relative">
@@ -525,7 +525,7 @@ const ModelSelector = ({
                                                 provider: e.target.value,
                                                 model: DEFAULT_MODEL_CONFIGS.EXTERNAL.model // Reset to default model
                                             }))}
-                                            className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded text-white focus:border-purple-500 focus:outline-none transition-all duration-200 appearance-none"
+                                            className="w-full px-3 py-2 bg-gray-800 dark:bg-neutral-800 border border-gray-600 dark:border-neutral-700 rounded text-white focus:border-purple-500 focus:outline-none transition-all duration-200 appearance-none"
                                             onFocus={(e) => {
                                                 e.target.style.boxShadow = '0 0 15px rgba(147, 51, 234, 0.2)';
                                             }}
@@ -535,17 +535,17 @@ const ModelSelector = ({
                                         >
                                             <option value="google">Google AI</option>
                                         </select>
-                                        <ChevronDown size={16} className="absolute right-3 top-3 text-gray-400 pointer-events-none" />
+                                        <ChevronDown size={16} className="absolute right-3 top-3 text-gray-400 dark:text-neutral-400 pointer-events-none" />
                                     </div>
                                 </div>
                                 */}
 
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                                    <label className="block text-sm font-medium text-slate-700 dark:text-neutral-200 mb-2">
                                         Model
                                     </label>
                                     {!modelsAreKnown && (
-                                        <p className="text-xs text-slate-500 mb-2">
+                                        <p className="text-xs text-slate-500 dark:text-neutral-400 mb-2">
                                             {caReady
                                                 ? 'Reading the models on your account\u2026'
                                                 : 'Sign in below and your account\u2019s own models are listed here.'}
@@ -559,7 +559,7 @@ const ModelSelector = ({
                                                 key={model.id}
                                                 className={`flex items-center p-3 border rounded cursor-pointer transition-all duration-200 group ${selectedModel === model.id
                                                     ? 'border-purple-500 bg-purple-500/10 text-purple-300'
-                                                    : 'border-gray-600 hover:border-purple-400 hover:bg-purple-500/5'
+                                                    : 'border-gray-600 dark:border-neutral-700 hover:border-purple-400 hover:bg-purple-500/5'
                                                     }`}
                                                 onMouseEnter={(e) => {
                                                     if (externalConfig.model !== model.id) {
@@ -582,17 +582,17 @@ const ModelSelector = ({
                                                 />
                                                 <div className="flex-1">
                                                     <div className="font-medium text-sm">{model.name}</div>
-                                                    <div className="text-xs text-slate-600">{model.description}</div>
+                                                    <div className="text-xs text-slate-600 dark:text-neutral-300">{model.description}</div>
                                                     {/* The wire id, because the labels are our transliteration of it
                                                         and some of these are internal names Google does not publish. */}
-                                                    <div className="text-[10px] text-slate-400 font-mono mt-0.5">{model.id}</div>
+                                                    <div className="text-[10px] text-slate-400 dark:text-neutral-500 font-mono mt-0.5">{model.id}</div>
                                                 </div>
                                                 <div className={`w-4 h-4 border-2 rounded-full transition-all duration-200 ${selectedModel === model.id
                                                     ? 'border-purple-500 bg-purple-500'
-                                                    : 'border-gray-400'
+                                                    : 'border-gray-400 dark:border-neutral-400'
                                                     }`}>
                                                     {selectedModel === model.id && (
-                                                        <div className="w-2 h-2 bg-white rounded-full m-0.5" />
+                                                        <div className="w-2 h-2 bg-white dark:bg-neutral-900 rounded-full m-0.5" />
                                                     )}
                                                 </div>
                                             </label>
@@ -601,13 +601,13 @@ const ModelSelector = ({
                                 </div>
 
                                 <div className="space-y-3">
-                                    <div className="flex rounded-lg border border-slate-300 overflow-hidden text-sm">
+                                    <div className="flex rounded-lg border border-slate-300 dark:border-neutral-700 overflow-hidden text-sm">
                                         <button
                                             type="button"
                                             onClick={() => setAuthMethod('code-assist')}
                                             className={`flex-1 px-3 py-2 transition-colors ${authMethod === 'code-assist'
                                                 ? 'bg-indigo-600 text-white'
-                                                : 'bg-white text-slate-600 hover:bg-slate-50'}`}
+                                                : 'bg-white dark:bg-neutral-900 text-slate-600 dark:text-neutral-300 hover:bg-slate-50 dark:hover:bg-neutral-800'}`}
                                         >
                                             Google account
                                         </button>
@@ -617,7 +617,7 @@ const ModelSelector = ({
                                                 onClick={() => setAuthMethod('oauth')}
                                                 className={`flex-1 px-3 py-2 transition-colors ${authMethod === 'oauth'
                                                     ? 'bg-indigo-600 text-white'
-                                                    : 'bg-white text-slate-600 hover:bg-slate-50'}`}
+                                                    : 'bg-white dark:bg-neutral-900 text-slate-600 dark:text-neutral-300 hover:bg-slate-50 dark:hover:bg-neutral-800'}`}
                                             >
                                                 Own project
                                             </button>
@@ -627,7 +627,7 @@ const ModelSelector = ({
                                             onClick={() => setAuthMethod('apikey')}
                                             className={`flex-1 px-3 py-2 transition-colors ${authMethod === 'apikey'
                                                 ? 'bg-indigo-600 text-white'
-                                                : 'bg-white text-slate-600 hover:bg-slate-50'}`}
+                                                : 'bg-white dark:bg-neutral-900 text-slate-600 dark:text-neutral-300 hover:bg-slate-50 dark:hover:bg-neutral-800'}`}
                                         >
                                             Use an API key
                                         </button>
@@ -636,7 +636,7 @@ const ModelSelector = ({
                                     {authMethod === 'code-assist' && (
                                         <div className="space-y-3">
                                             {providers.length > 1 && (
-                                                <div className="flex rounded-lg border border-slate-200 overflow-hidden text-xs">
+                                                <div className="flex rounded-lg border border-slate-200 dark:border-neutral-800 overflow-hidden text-xs">
                                                     {providers.map(([key, { label }]) => (
                                                         <button
                                                             key={key}
@@ -644,7 +644,7 @@ const ModelSelector = ({
                                                             onClick={() => setAuthProvider(key)}
                                                             className={`flex-1 px-3 py-1.5 transition-colors ${authProvider === key
                                                                 ? 'bg-slate-800 text-white'
-                                                                : 'bg-white text-slate-600 hover:bg-slate-50'}`}
+                                                                : 'bg-white dark:bg-neutral-900 text-slate-600 dark:text-neutral-300 hover:bg-slate-50 dark:hover:bg-neutral-800'}`}
                                                         >
                                                             {label}
                                                         </button>
@@ -652,7 +652,7 @@ const ModelSelector = ({
                                                 </div>
                                             )}
                                             {antigravityBlocked && (
-                                                <p className="text-xs text-slate-500">
+                                                <p className="text-xs text-slate-500 dark:text-neutral-400">
                                                     Works here. Antigravity&apos;s larger catalogue is served only to its
                                                     own browser, which identifies itself in a header no web page may set
                                                     &mdash; signing in lists whichever models your account actually has.
@@ -673,16 +673,16 @@ const ModelSelector = ({
                                                 type="button"
                                                 onClick={handleGoogleSignIn}
                                                 disabled={signInBusy}
-                                                className="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-slate-700 font-medium hover:bg-slate-50 disabled:opacity-60 transition-colors"
+                                                className="w-full px-4 py-2.5 border border-slate-300 dark:border-neutral-700 rounded-lg text-slate-700 dark:text-neutral-200 font-medium hover:bg-slate-50 dark:hover:bg-neutral-800 disabled:opacity-60 transition-colors"
                                             >
                                                 {signInBusy
                                                     ? 'Opening Google\u2026'
                                                     : signedIn ? 'Signed in \u2713  \u00b7  Switch account' : 'Continue with Google'}
                                             </button>
                                             {signInError && (
-                                                <p className="text-xs text-rose-600">{signInError}</p>
+                                                <p className="text-xs text-rose-600 dark:text-rose-400">{signInError}</p>
                                             )}
-                                            <label className="block text-xs font-medium text-slate-600">
+                                            <label className="block text-xs font-medium text-slate-600 dark:text-neutral-300">
                                                 Google Cloud project ID
                                                 <input
                                                     type="text"
@@ -690,10 +690,10 @@ const ModelSelector = ({
                                                     onChange={(e) => setExternalConfig(prev => ({ ...prev, projectId: e.target.value }))}
                                                     onKeyDown={(e) => e.stopPropagation()}
                                                     placeholder="my-project-123456"
-                                                    className="mt-1 w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 placeholder-slate-400 focus:border-indigo-500 focus:outline-none"
+                                                    className="mt-1 w-full px-3 py-2 bg-white dark:bg-neutral-900 border border-slate-300 dark:border-neutral-700 rounded-lg text-slate-800 dark:text-neutral-100 placeholder-slate-400 focus:border-indigo-500 focus:outline-none"
                                                 />
                                             </label>
-                                            <p className="text-xs text-slate-500">
+                                            <p className="text-xs text-slate-500 dark:text-neutral-400">
                                                 Required. Usage is billed to this project&apos;s Gemini quota,
                                                 and its free tier applies.
                                             </p>
@@ -702,7 +702,7 @@ const ModelSelector = ({
                                 </div>
 
                                 <div className={authMethod === 'apikey' ? '' : 'hidden'}>
-                                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                                    <label className="block text-sm font-medium text-slate-700 dark:text-neutral-200 mb-2">
                                         API Key
                                     </label>
                                     <input
@@ -711,17 +711,17 @@ const ModelSelector = ({
                                         onChange={(e) => setExternalConfig(prev => ({ ...prev, apiKey: e.target.value }))}
                                         onKeyDown={(e) => e.stopPropagation()}
                                         placeholder="Enter your Google AI API key"
-                                        className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 placeholder-slate-500 focus:border-indigo-500 focus:outline-none transition-all duration-200"
+                                        className="w-full px-3 py-2 bg-white dark:bg-neutral-900 border border-slate-300 dark:border-neutral-700 rounded-lg text-slate-800 dark:text-neutral-100 placeholder-slate-500 focus:border-indigo-500 focus:outline-none transition-all duration-200"
                                     />
-                                    <div className="text-xs text-slate-600 mt-1">
-                                        Get your API key from <span className="text-indigo-600 font-medium">Google AI Studio</span>
+                                    <div className="text-xs text-slate-600 dark:text-neutral-300 mt-1">
+                                        Get your API key from <span className="text-indigo-600 dark:text-indigo-400 font-medium">Google AI Studio</span>
                                     </div>
                                 </div>
                             </div>
                         )}
 
                         {/* Action Buttons */}
-                        <div className="flex gap-3 pt-4 border-t border-slate-200 mt-4 sticky bottom-0 bg-white pb-1">
+                        <div className="flex gap-3 pt-4 border-t border-slate-200 dark:border-neutral-800 mt-4 sticky bottom-0 bg-white dark:bg-neutral-900 pb-1">
                             <button
                                 onClick={handleSave}
                                 disabled={
@@ -731,7 +731,7 @@ const ModelSelector = ({
                                     (activeTab === 'local' && (!localConfig.address.trim() || !localConfig.model.trim())) ||
                                     (activeTab === 'webllm' && !webllmConfig.model)
                                 }
-                                className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded font-medium hover:from-blue-500 hover:to-purple-500 disabled:from-gray-600 disabled:to-gray-600 disabled:cursor-not-allowed transition-all duration-200 group relative overflow-hidden"
+                                className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded font-medium hover:from-blue-500 hover:to-purple-500 disabled:from-gray-600 disabled:to-gray-600 dark:disabled:from-neutral-700 dark:disabled:to-neutral-700 disabled:cursor-not-allowed transition-all duration-200 group relative overflow-hidden"
                                 onMouseEnter={(e) => {
                                     if (!e.target.disabled) {
                                         e.target.style.boxShadow = '0 0 20px rgba(59, 130, 246, 0.3)';
@@ -750,7 +750,7 @@ const ModelSelector = ({
 
                             <button
                                 onClick={() => setIsOpen(false)}
-                                className="px-4 py-2 bg-gray-700 text-gray-300 rounded font-medium hover:bg-gray-600 hover:text-white transition-all duration-200"
+                                className="px-4 py-2 bg-gray-700 dark:bg-neutral-700 text-gray-300 dark:text-neutral-200 rounded font-medium hover:bg-gray-600 dark:hover:bg-neutral-600 hover:text-white transition-all duration-200"
                                 onMouseEnter={(e) => {
                                     e.target.style.boxShadow = '0 0 10px rgba(107, 114, 128, 0.2)';
                                 }}

@@ -579,52 +579,52 @@ const SetupWizard = ({
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[200] p-4">
             <div
                 ref={modalRef}
-                className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl border border-slate-200 max-h-[90vh] overflow-y-auto"
+                className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-2xl border border-slate-200 dark:border-neutral-800 max-h-[90vh] overflow-y-auto"
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="setup-wizard-title"
                 aria-describedby="setup-wizard-description"
             >
                 {/* Enhanced Header with Navigation */}
-                <div className="flex items-center justify-between p-6 border-b border-slate-200">
+                <div className="flex items-center justify-between p-6 border-b border-slate-200 dark:border-neutral-800">
                     <div className="flex items-center gap-4">
                         <div className="flex items-center gap-2">
                             {canGoBack && (
                                 <button
                                     onClick={handleBack}
-                                    className="p-2 hover:bg-slate-100 rounded-xl transition-colors"
+                                    className="p-2 hover:bg-slate-100 dark:hover:bg-neutral-800 rounded-xl transition-colors"
                                     title="Go back"
                                 >
-                                    <ArrowLeft size={20} className="text-slate-600" />
+                                    <ArrowLeft size={20} className="text-slate-600 dark:text-neutral-300" />
                                 </button>
                             )}
 
                             <button
                                 onClick={resetWizard}
-                                className="p-2 hover:bg-slate-100 rounded-xl transition-colors"
+                                className="p-2 hover:bg-slate-100 dark:hover:bg-neutral-800 rounded-xl transition-colors"
                                 title="Start over"
                             >
-                                <RotateCcw size={16} className="text-slate-500" />
+                                <RotateCcw size={16} className="text-slate-500 dark:text-neutral-400" />
                             </button>
                         </div>
 
                         <div>
-                            <h2 id="setup-wizard-title" className="text-xl font-semibold text-slate-800">
+                            <h2 id="setup-wizard-title" className="text-xl font-semibold text-slate-800 dark:text-neutral-100">
                                 {SETUP_STEPS_TITLES[currentStep]}
                             </h2>
-                            <div id="setup-wizard-description" className="flex items-center gap-2 text-sm text-slate-500">
+                            <div id="setup-wizard-description" className="flex items-center gap-2 text-sm text-slate-500 dark:text-neutral-400">
                                 <span>Step {accessible.indexOf(currentStep) + 1} of {accessible.length}</span>
                                 {selectedOption && (
-                                    <span className="text-blue-600">• {selectedOption} mode</span>
+                                    <span className="text-blue-600 dark:text-blue-400">• {selectedOption} mode</span>
                                 )}
-                                <span className="text-xs text-slate-400">• Use ← → for navigation</span>
+                                <span className="text-xs text-slate-400 dark:text-neutral-500">• Use ← → for navigation</span>
                             </div>
                         </div>
                     </div>
 
                     <div className="flex items-center gap-4">
                         {/* Progress bar */}
-                        <div className="w-24 h-2 bg-slate-200 rounded-full overflow-hidden">
+                        <div className="w-24 h-2 bg-slate-200 dark:bg-neutral-700 rounded-full overflow-hidden">
                             <div
                                 className="h-full bg-blue-500 transition-all duration-500 ease-out"
                                 style={{ width: `${(accessible.indexOf(currentStep) + 1) / accessible.length * 100}%` }}
@@ -633,16 +633,16 @@ const SetupWizard = ({
 
                         <button
                             onClick={handleClose}
-                            className="p-2 hover:bg-slate-100 rounded-xl transition-colors"
+                            className="p-2 hover:bg-slate-100 dark:hover:bg-neutral-800 rounded-xl transition-colors"
                             title="Close setup"
                         >
-                            <X size={20} className="text-slate-600" />
+                            <X size={20} className="text-slate-600 dark:text-neutral-300" />
                         </button>
                     </div>
                 </div>
 
                 {/* Step Navigation Breadcrumbs */}
-                <div className="px-6 py-3 bg-slate-50 border-b border-slate-200">
+                <div className="px-6 py-3 bg-slate-50 dark:bg-neutral-800/50 border-b border-slate-200 dark:border-neutral-800">
                     <div className="flex items-center gap-2 text-sm overflow-x-auto">
                         {accessible.map((step, index) => {
                             const isCurrentStep = step === currentStep;
@@ -657,17 +657,17 @@ const SetupWizard = ({
                                         className={`px-3 py-1 rounded-lg transition-colors ${isCurrentStep
                                             ? 'bg-blue-500 text-white'
                                             : isCompletedStep
-                                                ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                                                ? 'bg-green-100 dark:bg-green-500/15 text-green-700 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-500/25'
                                                 : isAccessible
-                                                    ? 'bg-slate-200 text-slate-700 hover:bg-slate-300'
-                                                    : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                                                    ? 'bg-slate-200 dark:bg-neutral-700 text-slate-700 dark:text-neutral-200 hover:bg-slate-300 dark:hover:bg-neutral-600'
+                                                    : 'bg-slate-100 dark:bg-neutral-800 text-slate-400 dark:text-neutral-500 cursor-not-allowed'
                                             }`}
                                     >
                                         {SETUP_STEPS_TITLES[step]}
                                         {isCompletedStep && !isCurrentStep && ' ✓'}
                                     </button>
                                     {index < accessible.length - 1 && (
-                                        <ArrowRight size={14} className="text-slate-400" />
+                                        <ArrowRight size={14} className="text-slate-400 dark:text-neutral-500" />
                                     )}
                                 </div>
                             );
@@ -677,15 +677,15 @@ const SetupWizard = ({
 
                 {/* Error Banner */}
                 {error && (
-                    <div className="bg-red-50 border-b border-red-200 p-4 flex items-center gap-3">
-                        <AlertTriangle className="text-red-600 flex-shrink-0" size={20} />
+                    <div className="bg-red-50 dark:bg-red-500/10 border-b border-red-200 dark:border-red-500/30 p-4 flex items-center gap-3">
+                        <AlertTriangle className="text-red-600 dark:text-red-400 flex-shrink-0" size={20} />
                         <div className="flex-1">
-                            <div className="font-medium text-red-800 text-sm">Setup Error</div>
-                            <div className="text-red-600 text-xs">{error}</div>
+                            <div className="font-medium text-red-800 dark:text-red-200 text-sm">Setup Error</div>
+                            <div className="text-red-600 dark:text-red-400 text-xs">{error}</div>
                         </div>
                         <button
                             onClick={() => setError(null)}
-                            className="text-red-400 hover:text-red-600"
+                            className="text-red-400 hover:text-red-600 dark:hover:text-red-300"
                         >
                             <X size={16} />
                         </button>
@@ -742,13 +742,13 @@ const SetupWizard = ({
                 </div>
 
                 {/* Enhanced Footer with Navigation Controls */}
-                <div className="border-t border-slate-200 p-4">
+                <div className="border-t border-slate-200 dark:border-neutral-800 p-4">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                             {canGoBack && (
                                 <button
                                     onClick={handleBack}
-                                    className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                    className="px-4 py-2 bg-slate-100 dark:bg-neutral-800 text-slate-700 dark:text-neutral-200 rounded-lg hover:bg-slate-200 dark:hover:bg-neutral-700 transition-colors focus:ring-2 focus:ring-blue-500 focus:outline-none"
                                     aria-label="Go back to previous step"
                                     title="Go back (←)"
                                 >
@@ -758,7 +758,7 @@ const SetupWizard = ({
 
                             <button
                                 onClick={resetWizard}
-                                className="px-4 py-2 text-slate-500 hover:text-slate-700 transition-colors text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none rounded"
+                                className="px-4 py-2 text-slate-500 dark:text-neutral-400 hover:text-slate-700 dark:hover:text-neutral-200 transition-colors text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none rounded"
                                 aria-label="Start setup over from the beginning"
                                 title="Start over (Ctrl+R)"
                             >
@@ -787,7 +787,7 @@ const SetupWizard = ({
                             ) : (
                                 <button
                                     onClick={handleClose}
-                                    className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                    className="px-4 py-2 bg-slate-100 dark:bg-neutral-800 text-slate-700 dark:text-neutral-200 rounded-lg hover:bg-slate-200 dark:hover:bg-neutral-700 transition-colors focus:ring-2 focus:ring-blue-500 focus:outline-none"
                                     aria-label="Close setup wizard"
                                     title="Close (Escape)"
                                 >
@@ -803,22 +803,22 @@ const SetupWizard = ({
             {showExitConfirm && (
                 <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[210]">
                     <div
-                        className="bg-white rounded-xl p-6 max-w-md mx-4 shadow-2xl"
+                        className="bg-white dark:bg-neutral-900 rounded-xl p-6 max-w-md mx-4 shadow-2xl"
                         role="alertdialog"
                         aria-modal="true"
                         aria-labelledby="exit-confirm-title"
                         aria-describedby="exit-confirm-description"
                     >
-                        <h3 id="exit-confirm-title" className="text-lg font-semibold text-slate-800 mb-3">
+                        <h3 id="exit-confirm-title" className="text-lg font-semibold text-slate-800 dark:text-neutral-100 mb-3">
                             Exit Setup?
                         </h3>
-                        <p id="exit-confirm-description" className="text-slate-600 mb-6">
+                        <p id="exit-confirm-description" className="text-slate-600 dark:text-neutral-300 mb-6">
                             You're in the middle of setting up Graphible. If you exit now, your progress will be lost.
                         </p>
                         <div className="flex gap-3">
                             <button
                                 onClick={() => setShowExitConfirm(false)}
-                                className="flex-1 px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                className="flex-1 px-4 py-2 bg-slate-100 dark:bg-neutral-800 text-slate-700 dark:text-neutral-200 rounded-lg hover:bg-slate-200 dark:hover:bg-neutral-700 transition-colors focus:ring-2 focus:ring-blue-500 focus:outline-none"
                                 autoFocus
                                 aria-label="Continue with setup"
                             >
