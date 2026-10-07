@@ -7,8 +7,9 @@ import { applyClustering, getClusterColor } from '../utils/clusteringUtils';
 import { Z } from '../constants/zLayers';
 
 // SVG fills and strokes, which Tailwind's dark: variant cannot reach. The node
-// glows are drawn at low alpha, so dark mode lifts each hue a step to keep
-// them visible against the navy panel.
+// glows are drawn at low alpha, so dark mode lifts each grey a step to keep
+// them visible on black. Indigo marks only the root, the current node, and
+// the viewport.
 const MINIMAP_COLORS = {
   light: {
     label: 'rgb(51, 65, 85)', // slate-700
@@ -25,17 +26,17 @@ const MINIMAP_COLORS = {
     },
   },
   dark: {
-    label: 'rgb(226, 232, 240)', // slate-200
-    labelHalo: 'rgba(2,6,23,0.9)',
-    edge: 'rgb(71, 85, 105)', // slate-600
+    label: 'rgb(229, 229, 229)', // neutral-200
+    labelHalo: 'rgba(0,0,0,0.9)',
+    edge: 'rgb(82, 82, 82)', // neutral-600
     accent: 'rgb(129, 140, 248)', // indigo-400
     accentRgb: '129, 140, 248',
     nodes: {
       root: 'rgb(129, 140, 248)', // indigo-400
-      concept: 'rgb(203, 213, 225)', // slate-300
-      example: 'rgb(209, 213, 219)', // gray-300
-      detail: 'rgb(203, 213, 225)', // slate-300
-      default: 'rgb(209, 213, 219)' // gray-300
+      concept: 'rgb(212, 212, 212)', // neutral-300
+      example: 'rgb(212, 212, 212)',
+      detail: 'rgb(212, 212, 212)',
+      default: 'rgb(212, 212, 212)'
     },
   },
 };
@@ -396,7 +397,7 @@ const Minimap = ({
 
   return (
     <div
-      className="absolute bottom-6 right-6 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md rounded-2xl border border-slate-200/50 dark:border-slate-700/50 transition-all duration-300 minimap-container shadow-lg font-inter"
+      className="absolute bottom-6 right-6 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-md rounded-2xl border border-slate-200/50 dark:border-neutral-800/50 transition-all duration-300 minimap-container shadow-lg font-inter"
       style={{
         width: minimapExpanded ? 600 : 280,
         height: minimapExpanded ? 400 : 200,
@@ -406,32 +407,32 @@ const Minimap = ({
       onClick={(e) => e.stopPropagation()}
     >
       <div
-        className="p-4 flex items-center justify-between border-b border-slate-200/50 dark:border-slate-700/50 rounded-t-2xl transition-colors duration-200"
+        className="p-4 flex items-center justify-between border-b border-slate-200/50 dark:border-neutral-800/50 rounded-t-2xl transition-colors duration-200"
       >
         <span
-          className="text-slate-800 dark:text-slate-100 text-sm font-medium cursor-pointer hover:bg-slate-50/50 dark:hover:bg-slate-800/50 px-2 py-1 rounded transition-colors"
+          className="text-slate-800 dark:text-neutral-100 text-sm font-medium cursor-pointer hover:bg-slate-50/50 dark:hover:bg-neutral-800/50 px-2 py-1 rounded transition-colors"
           onClick={() => setMinimapExpanded(!minimapExpanded)}
         >
           Graph Overview
         </span>
         <div className="flex items-center gap-3">
-          <span className="text-xs text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-md">
+          <span className="text-xs text-slate-600 dark:text-neutral-300 bg-slate-100 dark:bg-neutral-800 px-2 py-1 rounded-md">
             {nodes.length} nodes
           </span>
           {minimapExpanded && (
             <>
-              <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 rounded-md p-1">
+              <div className="flex items-center gap-1 bg-slate-100 dark:bg-neutral-800 rounded-md p-1">
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     setMinimapZoom(prev => Math.max(0.5, prev * 0.8));
                   }}
-                  className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-600 dark:text-slate-300 transition-colors"
+                  className="p-1 hover:bg-slate-200 dark:hover:bg-neutral-700 rounded text-slate-600 dark:text-neutral-300 transition-colors"
                   title="Zoom out"
                 >
                   <ZoomOut size={12} />
                 </button>
-                <span className="text-xs text-slate-600 dark:text-slate-300 px-1 min-w-[32px] text-center">
+                <span className="text-xs text-slate-600 dark:text-neutral-300 px-1 min-w-[32px] text-center">
                   {Math.round(minimapZoom * 100)}%
                 </span>
                 <button
@@ -439,21 +440,21 @@ const Minimap = ({
                     e.stopPropagation();
                     setMinimapZoom(prev => Math.min(3.0, prev * 1.25));
                   }}
-                  className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-600 dark:text-slate-300 transition-colors"
+                  className="p-1 hover:bg-slate-200 dark:hover:bg-neutral-700 rounded text-slate-600 dark:text-neutral-300 transition-colors"
                   title="Zoom in"
                 >
                   <ZoomIn size={12} />
                 </button>
               </div>
-              <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 rounded-md p-1">
-                <Layers size={12} className="text-slate-600 dark:text-slate-300" />
+              <div className="flex items-center gap-1 bg-slate-100 dark:bg-neutral-800 rounded-md p-1">
+                <Layers size={12} className="text-slate-600 dark:text-neutral-300" />
                 <select
                   value={clusteringMode}
                   onChange={(e) => {
                     e.stopPropagation();
                     setClusteringMode(e.target.value);
                   }}
-                  className="text-xs bg-transparent text-slate-600 dark:text-slate-300 border-none outline-none cursor-pointer"
+                  className="text-xs bg-transparent text-slate-600 dark:text-neutral-300 border-none outline-none cursor-pointer"
                   title="Clustering mode"
                 >
                   <option value="none">None</option>
@@ -467,12 +468,12 @@ const Minimap = ({
           )}
           <button
             onClick={() => setMinimapExpanded(!minimapExpanded)}
-            className="p-1 hover:bg-slate-50/50 dark:hover:bg-slate-800/50 rounded transition-colors"
+            className="p-1 hover:bg-slate-50/50 dark:hover:bg-neutral-800/50 rounded transition-colors"
             title={minimapExpanded ? "Minimize" : "Maximize"}
           >
             {minimapExpanded ?
-              <Minimize2 size={16} className="text-slate-600 dark:text-slate-300" /> :
-              <Maximize2 size={16} className="text-slate-600 dark:text-slate-300" />
+              <Minimize2 size={16} className="text-slate-600 dark:text-neutral-300" /> :
+              <Maximize2 size={16} className="text-slate-600 dark:text-neutral-300" />
             }
           </button>
         </div>

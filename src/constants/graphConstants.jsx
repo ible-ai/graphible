@@ -122,59 +122,55 @@ export const colorSchemes = {
   }
 };
 
-// Dark counterparts of colorSchemes, keyed the same. Nodes sit on a deep navy
-// canvas, so the surface is a raised slate, text is the hue's lightest tint,
-// and borders are the accent at low alpha rather than a pale solid. Colors
-// that NodeComponent suffixes with a two-digit alpha (primary, rootBorder) are
-// hex, so the suffixed value is still a valid color.
+// Dark counterparts of colorSchemes, keyed the same. Dark mode is neutral
+// black rather than navy: nodes are raised greys on a near-black canvas, with
+// neutral text and hairline borders. The scheme's hue appears only where it
+// means something: the current node's border, the root's border, both glows,
+// and selection.
 //
 // Fills are close to opaque. Edges run to node centers, and on a dark canvas
 // a translucent node shows the line passing underneath it.
-const DARK_CANVAS = [15, 23, 42]; // slate-900
+const DARK_CANVAS = [10, 10, 10];
 const tintOverCanvas = (rgb, amount) => {
   const mixed = rgb.split(',').map((c, i) =>
     Math.round(DARK_CANVAS[i] + (Number(c) - DARK_CANVAS[i]) * amount));
-  return `rgba(${mixed.join(', ')}, 0.95)`;
+  return `rgba(${mixed.join(', ')}, 0.96)`;
 };
 
-const darkScheme = ({ primary, rgb, text, root = primary, rootRgb = rgb, rootText }) => ({
+const darkScheme = ({ primary, root = primary }) => ({
   primary,
   secondary: primary,
   accent: primary,
-  bg: 'rgb(11, 17, 32)',
-  surface: 'rgb(30, 41, 59)', // slate-800
-  surfaceMuted: 'rgba(30, 41, 59, 0.95)',
-  text,
-  textMuted: 'rgb(148, 163, 184)', // slate-400
-  border: `rgba(${rgb}, 0.28)`,
+  bg: 'rgb(10, 10, 10)',
+  surface: 'rgb(30, 30, 30)',
+  surfaceMuted: 'rgba(23, 23, 23, 0.96)',
+  text: 'rgb(229, 229, 229)', // neutral-200
+  textMuted: 'rgb(163, 163, 163)', // neutral-400
+  border: 'rgba(255, 255, 255, 0.1)',
   success: 'rgb(74, 222, 128)', // green-400
   warning: 'rgb(251, 191, 36)', // amber-400
   error: 'rgb(248, 113, 113)', // red-400
   info: primary,
-  rootBg: tintOverCanvas(rootRgb, 0.16),
+  rootBg: 'rgba(28, 28, 28, 0.96)',
   rootBorder: root,
-  rootText,
-  shadow: '0 4px 14px rgba(2, 6, 23, 0.45), 0 1px 2px rgba(2, 6, 23, 0.6)',
+  rootText: 'rgb(250, 250, 250)', // neutral-50
+  shadow: '0 4px 14px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.6)',
   lift: '0 12px 28px rgba(0, 0, 0, 0.6)',
   // Black swallows a soft halo faster than white does, so the halo and the
   // resting glow are a touch stronger here, and the ring is brighter.
   glow: { rest: 0.32, halo: 0.34, ring: 0.4 },
-  // The light glow reads as neon on navy; a tighter ring says the same thing.
   selectedBorder: '#3B82F6',
-  selectedBg: tintOverCanvas('59, 130, 246', 0.14),
-  selectedRootBg: tintOverCanvas('59, 130, 246', 0.24),
-  selectedShadow: '0 0 0 3px rgba(59, 130, 246, 0.35), 0 0 22px rgba(59, 130, 246, 0.3), 0 12px 32px rgba(2, 6, 23, 0.6)',
+  selectedBg: tintOverCanvas('59, 130, 246', 0.08),
+  selectedRootBg: tintOverCanvas('59, 130, 246', 0.14),
+  selectedShadow: '0 0 0 3px rgba(59, 130, 246, 0.35), 0 0 22px rgba(59, 130, 246, 0.25), 0 12px 32px rgba(0, 0, 0, 0.6)',
 });
 
 export const darkColorSchemes = {
-  default: darkScheme({
-    primary: '#94a3b8', rgb: '148, 163, 184', text: 'rgb(226, 232, 240)',
-    root: '#818cf8', rootRgb: '129, 140, 248', rootText: 'rgb(199, 210, 254)',
-  }),
-  blue: darkScheme({ primary: '#60a5fa', rgb: '96, 165, 250', text: 'rgb(219, 234, 254)', rootText: 'rgb(191, 219, 254)' }),
-  purple: darkScheme({ primary: '#a78bfa', rgb: '167, 139, 250', text: 'rgb(237, 233, 254)', rootText: 'rgb(221, 214, 254)' }),
-  green: darkScheme({ primary: '#4ade80', rgb: '74, 222, 128', text: 'rgb(220, 252, 231)', rootText: 'rgb(187, 247, 208)' }),
-  orange: darkScheme({ primary: '#fb923c', rgb: '251, 146, 60', text: 'rgb(255, 237, 213)', rootText: 'rgb(254, 215, 170)' }),
+  default: darkScheme({ primary: 'rgb(163, 163, 163)', root: 'rgb(129, 140, 248)' }),
+  blue: darkScheme({ primary: 'rgb(96, 165, 250)' }), // blue-400
+  purple: darkScheme({ primary: 'rgb(167, 139, 250)' }), // violet-400
+  green: darkScheme({ primary: 'rgb(74, 222, 128)' }), // green-400
+  orange: darkScheme({ primary: 'rgb(251, 146, 60)' }), // orange-400
 };
 
 // Edges on the canvas: the curve, its arrowhead, and the dots at each end.
@@ -189,12 +185,12 @@ export const EDGE_COLORS = {
     shadow: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1))',
   },
   dark: {
-    stroke: 'rgb(100, 116, 139)', // slate-500
-    opacity: '0.75',
-    start: 'rgb(100, 116, 139)',
+    stroke: 'rgb(115, 115, 115)', // neutral-500
+    opacity: '0.6',
+    start: 'rgb(115, 115, 115)',
     end: 'rgb(96, 165, 250)', // blue-400
-    ring: 'rgb(15, 23, 42)', // slate-900
-    shadow: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4))',
+    ring: 'rgb(10, 10, 10)',
+    shadow: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6))',
   },
 };
 

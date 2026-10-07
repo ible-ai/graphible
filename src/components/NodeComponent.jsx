@@ -202,7 +202,7 @@ const NodeComponent = memo(({
 
       {/* Control buttons */}
       {(showControls || isSelected) && (
-        <div className="node-controls absolute top-2 right-2 flex gap-1 bg-white/95 dark:bg-slate-900/95 rounded-lg p-1 shadow-lg border border-slate-200 dark:border-slate-700">
+        <div className="node-controls absolute top-2 right-2 flex gap-1 bg-white/95 dark:bg-neutral-900/95 rounded-lg p-1 shadow-lg border border-slate-200 dark:border-neutral-800">
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -239,11 +239,11 @@ const NodeComponent = memo(({
       {/* Resize handle */}
       {(showControls || isSelected) && (
         <div
-          className="resize-handle absolute bottom-1 right-1 w-5 h-5 cursor-se-resize bg-slate-300/80 dark:bg-slate-600/80 rounded-tl-lg hover:bg-slate-400/80 dark:hover:bg-slate-500/80 transition-colors border border-slate-400/50 dark:border-slate-500/50 flex items-center justify-center"
+          className="resize-handle absolute bottom-1 right-1 w-5 h-5 cursor-se-resize bg-slate-300/80 dark:bg-neutral-600/80 rounded-tl-lg hover:bg-slate-400/80 dark:hover:bg-neutral-500/80 transition-colors border border-slate-400/50 dark:border-neutral-600/50 flex items-center justify-center"
           onMouseDown={handleResizeMouseDown}
           title="Resize node"
         >
-          <div className="w-2 h-2 border-r-2 border-b-2 border-slate-600 dark:border-slate-300 opacity-60"></div>
+          <div className="w-2 h-2 border-r-2 border-b-2 border-slate-600 dark:border-neutral-300 opacity-60"></div>
         </div>
       )}
 
@@ -257,7 +257,7 @@ const NodeComponent = memo(({
 
       {/* Drag instruction hint */}
       {showControls && (
-        <div className="absolute -bottom-6 left-0 text-xs text-slate-500 dark:text-slate-400 bg-white/90 dark:bg-slate-900/90 px-2 py-1 rounded shadow-sm whitespace-nowrap">
+        <div className="absolute -bottom-6 left-0 text-xs text-slate-500 dark:text-neutral-400 bg-white/90 dark:bg-neutral-900/90 px-2 py-1 rounded shadow-sm whitespace-nowrap">
           Shift + click to drag
         </div>
       )}
