@@ -54,7 +54,7 @@ Push to `main` → `.github/workflows/deploy.yml` builds and deploys to GitHub P
 
 ## Repo map
 
-44 source files under `src/`:
+46 source files under `src/`:
 
 ```
 src/App.jsx               920 lines — the whole app shell; all UI state lives here
@@ -64,7 +64,7 @@ src/hooks/          (10)            — camera, graph state, LLM, selection, man
 src/utils/           (11)            — coordinates, LLM parsing, context building, clustering, wizard helpers, Google/Code Assist auth
 src/constants/       (3)            — graphConstants.jsx, setupWizardConstants.jsx, zLayers.js
 scripts/             (1)            — probe-code-assist.mjs, the live-API probe (see below)
-src/components/     (17)            — Minimap (784) and SetupWizard (825) are the two big ones
+src/components/     (18)            — Minimap (784) and SetupWizard (825) are the two big ones
 ```
 
 Gitignored and unimported: `src/dev/` (7 files; `src/dev/App.jsx` is a stale 1117-line fork of `App.jsx`) and `_src/`. Don't edit them for app changes.
@@ -341,7 +341,7 @@ Rendering deliberately avoids per-node transforms: **one wrapper div** carries t
 
 Three independent global mouse-listener systems coexist. Check all of them when touching pointer behavior:
 
-- **`App.jsx`** — background panning, one effect gated on `!showPromptCenter`. It decides "is this the background?" with `e.target.closest()` against `.node-component`, `.minimap-container`, `.details-panel`, `.modal`, `.node-controls`, `.resize-handle`, plus `button/input/textarea/select/a`. **Renaming or dropping those class names silently breaks panning**, and conversely a new interactive overlay needs one of them or dragging from it will pan the camera. A separate non-passive `wheel` listener does zoom.
+- **`App.jsx`** — background panning, one effect gated on `!showPromptCenter`. It decides "is this the background?" with `e.target.closest()` against `.node-component`, `.minimap-container`, `.details-panel`, `.modal`, `.node-controls`, `.resize-handle`, plus `button/input/textarea/select/a`. **Renaming or dropping those class names silently breaks panning**, and conversely a new interactive overlay needs one of them or dragging from it will pan the camera. A separate non-passive `wheel` listener does zoom, but only when the event target is inside the `[data-graph-canvas]` element; over anything else (details panel, modals, header menus, minimap) it leaves the wheel alone so that overlay scrolls, and only swallows a ctrl+wheel (a macOS trackpad pinch) so the browser does not zoom the page. New overlays must stay siblings of that element, not children of it.
 - **`useNodeManipulation`** — node drag and resize. Snapshots the start point and camera into a ref, converts screen delta to world delta by `/ camera.zoom`, and attaches its listeners only while a manipulation is active. Resize clamps to 200–800 × 100–600. It returns `draggingNodeId`/`isResizingNodeId`; the pan handlers bail out while either is set.
 - **`NodeDetailsPanel`** and **`Minimap`** — each implements its own drag/pan/resize with its own document listeners.
 

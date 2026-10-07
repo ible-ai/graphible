@@ -31,6 +31,18 @@ export const isInteractiveTarget = (element) => {
   return INTERACTIVE_SELECTORS.some((selector) => element.closest(selector));
 };
 
+// The element that holds the graph carries this attribute. Wheel zoom is
+// opt-in to it rather than opt-out of a list of overlays: the panels, modals,
+// menus and header all sit over the canvas as siblings of it, so "is the
+// pointer over the canvas" is one check that every present and future overlay
+// passes without having to register itself.
+export const CANVAS_ATTRIBUTE = 'data-graph-canvas';
+
+export const isCanvasTarget = (element) => {
+  if (!element || typeof element.closest !== 'function') return false;
+  return element.closest(`[${CANVAS_ATTRIBUTE}]`) !== null;
+};
+
 export const ZOOM_LIMITS = { min: 0.1, max: 3.0 };
 const ZOOM_STEP = 0.1;
 
@@ -91,6 +103,13 @@ export const useCanvasInteraction = ({
   }, [enabled, isManipulatingNode, isDragging, dragStart, camera, setCameraImmediate]);
 
   const handleWheel = useCallback((e) => {
+    if (!isCanvasTarget(e.target)) {
+      // Over a panel or modal the wheel belongs to it, so let it scroll. A
+      // trackpad pinch arrives as a ctrl+wheel, though, and left alone the
+      // browser zooms the whole page; swallow that without zooming the graph.
+      if (e.ctrlKey) e.preventDefault();
+      return;
+    }
     e.preventDefault();
     const factor = e.deltaY < 0 ? 1 + ZOOM_STEP : 1 - ZOOM_STEP;
     const zoom = Math.max(ZOOM_LIMITS.min, Math.min(camera.zoom * factor, ZOOM_LIMITS.max));
@@ -100,7 +119,10 @@ export const useCanvasInteraction = ({
   useEffect(() => {
     if (!enabled) return undefined;
 
-    // Non-passive so preventDefault actually stops the page scrolling.
+    // Non-passive so preventDefault actually stops the page scrolling. It is
+    // on document and preventDefault cancels scrolling for the whole event, so
+    // this listener once zoomed the graph on a trackpad scroll over the details
+    // panel and the panel itself never moved.
     document.addEventListener('wheel', handleWheel, { passive: false });
     return () => document.removeEventListener('wheel', handleWheel);
   }, [enabled, handleWheel]);

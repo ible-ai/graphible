@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { useCanvasInteraction, isInteractiveTarget, ZOOM_LIMITS } from '../src/hooks/useCanvasInteraction';
+import { useCanvasInteraction, isInteractiveTarget, isCanvasTarget, CANVAS_ATTRIBUTE, ZOOM_LIMITS } from '../src/hooks/useCanvasInteraction';
 
 const camera = { x: 0, y: 0, zoom: 1 };
 
@@ -19,6 +19,7 @@ const canvas = () => {
   if (!el) {
     el = document.createElement('div');
     el.id = 'canvas-surface';
+    el.setAttribute(CANVAS_ATTRIBUTE, '');
     document.body.appendChild(el);
   }
   return el;
@@ -120,9 +121,38 @@ describe('panning', () => {
   });
 });
 
+// An overlay as App renders one: a sibling of the canvas, not inside it.
+const overlay = () => {
+  const panel = document.createElement('div');
+  panel.className = 'details-panel';
+  const body = document.createElement('p');
+  panel.appendChild(body);
+  document.body.appendChild(panel);
+  return body;
+};
+
+const wheelEvent = (deltaY, extra = {}) =>
+  new WheelEvent('wheel', { deltaY, cancelable: true, bubbles: true, ...extra });
+
+describe('isCanvasTarget', () => {
+  it('accepts the canvas and anything inside it', () => {
+    const node = document.createElement('div');
+    node.className = 'node-component';
+    canvas().appendChild(node);
+    expect(isCanvasTarget(canvas())).toBe(true);
+    expect(isCanvasTarget(node)).toBe(true);
+  });
+
+  it('rejects overlays, document and null', () => {
+    canvas();
+    expect(isCanvasTarget(overlay())).toBe(false);
+    expect(isCanvasTarget(document)).toBe(false);
+    expect(isCanvasTarget(null)).toBe(false);
+  });
+});
+
 describe('zooming', () => {
-  const wheel = (deltaY) =>
-    document.dispatchEvent(new WheelEvent('wheel', { deltaY, cancelable: true }));
+  const wheel = (deltaY) => canvas().dispatchEvent(wheelEvent(deltaY));
 
   it('zooms in and out around the current zoom', () => {
     const { setCameraImmediate } = mount();
@@ -151,5 +181,42 @@ describe('zooming', () => {
     act(() => { wheel(-100); });
     const [x, y] = setCameraImmediate.mock.calls[0];
     expect([x, y]).toEqual([42, -17]);
+  });
+});
+
+describe('wheel over an overlay', () => {
+  it('leaves the camera alone and lets the overlay scroll', () => {
+    const { setCameraImmediate } = mount();
+    canvas();
+    const event = wheelEvent(100);
+
+    act(() => { overlay().dispatchEvent(event); });
+
+    expect(setCameraImmediate).not.toHaveBeenCalled();
+    // Regression: preventDefault here cancelled the panel's own scrolling.
+    expect(event.defaultPrevented).toBe(false);
+  });
+
+  it('swallows a trackpad pinch without zooming the graph', () => {
+    const { setCameraImmediate } = mount();
+    canvas();
+    // macOS delivers a pinch as wheel events with ctrlKey set; left alone the
+    // browser would zoom the whole page.
+    const event = wheelEvent(-10, { ctrlKey: true });
+
+    act(() => { overlay().dispatchEvent(event); });
+
+    expect(setCameraImmediate).not.toHaveBeenCalled();
+    expect(event.defaultPrevented).toBe(true);
+  });
+
+  it('still zooms on a pinch over the canvas', () => {
+    const { setCameraImmediate } = mount();
+    const event = wheelEvent(-10, { ctrlKey: true });
+
+    act(() => { canvas().dispatchEvent(event); });
+
+    expect(setCameraImmediate.mock.calls[0][2]).toBeCloseTo(1.1);
+    expect(event.defaultPrevented).toBe(true);
   });
 });

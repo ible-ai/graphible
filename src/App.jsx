@@ -31,6 +31,7 @@ import ConnectionManager from './components/ConnectionManager';
 import SetupWizard from './components/SetupWizard/SetupWizard';
 import ModelDownloadConsent from './components/ModelDownloadConsent';
 import Notice from './components/Notice';
+import RepoLink from './components/RepoLink';
 
 // Import constants and utilities
 import {
@@ -663,7 +664,9 @@ const Graphible = () => {
           </div>
 
           {/* Main Content */}
-          <div className="pt-20 w-full h-full relative overflow-hidden">
+          {/* data-graph-canvas scopes wheel zoom to this element; overlays
+              outside it scroll instead. See useCanvasInteraction. */}
+          <div className="pt-20 w-full h-full relative overflow-hidden" data-graph-canvas="">
             {/* Background container that handles camera transformation */}
             <div
               className="absolute inset-0 w-full h-full"
@@ -896,6 +899,8 @@ const Graphible = () => {
           onRemoveConnection={removeConnection}
         />
       )}
+
+      <RepoLink />
 
       <Notice notice={notice} onDismiss={() => setNotice(null)} />
 
