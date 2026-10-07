@@ -10,7 +10,8 @@ export const NODE_SPACING = { x: NODE_SIZE.width * 0.5, y: NODE_SIZE.height * 0.
 // visually distinct from the previous.
 export const RAD_PER_DEPTH = Math.PI / 3;
 
-// The resting (not current) node fill and shadow, and the selected state.
+// The resting (not current) node fill and shadow, the current and root
+// glows, and the selected state.
 // NodeComponent used to hard-code these, which left dark mode no way to
 // replace them.
 const LIGHT_NODE_STATES = {
@@ -20,6 +21,11 @@ const LIGHT_NODE_STATES = {
   selectedBg: 'rgba(59, 130, 246, 0.08)',
   selectedRootBg: 'rgba(59, 130, 246, 0.15)',
   selectedShadow: '0 0 0 4px rgba(59, 130, 246, 0.5), 0 0 30px rgba(59, 130, 246, 0.6), 0 12px 40px rgba(59, 130, 246, 0.3)',
+  // The current node's neutral lift, under its colored ring and halo.
+  lift: '0 12px 24px rgba(0, 0, 0, 0.08)',
+  // Alphas for the root and current glows, applied to the scheme's own color:
+  // rest is the root at rest, halo the soft spread, ring the tight outline.
+  glow: { rest: 0.2, halo: 0.3, ring: 0.3 },
 };
 
 export const colorSchemes = {
@@ -149,6 +155,10 @@ const darkScheme = ({ primary, rgb, text, root = primary, rootRgb = rgb, rootTex
   rootBorder: root,
   rootText,
   shadow: '0 4px 14px rgba(2, 6, 23, 0.45), 0 1px 2px rgba(2, 6, 23, 0.6)',
+  lift: '0 12px 28px rgba(0, 0, 0, 0.6)',
+  // Black swallows a soft halo faster than white does, so the halo and the
+  // resting glow are a touch stronger here, and the ring is brighter.
+  glow: { rest: 0.32, halo: 0.34, ring: 0.4 },
   // The light glow reads as neon on navy; a tighter ring says the same thing.
   selectedBorder: '#3B82F6',
   selectedBg: tintOverCanvas('59, 130, 246', 0.14),

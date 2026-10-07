@@ -3,6 +3,7 @@
 import { useState, memo, useMemo, useCallback } from 'react';
 import { Circle, ThumbsUp, ThumbsDown, X } from 'lucide-react';
 import { NODE_SIZE } from '../constants/graphConstants';
+import { withAlpha } from '../utils/colorUtils';
 
 const NodeComponent = memo(({
   node,
@@ -69,6 +70,13 @@ const NodeComponent = memo(({
       baseStyles.transform = `scale(${isCurrent ? 1.05 : 1.0})`;
     }
 
+    // The root always glows faintly in its own color, and the current node,
+    // root or not, gets a ring and a stronger halo. These used to append a hex
+    // alpha to an rgb() color, which is invalid CSS, so neither ever rendered.
+    const { glow } = colorScheme;
+    const ringAndHalo = (color) =>
+      `0 0 0 3px ${withAlpha(color, glow.ring)}, 0 6px 30px ${withAlpha(color, glow.halo)}`;
+
     // Root node styling
     if (node.type === 'root') {
       baseStyles = {
@@ -81,8 +89,8 @@ const NodeComponent = memo(({
         boxShadow: isSelected
           ? colorScheme.selectedShadow
           : (isCurrent
-            ? `0 8px 32px ${colorScheme.rootBorder}40, 0 0 0 2px ${colorScheme.rootBorder}50`
-            : `0 4px 16px ${colorScheme.rootBorder}25`),
+            ? `${colorScheme.lift}, ${ringAndHalo(colorScheme.rootBorder)}`
+            : `${colorScheme.shadow}, 0 0 22px ${withAlpha(colorScheme.rootBorder, glow.rest)}`),
       };
     } else {
       baseStyles = {
@@ -95,7 +103,7 @@ const NodeComponent = memo(({
         boxShadow: isSelected
           ? colorScheme.selectedShadow
           : (isCurrent
-            ? `0 12px 24px rgba(0, 0, 0, 0.08), 0 0 0 2px ${colorScheme.primary}33`
+            ? `${colorScheme.lift}, ${ringAndHalo(colorScheme.primary)}`
             : colorScheme.shadow),
       };
     }
