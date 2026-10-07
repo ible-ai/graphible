@@ -3,14 +3,14 @@
 // This is the only Gemini path that spends the *user's* own free allowance
 // rather than the site operator's. The Gemini Developer API attributes every
 // request to a billable Cloud project, so it can only ever bill whoever
-// deployed Graphible or a project the user created themselves. Code Assist
+// deployed graphible or a project the user created themselves. Code Assist
 // attributes to the signed-in account instead.
 //
 // Reaching it means presenting gemini-cli's OAuth client, whose id and secret
 // are published in its source: it is a public client, so neither value is a
 // credential in the OAuth sense - PKCE is what actually protects the exchange.
 // Google's own consent screen names "Gemini CLI", so the sign-in button says
-// so too rather than implying the grant goes to Graphible.
+// so too rather than implying the grant goes to graphible.
 //
 // Values below are from packages/core/src/code_assist/oauth2.ts.
 

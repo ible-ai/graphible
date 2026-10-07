@@ -299,7 +299,7 @@ export const DEFAULT_MODEL_CONFIGS = {
   DEMO: {
     type: 'demo',
     name: 'Demo Mode',
-    description: 'Try Graphible with sample content',
+    description: 'Try graphible with sample content',
     model: "demo"
   },
   LOCAL: {

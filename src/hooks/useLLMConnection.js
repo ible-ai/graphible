@@ -48,7 +48,7 @@ const geminiRequestBody = (prompt) => JSON.stringify({
 });
 
 // Without x-goog-user-project, Google bills the project that owns the OAuth
-// client - which is whoever deployed Graphible, not the person prompting. That
+// client - which is whoever deployed graphible, not the person prompting. That
 // default is wrong in the expensive direction, so a request without a project
 // is refused rather than sent.
 const requireQuotaProject = (config) => {
@@ -360,7 +360,7 @@ export const useLLMConnection = () => {
       {
         label: "Demo Node",
         type: "concept",
-        description: "This is a demonstration node showing how Graphible works",
+        description: "This is a demonstration node showing how graphible works",
         content: "This is demo content. Connect a real AI model to generate actual responses to your prompts."
       }
     ];
@@ -549,7 +549,7 @@ export const useLLMConnection = () => {
   };
 
   // Gemini on the signed-in user's own Code Assist allowance. Unlike every
-  // other cloud path here, nothing is billed to whoever deployed Graphible.
+  // other cloud path here, nothing is billed to whoever deployed graphible.
   const generateWithCodeAssist = async (prompt, stream = true, config = currentModel) => {
     // The project comes back from loadCodeAssist and is cached on the config by
     // the connection test; re-resolving it per prompt would double the requests.

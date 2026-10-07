@@ -89,7 +89,7 @@ describe('useLLMConnection, google-oauth backend', () => {
 
   it('refuses to send a request with no project rather than billing the host', async () => {
     // Google falls back to the OAuth client's own project, which belongs to
-    // whoever deployed Graphible. Sending is the expensive failure mode, so
+    // whoever deployed graphible. Sending is the expensive failure mode, so
     // the request never leaves.
     const fetchMock = vi.fn(async () => ({ ok: true, body: sseStream(['x']) }));
     vi.stubGlobal('fetch', fetchMock);

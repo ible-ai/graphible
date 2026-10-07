@@ -128,7 +128,7 @@ describe('export and import', () => {
     const { result } = render();
     await expect(
       result.current.importGraph(JSON.stringify({ unrelated: true }))
-    ).rejects.toThrow(/does not contain a Graphible graph/i);
+    ).rejects.toThrow(/does not contain a graphible graph/i);
   });
 
   // Two graphs created in the same millisecond used to share an id, because it

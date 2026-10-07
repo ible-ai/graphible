@@ -53,7 +53,7 @@ test.describe('setup wizard navigation', () => {
     await page.getByRole('button', { name: /Try the demo/i }).click();
 
     await expect(page.locator('.node-component')).toHaveCount(4);
-    await expect(page.getByRole('heading', { name: 'Welcome to Graphible' })).toBeHidden();
+    await expect(page.getByRole('heading', { name: 'Welcome to graphible' })).toBeHidden();
   });
 
   test('back returns to the choice step', async ({ page }) => {

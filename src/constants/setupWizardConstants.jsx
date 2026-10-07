@@ -12,7 +12,7 @@ export const SETUP_STEPS = {
 };
 
 export const SETUP_STEPS_TITLES = {
-    [SETUP_STEPS.WELCOME]: 'Welcome to Graphible',
+    [SETUP_STEPS.WELCOME]: 'Welcome to graphible',
     [SETUP_STEPS.CHOICE]: 'How would you like to get started?',
     [SETUP_STEPS.CONSENT]: 'Review & Consent',
     [SETUP_STEPS.SETUP]: 'Quick Setup',
@@ -99,9 +99,9 @@ export const DEMO_GRAPH_DATA = {
 
 export const SETUP_MESSAGES = {
     WELCOME: {
-        title: "Welcome to Graphible",
+        title: "Welcome to graphible",
         subtitle: "Turn conversations into knowledge graphs",
-        description: "Graphible helps you explore ideas by creating visual, interactive knowledge maps from AI conversations."
+        description: "graphible helps you explore ideas by creating visual, interactive knowledge maps from AI conversations."
     },
     CHOICE: {
         title: "Choose your AI source",

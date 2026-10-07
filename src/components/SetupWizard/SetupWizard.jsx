@@ -771,7 +771,7 @@ const SetupWizard = ({
                                 <button
                                     onClick={handleComplete}
                                     className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium focus:ring-2 focus:ring-green-500 focus:outline-none"
-                                    aria-label="Complete setup and start using Graphible"
+                                    aria-label="Complete setup and start using graphible"
                                 >
                                     Finish Setup
                                 </button>
@@ -813,7 +813,7 @@ const SetupWizard = ({
                             Exit Setup?
                         </h3>
                         <p id="exit-confirm-description" className="text-slate-600 dark:text-neutral-300 mb-6">
-                            You're in the middle of setting up Graphible. If you exit now, your progress will be lost.
+                            You're in the middle of setting up graphible. If you exit now, your progress will be lost.
                         </p>
                         <div className="flex gap-3">
                             <button

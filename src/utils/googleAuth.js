@@ -1,6 +1,6 @@
 // Sign in with Google, for calling the Gemini API as the signed-in user.
 //
-// Graphible is a static site with no backend, so this uses Google Identity
+// graphible is a static site with no backend, so this uses Google Identity
 // Services' implicit token flow: the browser receives an access token directly
 // and no client secret is involved. Tokens are short-lived (~1h) and are held
 // in memory only - a bearer token in localStorage is readable by anything that

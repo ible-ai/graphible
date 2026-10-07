@@ -133,7 +133,7 @@ test.describe('skipping the wizard', () => {
   const skipWizard = async (page) => {
     await page.goto('/');
     await page.getByTitle('Close setup').click();
-    await expect(page.getByRole('heading', { name: 'Welcome to Graphible' })).toBeHidden();
+    await expect(page.getByRole('heading', { name: 'Welcome to graphible' })).toBeHidden();
   };
 
   test('the model menu fits on screen, so it can actually be applied', async ({ page }) => {

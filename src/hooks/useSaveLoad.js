@@ -128,7 +128,7 @@ export const useSaveLoad = (nodes, connections, currentNodeId, initialPromptText
     // Accept both the wrapped export and a bare graph object.
     const graph = parsed?.graph ?? parsed;
     if (!graph || !Array.isArray(graph.nodes)) {
-      throw new Error('That file does not contain a Graphible graph.');
+      throw new Error('That file does not contain a graphible graph.');
     }
 
     const imported = {
